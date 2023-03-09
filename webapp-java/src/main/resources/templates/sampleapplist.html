@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <title>サンプルアプリ</title>
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet" />
+    <script th:src="@{/js/bootstrap.min.css}"></script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  </head>
+  <body>
+    <div>
+      <a class="btn btn-primary" th:href="@{/sampleapp/form}">変更する</a>
+    </div>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th rowspan="2">ID</th>
+          <th rowspan="5">名前</th>
+          <th colspan="5">ジョブの成否</th>
+        </tr>
+        <tr>
+          <th>JOB0001</th>
+          <th>JOB0002</th>
+          <th>JOB0003</th>
+          <th>JOB0004</th>
+          <th>JOB0005</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          th:each="sampleapp : ${sampleapplist.sampleAppList}"
+          th:object="${sampleapp}"
+          class="align-middle"
+        >
+          <td th:text="*{id}"></td>
+          <td th:text="*{name}"></td>
+          <td th:text="*{job0001Flag} ? 成功 : 失敗"></td>
+          <td th:text="*{job0002Flag} ? 成功 : 失敗"></td>
+          <td th:text="*{job0003Flag} ? 成功 : 失敗"></td>
+          <td th:text="*{job0004Flag} ? 成功 : 失敗"></td>
+          <td th:text="*{job0005Flag} ? 成功 : 失敗"></td>
+        </tr>
+      </tbody>
+    </table>
+  </form>
+  </body>
+</html>

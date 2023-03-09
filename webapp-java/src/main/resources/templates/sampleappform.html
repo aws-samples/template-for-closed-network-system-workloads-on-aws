@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <title>サンプルアプリ</title>
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet" />
+    <script th:src="@{/js/bootstrap.min.css}"></script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  </head>
+  <body>
+    <form
+      th:action="@{/sampleapp/form/update}"
+      th:object="${sampleapplist}"
+      method="post"
+    >
+      <div>
+        <button class="btn btn-primary" type="submit">更新</button>
+      </div>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th rowspan="2">ID</th>
+            <th rowspan="5">名前</th>
+            <th colspan="5">ジョブの成否</th>
+          </tr>
+          <tr>
+            <th>JOB0001</th>
+            <th>JOB0002</th>
+            <th>JOB0003</th>
+            <th>JOB0004</th>
+            <th>JOB0005</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="sampleapp, st : *{sampleAppList}" class="align-middle">
+            <td>
+              <input
+                type="text"
+                name="id"
+                style="width: 20px"
+                th:field="*{sampleAppList[__${st.index}__].id}"
+                class="form-control-plaintext"
+                readonly
+              />
+            </td>
+            <td>
+              <input
+                type="text"
+                name="name"
+                style="width: 200px"
+                th:field="*{sampleAppList[__${st.index}__].name}"
+                class="form-control-plaintext"
+                readonly
+              />
+            </td>
+            <td>
+              <input
+                type="checkbox"
+                name="job0001Flag"
+                th:field="*{sampleAppList[__${st.index}__].job0001Flag}"
+              />
+            </td>
+            <td>
+              <input
+                type="checkbox"
+                name="job0002Flag"
+                th:field="*{sampleAppList[__${st.index}__].job0002Flag}"
+              />
+            </td>
+            <td>
+              <input
+                type="checkbox"
+                name="job0003Flag"
+                th:field="*{sampleAppList[__${st.index}__].job0003Flag}"
+              />
+            </td>
+            <td>
+              <input
+                type="checkbox"
+                name="job0004Flag"
+                th:field="*{sampleAppList[__${st.index}__].job0004Flag}"
+              />
+            </td>
+            <td>
+              <input
+                type="checkbox"
+                name="job0005Flag"
+                th:field="*{sampleAppList[__${st.index}__].job0005Flag}"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </form>
+  </body>
+</html>
