@@ -1,0 +1,4 @@
+[ v3_ca ]
+basicConstraints = CA:true, pathlen:0
+keyUsage = cRLSign, keyCertSign
+nsCertType = sslCA, emailCA
