@@ -93,3 +93,11 @@ This is the architecture diagram that is slightly modified by using private link
 ## How to Deploy
 
 Please see the following document: [infra/README.md](./infra/README.md)
+
+## Security
+
+See [CONTRIBUTING](CONTRIBUTING.md#Security-issue-notifications) for more information.
+
+## License
+
+This library is licensed under the MIT-0 License. See the LICENSE file.
