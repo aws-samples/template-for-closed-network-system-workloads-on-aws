@@ -83,3 +83,11 @@ Private Link を利用する場合には、[“共有型”AWS DirectConnect で
 ## テンプレートのデプロイ方法
 
 [infra/README.md](./infra/README_ja.md)を参照ください
+
+## Security
+
+See [CONTRIBUTING](CONTRIBUTING.md#Security-issue-notifications) for more information.
+
+## License
+
+This library is licensed under the MIT-0 License. See the LICENSE file.
