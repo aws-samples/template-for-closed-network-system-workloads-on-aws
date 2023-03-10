@@ -73,7 +73,7 @@ $ npm run deploy -- --{alias}
 
 デプロイ後、ターミナル上に以下に示すようなコマンドが出力されますので、コピーして実行してください。
 生成された EC2 インスタンス 用の Keypair がそれぞれ取得できます。
-コンソール接続する場合や Fleet Manager から RDP 接続する際には、Keypair の取得を行ってください。
+コンソール接続する場合や Fleet Manager から RDP 接続する際には、Keypair の取得を行ってください。（コマンド実行時にはProfileの指定をお願いします）
 
 ```
 // regionがap-northeast-1のWindowsインスタンスの場合
@@ -83,8 +83,10 @@ $ {alias}{stage}{appName}Webapp.WindowsGetSSHKeyForWindowsInstanceCommand = aws 
 $ {alias}{stage}{appName}Webapp.LinuxGetSSHKeyForLinuxInstanceCommand = aws ssm get-parameter --name /ec2/keypair/key-XXXXXXXXXXXXXXXXX --region ap-northeast-1 --with-decryption --query Parameter.Value --output text
 ```
 
-また、CDK のデプロイが完了すると、stages.js に登録したメールアドレス宛に、Amazon SNS よりサブスクリプションの確認メールが届きます。
+また、CDK のデプロイが完了すると、`stages.js` に登録したメールアドレス宛に、Amazon SNS よりサブスクリプションの確認メールが届きます。
+
 ジョブが失敗した通知を受けるために、届いたメールの内容に従い、サブスクリプションの Confirmation を実施してください。
+
 また、バッチジョブは平日 21 時に実行される設定になっています。このあと実施する、サンプル Web アプリのデプロイによって登録される初期データは、ジョブがすべて成功する設定になっているため、メールは送信されません。
 もし、失敗を確認したい場合は、`webapp-java/src/main/resources/data.sql`の 5 つある`true`のいずれかを`false`へ変更した上で、Web アプリのデプロイを行ってください。
 
