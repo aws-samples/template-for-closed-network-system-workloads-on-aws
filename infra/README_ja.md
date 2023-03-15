@@ -19,18 +19,8 @@ $ aws configure --profile {プロファイル名}
 IAM ユーザ作成時に表示される、アクセスキーとシークレットキー、デフォルトのリージョンが確認されます。
 詳しくは[aws configure を使用したクイック設定 - プロファイル](https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-profiles)をご参照ください。
 
-### 2. 自己署名付き証明書の作成
 
-HTTPS 通信を実装するために、今回は自己署名付き証明書を用います。
-`infra`ディレクトリで次のコマンドを実行し、Amazon Certificate Manager に証明書をインポートしてください。
-また、以下のコマンド実行前に、`OpenSSL`のインストールを実施してください。
-
-```bash
-$ npm install
-$ npm run create-certificate -- --{alias}
-```
-
-### 3. stages.js の書き換え
+### 2. stages.js の書き換え
 
 本テンプレートは、タスクランナーの[gulp](https://gulpjs.com/)を利用してデプロイを行います。
 gulp から参照される変数が`stages.js`で定義されているため、各自の環境に合わせて変更します。
@@ -58,6 +48,17 @@ alias: {
     linuxBastion: true,        // Amazon LinuxのBastionインスタンスを利用する場合はtrue、利用しない場合はfalse
     domainName: 'templateapp.local', // Private Hosted Zoneに登録されるドメイン名
 }
+```
+
+### 3. 自己署名付き証明書の作成
+
+HTTPS 通信を実装するために、今回は自己署名付き証明書を用います。
+`infra`ディレクトリで次のコマンドを実行し、Amazon Certificate Manager に証明書をインポートしてください。
+また、以下のコマンド実行前に、`OpenSSL`のインストールを実施してください。
+
+```bash
+$ npm install
+$ npm run create-certificate -- --{alias}
 ```
 
 ## デプロイ

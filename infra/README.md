@@ -19,18 +19,7 @@ Run and enter the required information in response to the prompts that appear.
 The access key, secret key, and default region that are displayed when an IAM user is created are checked.
 For more information, see [Quick Setup with aws configure - Profiles](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-profiles).
 
-### 2. Create self-signed certificate
-
-Self-signed certificate will be used in this sample to use HTTPS.
-Please run this command to import certificate to Amazon Certificate Manager in `infra` dir.
-Please install `OpenSSL` to your local environment befeore running these commands.
-
-```bash
-$ npm install
-$ npm run create-certificate -- --{alias}
-```
-
-### 3. Rewrite stages.js
+### 2. Rewrite stages.js
 
 This template is using Task Runner [gulp](https://gulpjs.com/) for deployment.
 The variables referred to from gulp are defined in `stages.js`, so they can be changed according to each environment.
@@ -58,6 +47,17 @@ alias: {
     linuxBastion: true,   // Whether using Amazon Linux Bastion instance or not. true is using it, and false is not.
     domainName: 'templateapp.local', // It will be registered to Private Hosted Zone.
 }
+```
+
+### 3. Create self-signed certificate
+
+Self-signed certificate will be used in this sample to use HTTPS.
+Please run this command to import certificate to Amazon Certificate Manager in `infra` dir.
+Please install `OpenSSL` to your local environment befeore running these commands.
+
+```bash
+$ npm install
+$ npm run create-certificate -- --{alias}
 ```
 
 ## How to deploy
