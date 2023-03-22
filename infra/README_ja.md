@@ -181,7 +181,7 @@ $ npm run list -- --{alias}
 Security Hub を有効にした場合、デフォルトで有効になる基準は以下の 2 つです。
 
 - [AWS Foundational Security Best Practices (FSBP) standard](https://docs.aws.amazon.com/ja_jp/securityhub/latest/userguide/fsbp-standard.html)
-- [Center for Internet Security (CIS) AWS Foundations Benchmark v1.2.0 and v1.4.0](https://docs.aws.amazon.com/ja_jp/securityhub/latest/userguide/cis-aws-foundations-benchmark.html)
+- [Center for Internet Security (CIS) AWS Foundations Benchmark v1.2.0](https://docs.aws.amazon.com/ja_jp/securityhub/latest/userguide/cis-aws-foundations-benchmark.html)
 
 これらのチェックが行われると、ベンチマークレポートで重要度が CRITICAL あるいは HIGH のレベルでレポートされる検出項目があります。
 これらに対しては、別途対応が必要になります。

@@ -191,9 +191,9 @@ For specific usage, see [Manage application security and compliance with the AWS
 When Security Hub is enable, two policies will be enable by default.
 
 - [AWS Foundational Security Best Practices (FSBP) standard](https://docs.aws.amazon.com/securityhub/latest/userguide/fsbp-standard.html)
-- [Center for Internet Security (CIS) AWS Foundations Benchmark v1.2.0 and v1.4.0](https://docs.aws.amazon.com/ja_jp/securityhub/latest/userguide/cis-aws-foundations-benchmark.html)
+- [Center for Internet Security (CIS) AWS Foundations Benchmark v1.2.0](https://docs.aws.amazon.com/ja_jp/securityhub/latest/userguide/cis-aws-foundations-benchmark.html)
 
-These checks shows the detection of CRITICAL and HIGH severity by Security Hub.
+These checks may show the detection of CRITICAL and HIGH severity by Security Hub.
 
 ### Enable MFA for the root user
 
@@ -203,7 +203,7 @@ These checks shows the detection of CRITICAL and HIGH severity by Security Hub.
 - [[CIS.1.14] Ensure hardware MFA is enabled for the "root" account](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-cis-controls.html#securityhub-cis-controls-1.14)
 - [[IAM.6] Hardware MFA should be enabled for the root user](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards-fsbp-controls.html#fsbp-iam-6)
 
-#### How to solve
+#### How to fix
 
 - Access the management console as root user and follow below document.
   - [Enable a hardware TOTP token for the AWS account root user (console)](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_enable_physical.html#enable-hw-mfa-for-root)
@@ -214,7 +214,7 @@ These checks shows the detection of CRITICAL and HIGH severity by Security Hub.
 
 - [[CodeBuild.5] CodeBuild project environments should not have privileged mode enabled](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards-fsbp-controls.html#fsbp-codebuild-5)
 
-#### How to solve
+#### How to fix
 
 - CodeBuild's priviledge mode should be disable except when docker image build is required.
 - In this template, priviledge mode is enable because pipeline build a docker image.
