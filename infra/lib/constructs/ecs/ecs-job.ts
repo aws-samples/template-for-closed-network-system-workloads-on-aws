@@ -120,6 +120,7 @@ export class EcsJob extends Construct {
         streamPrefix: `${id.toLowerCase()}-`,
         logGroup: logGroupForFargate,
       }),
+      readonlyRootFilesystem: true,
     });
 
     this.task = this.ecsJob('InvokeJob', this.jobId, 'RUNTASK', container, taskDefinition);

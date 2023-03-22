@@ -186,6 +186,42 @@ The rules that have been excluded are described together at the bottom of the so
 
 For specific usage, see [Manage application security and compliance with the AWS Cloud Development Kit and cdk-nag](https://aws.amazon.com/jp/blogs/news/manage-application-security-and-compliance-with-the-aws-cloud-development-kit-and-cdk-nag/).
 
+## How to solve the checks of Security Hub
+
+When Security Hub is enable, two policies will be enable by default.
+
+- [AWS Foundational Security Best Practices (FSBP) standard](https://docs.aws.amazon.com/securityhub/latest/userguide/fsbp-standard.html)
+- [Center for Internet Security (CIS) AWS Foundations Benchmark v1.2.0](https://docs.aws.amazon.com/ja_jp/securityhub/latest/userguide/cis-aws-foundations-benchmark.html)
+
+These checks may show the detection of CRITICAL and HIGH severity by Security Hub.
+
+### Enable MFA for the root user
+
+#### Checks
+
+- [[CIS.1.13] Ensure MFA is enabled for the "root" account](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-cis-controls.html#securityhub-cis-controls-1.13)
+- [[CIS.1.14] Ensure hardware MFA is enabled for the "root" account](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-cis-controls.html#securityhub-cis-controls-1.14)
+- [[IAM.6] Hardware MFA should be enabled for the root user](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards-fsbp-controls.html#fsbp-iam-6)
+
+#### How to fix
+
+- Access the management console as root user and follow below document.
+  - [Enable a hardware TOTP token for the AWS account root user (console)](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_enable_physical.html#enable-hw-mfa-for-root)
+
+### Disable CodeBuild's privileged mode
+
+#### Checks
+
+- [[CodeBuild.5] CodeBuild project environments should not have privileged mode enabled](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards-fsbp-controls.html#fsbp-codebuild-5)
+
+#### How to fix
+
+- CodeBuild's priviledge mode should be disable except when docker image build is required.
+- In this template, priviledge mode is enable because pipeline build a docker image.
+- Please check your enviornment and requirements and fix this configuration.
+  - If you want to fix template's configuration, [please change the priviledge parameter of CodePipeline's construct](lib/constructs/codepipeline/codepipeline.ts#L65) to `false`
+  - Refer:[interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
+
 ## Path to production
 
 ### Security updates to EC2

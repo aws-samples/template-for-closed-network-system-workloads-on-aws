@@ -102,6 +102,7 @@ export class EcsAppService extends Construct {
         streamPrefix: `${id}-`,
         logGroup: logGroupForCluster,
       }),
+      readonlyRootFilesystem: true,
     });
 
     this.ecsContainer.addPortMappings({
