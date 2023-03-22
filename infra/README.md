@@ -219,7 +219,7 @@ These checks may show the detection of CRITICAL and HIGH severity by Security Hu
 - CodeBuild's priviledge mode should be disable except when docker image build is required.
 - In this template, priviledge mode is enable because pipeline build a docker image.
 - Please check your enviornment and requirements and fix this configuration.
-  - If you want to fix template's configuration, [please change the priviledge parameter of CodePipeline`s construct](lib/constructs/codepipeline/codepipeline.ts#L65) to `false`
+  - If you want to fix template's configuration, [please change the priviledge parameter of CodePipeline's construct](lib/constructs/codepipeline/codepipeline.ts#L65) to `false`
   - Refer:[interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
 
 ## Path to production
