@@ -1,6 +1,7 @@
 FROM python:3.11.1-alpine
 
 WORKDIR /usr/src/app
+VOLUME /usr/src/app
 
 COPY requirements.txt ./
 

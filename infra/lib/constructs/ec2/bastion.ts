@@ -88,6 +88,7 @@ export class Bastion extends Construct {
           }),
         },
       ],
+      requireImdsv2: true,
     });
     this.bastionInstance = bastionInstance;
 

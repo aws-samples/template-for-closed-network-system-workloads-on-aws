@@ -19,7 +19,6 @@ $ aws configure --profile {プロファイル名}
 IAM ユーザ作成時に表示される、アクセスキーとシークレットキー、デフォルトのリージョンが確認されます。
 詳しくは[aws configure を使用したクイック設定 - プロファイル](https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-profiles)をご参照ください。
 
-
 ### 2. stages.js の書き換え
 
 本テンプレートは、タスクランナーの[gulp](https://gulpjs.com/)を利用してデプロイを行います。
@@ -74,7 +73,7 @@ $ npm run deploy -- --{alias}
 
 デプロイ後、ターミナル上に以下に示すようなコマンドが出力されますので、コピーして実行してください。
 生成された EC2 インスタンス 用の Keypair がそれぞれ取得できます。
-コンソール接続する場合や Fleet Manager から RDP 接続する際には、Keypair の取得を行ってください。（コマンド実行時にはProfileの指定をお願いします）
+コンソール接続する場合や Fleet Manager から RDP 接続する際には、Keypair の取得を行ってください。（コマンド実行時には Profile の指定をお願いします）
 
 ```
 // regionがap-northeast-1のWindowsインスタンスの場合
@@ -176,6 +175,41 @@ $ npm run list -- --{alias}
 必要に応じて例外化の追加・削除を実施ください。
 
 具体的な使い方については、[AWS Cloud Development Kit と cdk-nag でアプリケーションのセキュリティとコンプライアンスを管理する](https://aws.amazon.com/jp/blogs/news/manage-application-security-and-compliance-with-the-aws-cloud-development-kit-and-cdk-nag/)、にて解説していますので、ご参照ください。
+
+## Security Hub のチェック結果
+
+Security Hub を有効にした場合、デフォルトで有効になる基準は以下の 2 つです。
+
+- [AWS Foundational Security Best Practices (FSBP) standard](https://docs.aws.amazon.com/ja_jp/securityhub/latest/userguide/fsbp-standard.html)
+- [Center for Internet Security (CIS) AWS Foundations Benchmark v1.2.0](https://docs.aws.amazon.com/ja_jp/securityhub/latest/userguide/cis-aws-foundations-benchmark.html)
+
+これらのチェックが行われると、ベンチマークレポートで重要度が CRITICAL あるいは HIGH のレベルでレポートされる検出項目があります。
+これらに対しては、別途対応が必要になります。
+
+### ルートユーザへの MFA の適用
+
+#### 検出項目
+
+- [[CIS.1.13] Ensure MFA is enabled for the "root" account](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-cis-controls.html#securityhub-cis-controls-1.13)
+- [[CIS.1.14] Ensure hardware MFA is enabled for the "root" account](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-cis-controls.html#securityhub-cis-controls-1.14)
+- [[IAM.6] Hardware MFA should be enabled for the root user](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards-fsbp-controls.html#fsbp-iam-6)
+
+#### 修復方法
+
+- ルートユーザで AWS にログインし、以下のドキュメントに沿って MFA を有効化してください。
+  - [AWS アカウント のルートユーザー (コンソール) 用にハードウェア TOTP トークンを有効にします](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_enable_physical.html#enable-hw-mfa-for-root)
+
+### CodeBuild の特権モードの無効化
+
+#### 検出項目
+
+- [[CodeBuild.5] CodeBuild project environments should not have privileged mode enabled](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards-fsbp-controls.html#fsbp-codebuild-5)
+
+#### 修復方法
+
+- CodeBuild では、Docker イメージをビルドする必要がある場合を除き、特権モードは無効化してください。本テンプレートでは、Docker イメージのビルドを行っているため、有効化していますが、実際に利用される場合は、ご自身の環境に合った設定にご変更ください。
+  - テンプレートだけの対応であれば、[CodePipeline のコンストラクト内の特権モードの設定](lib/constructs/codepipeline/codepipeline.ts#L65)を`false`に変更してください。
+  - ご参考：[interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
 
 ## 本番利用時の考慮点
 
