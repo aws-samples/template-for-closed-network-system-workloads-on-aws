@@ -71,6 +71,7 @@ export class Aurora extends Construct {
         parameters: {
           'rds.force_ssl': '1',
         },
+        cloudwatchLogsExports: ['postgresql'],
       });
 
       if (props.enabledProxy && this.aurora.secret) {

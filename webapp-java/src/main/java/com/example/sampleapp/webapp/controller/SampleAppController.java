@@ -14,7 +14,6 @@ import com.example.sampleapp.webapp.domain.SampleAppService;
 
 @Controller
 public class SampleAppController {
-
 	private final SampleAppService service;
 	public SampleAppService sampleAppService;
 
@@ -22,7 +21,7 @@ public class SampleAppController {
 		this.service = service;
 	}
 
-	@RequestMapping(value = {"/sampleapp/list", "/"})
+	@RequestMapping(value = { "/sampleapp/list", "/" })
 	@GetMapping
 	public String sampleAppList(Model model) {
 
@@ -40,8 +39,6 @@ public class SampleAppController {
 		return "sampleappform";
 	}
 
-
-
 	@RequestMapping("/sampleapp/form/update")
 	@PostMapping
 	public String sampleAppListUpdate(@Validated @ModelAttribute SampleAppListDto sampleappformlist,
@@ -49,8 +46,7 @@ public class SampleAppController {
 
 		service.updateAll(sampleappformlist);
 		model.addAttribute("sampleapplist", service.listAll());
-		return "redirect:/sampleapp/list";
+		return "forward:/";
 	}
-
 
 }
