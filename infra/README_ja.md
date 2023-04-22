@@ -83,6 +83,11 @@ $ {alias}{stage}{appName}Webapp.WindowsGetSSHKeyForWindowsInstanceCommand = aws 
 $ {alias}{stage}{appName}Webapp.LinuxGetSSHKeyForLinuxInstanceCommand = aws ssm get-parameter --name /ec2/keypair/key-XXXXXXXXXXXXXXXXX --region ap-northeast-1 --with-decryption --query Parameter.Value --output text
 ```
 
+> NOTE:
+> 初回デプロイ時は、ターミナルの出力が多いため、Keypair を取得するためのコマンドが見えなくなってしまうことがあります。
+> その場合は、ブラウザから CloudFormation のコンソールを開き、Webapp スタックの出力タブからご確認ください。
+> ![How to get key pair command](../docs/images/keypair_command_ja.png)
+
 また、CDK のデプロイが完了すると、`stages.js` に登録したメールアドレス宛に、Amazon SNS よりサブスクリプションの確認メールが届きます。
 
 ジョブが失敗した通知を受けるために、届いたメールの内容に従い、サブスクリプションの Confirmation を実施してください。
@@ -93,6 +98,12 @@ $ {alias}{stage}{appName}Webapp.LinuxGetSSHKeyForLinuxInstanceCommand = aws ssm 
 ### 2. サンプル Web アプリ
 
 CDK のデプロイが完了したことで、AWS CodeCommit に サンプル Web アプリ用のリポジトリが作成されています。
+
+> NOTE:
+> リポジトリの URL はデプロイをしたターミナルもしくは、CloudFormation のコンソールに表示されます。
+> CloudFormation のコンソールを参照する場合は、`baseStack`の`出力`タブを参照ください。
+> ![Repository Url](../docs/images/repository_url_ja.png)
+
 以下の手順で、`webapp-java` ディレクトリのソースコードをプッシュすることで、サンプル Web アプリがパイプラインからデプロイされます。
 
 ```bash
@@ -106,7 +117,8 @@ $ git checkout -b develop
 $ git push --set-upstream origin develop
 ```
 
-※CodePipeline のトリガーは develop ブランチを監視しています。そのため、develop ブランチの作成が必要になります。
+> NOTE:
+> CodePipeline のトリガーは develop ブランチを監視しています。そのため、develop ブランチの作成が必要になります。
 
 パイプラインの状況を確認したい場合は、マネジメントコンソールより AWS CodePipeline へアクセスしてください。
 

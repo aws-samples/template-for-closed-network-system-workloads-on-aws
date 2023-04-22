@@ -45,5 +45,9 @@ export class BaseStack extends Stack {
       exportName: 'WebappSourceRepositoryName',
       value: codecommitRepository.repositoryName,
     });
+    new CfnOutput(this, 'SourceRepositoryUrl', {
+      exportName: 'WebappSourceRepositoryUrl',
+      value: codecommitRepository.repositoryCloneUrlHttp,
+    });
   }
 }
