@@ -542,7 +542,7 @@ async function createServerCertificate(cb) {
 async function importCertificate(cb) {
   // Import certificate to ACM
   await exec(
-    'aws',
+    'set -e -o pipefail && aws',
     [
       `acm import-certificate --certificate fileb://ssl/server.pem --certificate-chain fileb://ssl/ica.pem --private-key fileb://ssl/server.key ${profile()} | tee certificate_arn.json`,
     ],

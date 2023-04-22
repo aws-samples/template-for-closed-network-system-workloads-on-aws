@@ -87,6 +87,13 @@ If you want to use ssh from your client or RDP connection via FleetManager, plea
 {alias}{stage}{appName}Webapp.LinuxGetSSHKeyForLinuxInstanceCommand = aws ssm get-parameter --name /ec2/keypair/key-XXXXXXXXXXXXXXXXX --region ap-northeast-1 --with-decryption --query Parameter.Value --output text
 ```
 
+> NOTE:
+> If you deploy this template at first, there are many outputs in your terminal.
+> So, you may not find these commands in your terminal.
+> In this case, please go to CloudFormation's console in your browser.
+> And open the `Output` tab of `Webapp stack`. You can see commands in your screen like below image.
+> ![How to get key pair command](../docs/images/keypair_command_en.png)
+
 And mail adderess you put in `stages.js` will receive email from Amazon SNS after CDK deployment.
 Please do confirmation of this email follow these steps in email to receive notification of job failed.
 And job will be start at 21:00 JST on weekdays. The initial data sets registered by deployment of sample web application is set so that all jobs succeed. So no notification is sent.
@@ -95,6 +102,11 @@ If you want to confirm the failure notification, please change any of the `true`
 ### 2. Deploy sample web application via pipeline
 
 Your source code repository was created after deploying CDK.
+
+> NOTE:
+> Your source code repository URL will be shown in your console after deploying CDK or in CloudFormation Console of AWS Management Console like below.
+> ![Source Code URL](../docs/images/repository_url_en.png)
+
 You can deploy sample web application via pipeline by following steps to push source code to your repository.
 
 ```bash
@@ -108,7 +120,8 @@ $ git checkout -b develop
 $ git push --set-upstream origin develop
 ```
 
-\* When the develop branch was changed, this pipeline will be invoked. So, you have to create develop branch.
+> NOTE:
+> When the develop branch was changed, this pipeline will be invoked. So, you have to create develop branch.
 
 If you want to confirm pipeline situation, please access AWS CodePipeline via management console.
 
