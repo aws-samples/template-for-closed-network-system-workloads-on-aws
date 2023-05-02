@@ -36,7 +36,7 @@
     "@types/prettier": "2.6.0",
     "@typescript-eslint/eslint-plugin": "^5.27.0",
     "@typescript-eslint/parser": "^5.27.0",
-    "aws-sdk": "^2.1210.0",
+    "aws-sdk": "^2.1354.0",
     "bufferutil": "^4.0.7",
     "canvas": "^2.11.0",
     "encoding": "^0.1.13",
