@@ -83,6 +83,7 @@ export class Aurora extends Construct {
           vpc: props.vpc,
           iamAuth: true,
           secrets: [this.aurora.secret],
+          securityGroups:this.aurora.connections.securityGroups
         });
 
         this.proxy.grantConnect(this.proxyRole);
@@ -96,6 +97,10 @@ export class Aurora extends Construct {
       new CfnOutput(this, 'SecretName', {
         exportName: 'SecretName',
         value: this.aurora.secret.secretName,
+      });
+      new CfnOutput(this, 'SecretArn', {
+        exportName: 'SecretArn',
+        value: this.aurora.secret.secretArn,
       });
 
       new CfnOutput(this, 'AuroraClusterIdentifier', {
@@ -122,6 +127,10 @@ export class Aurora extends Construct {
         new CfnOutput(this, 'RDSProxyEndpoint', {
           exportName: 'RdsProxyEndpoint',
           value: this.proxy.endpoint,
+        });
+        new CfnOutput(this, 'RDSProxyArn', {
+          exportName: 'RdsProxyArn',
+          value: this.proxy.dbProxyArn,
         });
       }
     }

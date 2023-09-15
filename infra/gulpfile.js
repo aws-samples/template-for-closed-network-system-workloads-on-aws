@@ -144,6 +144,9 @@ function addContext() {
   if (_.has(deployStage, 'domainName')) {
     context = context.concat(` --context domain_name=${deployStage.domainName}`);
   }
+  if (_.has(deployStage, 'serverless')) {
+    context = context.concat(` --context serverless=${deployStage.enabledPrivateLink}`);
+  }
 
   if (privateLinkVpcId) {
     context = context.concat(` --context privatelink_vpc_id=${privateLinkVpcId}`);

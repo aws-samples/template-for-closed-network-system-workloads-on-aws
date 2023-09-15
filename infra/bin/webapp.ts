@@ -1,6 +1,7 @@
 import { capitalize } from 'lodash';
 import * as cdk from 'aws-cdk-lib';
 import { WebappStack } from '../lib/webapp-stack';
+import { WebappStackServerless } from '../lib/webapp-stack-serverless';
 import { DefaultStackSynthesizer } from 'aws-cdk-lib';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 import { Aspects } from 'aws-cdk-lib';
@@ -21,42 +22,81 @@ const enabledPrivateLink = app.node.tryGetContext('enabled_privatelink') || fals
 const vpcId = app.node.tryGetContext('app_vpc_id') || 'defaultVpc';
 const windowsBastion = app.node.tryGetContext('windows_bastion') || false;
 const linuxBastion = app.node.tryGetContext('linux_bastion') || false;
+const serverless = app.node.tryGetContext('serverless') || false;
 const domainName = app.node.tryGetContext('domain_name') || 'defaultDomain';
 const certificateArn = app.node.tryGetContext('certificate_arn') || 'defaultCert';
 
 const auroraSecretName = cdk.Fn.importValue('SecretName');
+const auroraSecretArn = cdk.Fn.importValue('SecretArn');
 const auroraSecurityGroupId = cdk.Fn.importValue('AuroraSecurityGroupId');
 const auroraSecretEncryptionKeyArn = cdk.Fn.importValue('AuroraSecretEncryptionKeyArn');
+const auroraEdition = cdk.Fn.importValue('AuroraEdition');
+const rdsProxyEndpoint = cdk.Fn.importValue('RdsProxyEndpoint');
+const rdsProxyArn = cdk.Fn.importValue('RdsProxyArn');
 const containerRepositoryName = cdk.Fn.importValue('WebappContainerRepositoryName');
 const sourceRepositoryName = cdk.Fn.importValue('WebappSourceRepositoryName');
+
 
 const qualifier = `${stageAlias.slice(0, 5)}${deployEnv.slice(0, 5)}`;
 
 const id = `${capitalize(stageAlias)}${capitalize(deployEnv)}${capitalize(appName)}`;
 
-const webappStack = new WebappStack(app, `${id}Webapp`, {
-  env,
-  synthesizer: new DefaultStackSynthesizer({
-    qualifier,
-  }),
-  auroraSecretName,
-  auroraSecurityGroupId,
-  auroraSecretEncryptionKeyArn,
-  containerRepositoryName,
-  enabledPrivateLink: enabledPrivateLink.toLowerCase() === 'true',
-  testVpcCidr: '10.2.0.0/16',
-  sourceRepositoryName,
-  vpcId,
-  windowsBastion,
-  linuxBastion,
-  domainName,
-  certificateArn,
-});
+if(serverless){
+  const webappStack = new WebappStackServerless(app, `${id}Webapp`, {
+    env:env,
+    synthesizer: new DefaultStackSynthesizer({
+      qualifier,
+    }),
+    auroraSecretName,
+    auroraSecretArn,
+    auroraSecurityGroupId,
+    auroraSecretEncryptionKeyArn,
+    auroraEdition,
+    rdsProxyEndpoint,
+    rdsProxyArn,
+    containerRepositoryName,
+    enabledPrivateLink: enabledPrivateLink.toLowerCase() === 'true',
+    testVpcCidr: '10.2.0.0/16',
+    sourceRepositoryName,
+    vpcId,
+    windowsBastion,
+    linuxBastion,
+    domainName,
+    certificateArn,
+  });
+  // cdk-nag suppressions
+  NagSuppressions.addStackSuppressions(webappStack, [
+    {
+      id: 'AwsSolutions-IAM5',
+      reason: 'To use ManagedPolicy',
+    },
+  ]);
+}else{
+  const webappStack = new WebappStack(app, `${id}Webapp`, {
+    env:env,
+    synthesizer: new DefaultStackSynthesizer({
+      qualifier,
+    }),
+    auroraSecretName,
+    auroraSecurityGroupId,
+    auroraSecretEncryptionKeyArn,
+    containerRepositoryName,
+    enabledPrivateLink: enabledPrivateLink.toLowerCase() === 'true',
+    testVpcCidr: '10.2.0.0/16',
+    sourceRepositoryName,
+    vpcId,
+    windowsBastion,
+    linuxBastion,
+    domainName,
+    certificateArn,
+  });
+  // cdk-nag suppressions
+  NagSuppressions.addStackSuppressions(webappStack, [
+    {
+      id: 'AwsSolutions-IAM5',
+      reason: 'To use ManagedPolicy',
+    },
+  ]);
+}
 
-// cdk-nag suppressions
-NagSuppressions.addStackSuppressions(webappStack, [
-  {
-    id: 'AwsSolutions-IAM5',
-    reason: 'To use ManagedPolicy',
-  },
-]);
+
