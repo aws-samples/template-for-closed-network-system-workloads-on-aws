@@ -9,7 +9,7 @@ import { Ecr } from './constructs/ecr/ecr';
 
 export class BaseStack extends Stack {
   public readonly vpc: aws_ec2.Vpc;
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string,serverless:boolean,props?: StackProps,) {
     super(scope, id, props);
 
     // Create networking resources
@@ -25,7 +25,7 @@ export class BaseStack extends Stack {
     // Create Aurora
     new Aurora(this, 'Aurora', {
       enabledServerless: false,
-      enabledProxy: false,
+      enabledProxy: serverless, // proxy on for lambda
       auroraEdition: DatabaseClusterEngine.auroraPostgres({
         version: AuroraPostgresEngineVersion.VER_12_9,
       }),
@@ -48,6 +48,10 @@ export class BaseStack extends Stack {
     new CfnOutput(this, 'SourceRepositoryUrl', {
       exportName: 'WebappSourceRepositoryUrl',
       value: codecommitRepository.repositoryCloneUrlHttp,
+    });
+    new CfnOutput(this, 'AuroraEdition', {
+      exportName: 'AuroraEdition',
+      value: 'postgresql'
     });
   }
 }

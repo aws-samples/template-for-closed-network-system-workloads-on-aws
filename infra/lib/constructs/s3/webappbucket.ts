@@ -1,13 +1,18 @@
-import * as aws_s3 from 'aws-cdk-lib/aws-s3';
-import { RemovalPolicy } from 'aws-cdk-lib';
+import {
+  aws_s3,
+  RemovalPolicy,
+} from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { NagSuppressions } from 'cdk-nag';
 
-export class Bucket extends Construct {
-  public readonly bucket: aws_s3.Bucket;
-  constructor(scope: Construct, id: string) {
+export class WebAppBucket extends Construct {
+  public readonly webAppBucket: aws_s3.Bucket;
+  constructor(scope: Construct, id: string,
+    props:{
+      bucketname: string
+    }) {
     super(scope, id);
-    const accessLogBucket = new aws_s3.Bucket(this, `${id}AccessLogBucket`, {
+    const webAppAccessLogBucket = new aws_s3.Bucket(this, `${id}WebAppAccessLogBucket`, {
       removalPolicy: RemovalPolicy.DESTROY,
       blockPublicAccess: aws_s3.BlockPublicAccess.BLOCK_ALL,
       encryption: aws_s3.BucketEncryption.S3_MANAGED,
@@ -15,22 +20,29 @@ export class Bucket extends Construct {
       autoDeleteObjects: true,
       objectOwnership: aws_s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
     });
-    this.bucket = new aws_s3.Bucket(this, `${id}Bucket`, {
+    this.webAppBucket = new aws_s3.Bucket(this, `${id}WepAppBucket`, {
+      bucketName:props.bucketname,
       removalPolicy: RemovalPolicy.DESTROY,
       blockPublicAccess: aws_s3.BlockPublicAccess.BLOCK_ALL,
       encryption: aws_s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
-      serverAccessLogsBucket: accessLogBucket,
+      serverAccessLogsBucket: webAppAccessLogBucket,
       autoDeleteObjects: true,
       objectOwnership: aws_s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
     });
-
     // cdk-nag suppressions
-    NagSuppressions.addResourceSuppressions(accessLogBucket, [
+    NagSuppressions.addResourceSuppressions(webAppAccessLogBucket, [
       {
         id: 'AwsSolutions-S1',
         reason:
           "This bucket is for access logs of the bucket. So it doesn't need more access log bucket.",
+      },
+    ]);
+    NagSuppressions.addResourceSuppressions(this.webAppBucket, [
+      {
+        id: 'AwsSolutions-S5',
+        reason:
+          "This bucket is used for website hosting through internal-ALB.",
       },
     ]);
   }
