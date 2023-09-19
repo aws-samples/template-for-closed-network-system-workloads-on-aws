@@ -6,6 +6,7 @@ import { CodePipelineServerless } from './constructs/codepipeline/codepipline-se
 import { Network } from './constructs/network/network';
 import { NagSuppressions } from 'cdk-nag';
 import * as path from 'path'
+import { DefaultLambda } from './constructs/apigw/lambda';
 
 interface WebappStackServerlessProps extends StackProps {
   auroraSecretName: string;
@@ -143,33 +144,22 @@ export class WebappStackServerless extends Stack {
      ///////////////////////////
     // Initialize Aurora DB  //
     ///////////////////////////
-    const initFunc = new aws_lambda_nodejs.NodejsFunction(
-        this, 'dbinitlambda',{
-          entry:path.join(__dirname, '../functions/init.ts'),
-          runtime:aws_lambda.Runtime.NODEJS_18_X,
-          role:serverlessBase.lambdaFunctionRole,
-          timeout: Duration.seconds(600),
-          environment: {
-            SECRET_NAME: props.auroraSecretName,
-            REGION: vpc.env.region.toString(),
-            HOST: props.rdsProxyEndpoint
-          },
-          vpc:vpc,
-          vpcSubnets:vpc.selectSubnets({ subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED }),
-          securityGroups:[serverlessBase.sgForLambda],
-          architecture: aws_lambda.Architecture.ARM_64,
-          memorySize: 256,
-          bundling: {
-            forceDockerBundling: false, 
-            define: {},
-            minify: true,
-          }
-        }
-      );
-  
+    const initFunc = new DefaultLambda(this,'DbInitLambdaConstruct',{
+      resourceId:'DbInitLambda',
+      entry:path.join(__dirname, '../functions/init.ts'),
+      vpc: vpc,
+      auroraSecretName: props.auroraSecretName,
+      auroraSecretArn: props.auroraSecretArn,
+      auroraSecurityGroupId: props.auroraSecurityGroupId,
+      auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
+      auroraEdition: props.auroraEdition,
+      rdsProxyEndpoint:props.rdsProxyEndpoint,
+      rdsProxyArn:props.rdsProxyArn,
+      sgForLambda:serverlessBase.sgForLambda,
+    })
       const provider = new custom_resources.Provider(
         this, 'DBInitProvider',{
-          onEventHandler:initFunc,
+          onEventHandler:initFunc.lambda,
         }
     )
   

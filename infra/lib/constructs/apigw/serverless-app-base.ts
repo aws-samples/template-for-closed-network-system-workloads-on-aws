@@ -16,7 +16,9 @@ import { Bucket } from '../s3/bucket';
 import { Construct } from 'constructs';
 import { WebAppBucket } from '../s3/webappbucket';
 import { Apigw } from './apigw';
-
+import { DefaultLambda } from './lambda';
+import { NagSuppressions } from 'cdk-nag';
+import * as path from 'path'
 export class ServerlessAppBase extends Construct {
   public readonly targetGroup: aws_elasticloadbalancingv2.ApplicationTargetGroup;
   public readonly vpcEndpointTargetGroup: aws_elasticloadbalancingv2.ApplicationTargetGroup;
@@ -189,8 +191,83 @@ export class ServerlessAppBase extends Construct {
       rdsProxyEndpoint:props.rdsProxyEndpoint,
       rdsProxyArn:props.rdsProxyArn
     });
-    this.lambdaFunctionRole=apigw.lambdaFunctionRole;
     this.sgForLambda=apigw.sgForLambda;
+    // add resource
+    const sampleResource = apigw.addResource('sample')
+    const methodResponses=[
+      {
+        statusCode:"200",
+        responseParameters:{
+          'method.response.header.Content-Type': true,
+          'method.response.header.Access-Control-Allow-Origin': true,
+          'method.response.header.Access-Control-Allow-Credentials': true,
+          'method.response.header.Access-Control-Allow-Methods' :true,
+        }
+      },
+      {
+        statusCode:"400",
+        responseParameters:{
+          'method.response.header.Content-Type': true,
+          'method.response.header.Access-Control-Allow-Origin': true,
+          'method.response.header.Access-Control-Allow-Credentials': true,
+          'method.response.header.Access-Control-Allow-Methods' :true,
+        }
+      }
+    ]
+    const integrationResponses=[
+      {
+        statusCode: "200",
+        responseParameters:{
+          'method.response.header.Content-Type': "integration.response.header.Content-Type",
+          'method.response.header.Access-Control-Allow-Origin': "integration.response.header.Access-Control-Allow-Origin",
+          'method.response.header.Access-Control-Allow-Credentials': "integration.response.header.Access-Control-Allow-Credentials",
+          'method.response.header.Access-Control-Allow-Methods' : "integration.response.header.Access-Control-Allow-Methods",
+        }
+      },
+      {
+        selectionPattern: '(\n|.)+',
+        statusCode: "400",
+        responseTemplates: {
+            'application/json': JSON.stringify({ state: 'error', message: "$util.escapeJavaScript($input.path('$.errorMessage'))" })
+        },
+      }
+    ]
+    const lambdaProps = {
+      vpc: props.vpc,
+      auroraSecretName: props.auroraSecretName,
+      auroraSecretArn: props.auroraSecretArn,
+      auroraSecurityGroupId: props.auroraSecurityGroupId,
+      auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
+      auroraEdition: props.auroraEdition,
+      rdsProxyEndpoint:props.rdsProxyEndpoint,
+      rdsProxyArn:props.rdsProxyArn,
+      sgForLambda:this.sgForLambda,
+    }
+    const getLambda = new DefaultLambda(this,'sampleGetLambdaFunction',{
+      resourceId:'GetLambda',
+      entry:path.join(__dirname, '../../../functions/get.ts'),
+      ...lambdaProps
+    })
+    const postLambda = new DefaultLambda(this,'samplePostLambdaFunction',{
+      resourceId:'PostLambda',
+      entry:path.join(__dirname, '../../../functions/post.ts'),
+      ...lambdaProps
+    })
+    sampleResource.addMethod("GET", 
+      new aws_apigateway.LambdaIntegration(getLambda.lambda,{
+          integrationResponses: integrationResponses
+        }
+      ),{
+        methodResponses:methodResponses
+    })
+      //POST/sample
+    sampleResource.addMethod("POST", 
+    new aws_apigateway.LambdaIntegration(postLambda.lambda,{
+      integrationResponses: integrationResponses
+      }
+    ),{
+      methodResponses:methodResponses
+    })
     // allow alb to apigw
     apigw.vpcEndpointSecurityGroup.addIngressRule(sgForAlb,aws_ec2.Port.tcp(443));
     // use CDK custom resources to get the Network Interfaces and IP addresses of the API Endpoint
@@ -361,5 +438,23 @@ export class ServerlessAppBase extends Construct {
       })
     });
     }
+    NagSuppressions.addResourceSuppressions(apigw.privateApi, [
+      {
+        id: 'AwsSolutions-COG4',
+        reason: 'This APIGW does not use an authorizer, because its sample.',
+      },
+    ],true);
+    NagSuppressions.addResourceSuppressions(apigw.privateApi, [
+      {
+        id: 'AwsSolutions-APIG4',
+        reason: 'This APIGW does not use an authorizer, because its sample.',
+      },
+    ],true);
+    NagSuppressions.addResourceSuppressions(apigw.privateApi, [
+      {
+        id: 'AwsSolutions-IAM4',
+        reason: 'CloudWatchRole managed by SDK.',
+      },
+    ],true);
   }
 }
