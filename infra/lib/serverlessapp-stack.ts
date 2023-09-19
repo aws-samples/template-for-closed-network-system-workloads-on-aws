@@ -146,7 +146,7 @@ export class WebappStackServerless extends Stack {
     ///////////////////////////
     const initFunc = new DefaultLambda(this,'DbInitLambdaConstruct',{
       resourceId:'DbInitLambda',
-      entry:path.join(__dirname, '../functions/init.ts'),
+      entry:path.join(__dirname, '../../functions/init.ts'),
       vpc: vpc,
       auroraSecretName: props.auroraSecretName,
       auroraSecretArn: props.auroraSecretArn,

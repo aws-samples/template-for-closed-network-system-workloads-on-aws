@@ -245,12 +245,12 @@ export class ServerlessAppBase extends Construct {
     }
     const getLambda = new DefaultLambda(this,'sampleGetLambdaFunction',{
       resourceId:'GetLambda',
-      entry:path.join(__dirname, '../../../functions/get.ts'),
+      entry:path.join(__dirname, '../../../../functions/get.ts'),
       ...lambdaProps
     })
     const postLambda = new DefaultLambda(this,'samplePostLambdaFunction',{
       resourceId:'PostLambda',
-      entry:path.join(__dirname, '../../../functions/post.ts'),
+      entry:path.join(__dirname, '../../../../functions/post.ts'),
       ...lambdaProps
     })
     sampleResource.addMethod("GET", 
