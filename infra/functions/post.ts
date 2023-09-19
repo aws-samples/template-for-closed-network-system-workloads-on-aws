@@ -16,11 +16,6 @@ export const handler = async (event: any): Promise<any> => {
 		const res = await client.query("UPDATE sampleapp_table SET job0001_flag = $1, job0002_flag = $2, job0003_flag = $3, job0004_flag = $4, job0005_flag = $5 WHERE id = $6",[job0001_flag,job0002_flag,job0003_flag,job0004_flag,job0005_flag,id]);
 		const response = {
 			statusCode: 200,
-			headers: {
-					"Access-Control-Allow-Headers" : "Content-Type",
-					"Access-Control-Allow-Origin": "*",
-					"Access-Control-Allow-Methods": "OPTIONS,POST,GET"
-			},
 			body: JSON.stringify(res),
 		};  
 		return response;
@@ -29,11 +24,6 @@ export const handler = async (event: any): Promise<any> => {
 		console.log(e);
 		const response = {
 			statusCode: 400,
-			headers: {
-					"Access-Control-Allow-Headers" : "Content-Type",
-					"Access-Control-Allow-Origin": "*",
-					"Access-Control-Allow-Methods": "OPTIONS,POST,GET"
-			},
 			body: JSON.stringify(e),
 		};  
 		return response;
