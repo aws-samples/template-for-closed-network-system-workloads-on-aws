@@ -143,8 +143,8 @@ export class ServerlessAppBase extends Construct {
     );
 
     // Import Web App S3
-    const s3buckets = new WebAppBucket(this, 'WebappBucket',{bucketname:`app.${props.domainName}`});
-    this.webapps3bucket=s3buckets.webAppBucket
+    const s3Buckets = new WebAppBucket(this, 'WebappBucket',{bucketName:`app.${props.domainName}`});
+    this.webapps3bucket=s3Buckets.webAppBucket
     // create ALB Target Group (for s3)
     this.vpcEndpointTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(this, "VpcEndpointTargetGroup", {
       vpc: props.vpc,
@@ -156,20 +156,20 @@ export class ServerlessAppBase extends Construct {
       },
     });
     // get isolated subnets num
-    const numofip = props.vpc.isolatedSubnets.length;
-    for (let i =0;i<numofip;i++ ) {
+    const numOfIp = props.vpc.isolatedSubnets.length;
+    for (let i =0;i<numOfIp;i++ ) {
       this.vpcEndpointTargetGroup.addTarget(new aws_elasticloadbalancingv2_targets.IpTarget(eni.getResponseField(`NetworkInterfaces.${i}.PrivateIpAddress`)));
     }
     httpsListener.addTargetGroups('VPCEndpointTargetGroup', {
       targetGroups: [this.vpcEndpointTargetGroup],
     });
-    s3buckets.webAppBucket.addToResourcePolicy(new aws_iam.PolicyStatement({
+    s3Buckets.webAppBucket.addToResourcePolicy(new aws_iam.PolicyStatement({
       actions:["s3:GetObject"],
       principals: [new aws_iam.ArnPrincipal('*')],
       effect:aws_iam.Effect.ALLOW,
       resources:[
-        s3buckets.webAppBucket.bucketArn,
-        s3buckets.webAppBucket.bucketArn+"/*",
+        s3Buckets.webAppBucket.bucketArn,
+        s3Buckets.webAppBucket.bucketArn+"/*",
       ],
       conditions: {
         "StringEquals": {
@@ -196,7 +196,7 @@ export class ServerlessAppBase extends Construct {
     // use CDK custom resources to get the Network Interfaces and IP addresses of the API Endpoint
     // get IP Address from APIGW VPC Endpoint
     // See here : https://repost.aws/ja/questions/QUjISNyk6aTA6jZgZQwKWf4Q/how-to-connect-a-load-balancer-and-an-interface-vpc-endpoint-together-using-cdk?sc_ichannel=ha&sc_ilang=en&sc_isite=repost&sc_iplace=hp&sc_icontent=QUjISNyk6aTA6jZgZQwKWf4Q&sc_ipos=7
-    const apigweni = new custom_resources.AwsCustomResource(
+    const apigwEni = new custom_resources.AwsCustomResource(
       this,
       "DescribeNetworkInterfacesAPIGW",
       {
@@ -236,8 +236,8 @@ export class ServerlessAppBase extends Construct {
         healthyHttpCodes: '200-202,400-404',
       },
     });
-    for (let i =0;i<numofip;i++ ) {
-      this.apigwTargetGroup.addTarget(new aws_elasticloadbalancingv2_targets.IpTarget(apigweni.getResponseField(`NetworkInterfaces.${i}.PrivateIpAddress`)));
+    for (let i =0;i<numOfIp;i++ ) {
+      this.apigwTargetGroup.addTarget(new aws_elasticloadbalancingv2_targets.IpTarget(apigwEni.getResponseField(`NetworkInterfaces.${i}.PrivateIpAddress`)));
     }
 
     // Enable PrivateLink

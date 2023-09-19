@@ -78,18 +78,18 @@ export class Apigw extends Construct {
           actions: ['kms:Decrypt'],
           resources: [props.auroraSecretEncryptionKeyArn],
         }))
-        const lastofarn=Fn.select(6,Fn.split(":",props.rdsProxyArn)); //(String(props.rdsProxyArn)).split(":")[6];
+        const lastOfArn=Fn.select(6,Fn.split(":",props.rdsProxyArn)); //(String(props.rdsProxyArn)).split(":")[6];
         const key = aws_kms.Key.fromKeyArn(this,"ImportedKey",props.auroraSecretEncryptionKeyArn)
         const secret = aws_secretsmanager.Secret.fromSecretAttributes(this, "ImportedSecret", {
           secretCompleteArn:props.auroraSecretArn,
           encryptionKey:key
         });
         const user =secret.secretValueFromJson('username').unsafeUnwrap().toString();
-        const proxyuser=`arn:aws:rds-db:ap-northeast-1:${props.vpc.env.account}:dbuser:${lastofarn}/${user}`
+        const proxyUser=`arn:aws:rds-db:ap-northeast-1:${props.vpc.env.account}:dbuser:${lastOfArn}/${user}`
         this.lambdaFunctionRole.addToPolicy(new aws_iam.PolicyStatement({
           effect: aws_iam.Effect.ALLOW,
           actions: ["rds-db:connect"],
-          resources: [proxyuser]
+          resources: [proxyUser]
         }))
         //Aurora and APIGW  SG Settings
         const sgForAurora = aws_ec2.SecurityGroup.fromSecurityGroupId(

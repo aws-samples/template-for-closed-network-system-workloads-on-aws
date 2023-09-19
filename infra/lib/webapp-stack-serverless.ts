@@ -143,7 +143,7 @@ export class WebappStackServerless extends Stack {
      ///////////////////////////
     // Initialize Aurora DB  //
     ///////////////////////////
-    const initfunc = new aws_lambda_nodejs.NodejsFunction(
+    const initFunc = new aws_lambda_nodejs.NodejsFunction(
         this, 'dbinitlambda',{
           entry:path.join(__dirname, '../functions/init.ts'),
           runtime:aws_lambda.Runtime.NODEJS_18_X,
@@ -169,7 +169,7 @@ export class WebappStackServerless extends Stack {
   
       const provider = new custom_resources.Provider(
         this, 'DBInitProvider',{
-          onEventHandler:initfunc,
+          onEventHandler:initFunc,
         }
     )
   
