@@ -1,10 +1,12 @@
 import Connection from './connect';
+import { Logger } from '@aws-lambda-powertools/logger';
+const logger = new Logger({ serviceName: 'postLambda' });
 export const handler = async (event: any): Promise<any> => {
 	try{
 		const client = await Connection();
 		// Connection
 		await client.connect();
-		console.log('connected');
+		logger.info('connected');
 		const id=event.queryStringParameters.id;
 		const job0001_flag=event.queryStringParameters.job0001_flag;
 		const job0002_flag=event.queryStringParameters.job0002_flag;
@@ -20,8 +22,7 @@ export const handler = async (event: any): Promise<any> => {
 		};  
 		return response;
 	}catch (e) {
-		console.log("Error...");
-		console.log(e);
+		logger.error(e.toString());
 		const response = {
 			statusCode: 400,
 			body: JSON.stringify(e),
