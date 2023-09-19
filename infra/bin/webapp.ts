@@ -1,7 +1,7 @@
 import { capitalize } from 'lodash';
 import * as cdk from 'aws-cdk-lib';
 import { WebappStack } from '../lib/webapp-stack';
-import { WebappStackServerless } from '../lib/webapp-stack-serverless';
+import { WebappStackServerless } from '../lib/serverlessapp-stack';
 import { DefaultStackSynthesizer } from 'aws-cdk-lib';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 import { Aspects } from 'aws-cdk-lib';
