@@ -24,5 +24,5 @@ exports.stages = {
     linuxBastion: true,
     serverless: false,
     domainName: 'templateapp.local',
-  }
+  },
 };

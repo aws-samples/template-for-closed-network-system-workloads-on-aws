@@ -9,7 +9,7 @@ export class WebAppBucket extends Construct {
   public readonly webAppBucket: aws_s3.Bucket;
   constructor(scope: Construct, id: string,
     props:{
-      bucketname: string
+      bucketName: string
     }) {
     super(scope, id);
     const webAppAccessLogBucket = new aws_s3.Bucket(this, `${id}WebAppAccessLogBucket`, {
@@ -21,7 +21,7 @@ export class WebAppBucket extends Construct {
       objectOwnership: aws_s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
     });
     this.webAppBucket = new aws_s3.Bucket(this, `${id}WepAppBucket`, {
-      bucketName:props.bucketname,
+      bucketName:props.bucketName,
       removalPolicy: RemovalPolicy.DESTROY,
       blockPublicAccess: aws_s3.BlockPublicAccess.BLOCK_ALL,
       encryption: aws_s3.BucketEncryption.S3_MANAGED,
