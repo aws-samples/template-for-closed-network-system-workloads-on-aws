@@ -55,14 +55,10 @@
   "dependencies": {
     "@aws-cdk/aws-appsync-alpha": "^2.26.0-alpha.0",
     "@aws-cdk/aws-glue-alpha": "^2.27.0-alpha.0",
-    "@aws-lambda-powertools/logger": "^1.13.0",
-    "@aws-lambda-powertools/metrics": "^1.13.0",
-    "@aws-lambda-powertools/tracer": "^1.13.0",
     "@types/aws-lambda": "^8.10.98",
     "aws-cdk": "^2.93.0",
     "aws-cdk-lib": "^2.65.0",
     "cdk-nag": "^2.21.17",
-    "cfn-response": "^1.0.1",
     "chalk": "^4.1.2",
     "constructs": "^10.0.0",
     "dotenv": "^16.0.2",
@@ -70,7 +66,6 @@
     "gulp": "^4.0.2",
     "loadash": "^1.0.0",
     "lodash": "^4.17.21",
-    "pg": "^8.11.3",
     "source-map-support": "^0.5.21"
   },
   "overrides": {
