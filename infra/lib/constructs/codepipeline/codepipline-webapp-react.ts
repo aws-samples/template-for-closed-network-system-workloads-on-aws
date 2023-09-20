@@ -66,7 +66,7 @@ export class CodePipelineServerless extends Construct {
 
     const buildOutput = new aws_codepipeline.Artifact();
     const buildAction = new aws_codepipeline_actions.CodeBuildAction({
-      actionName: 'BuildDockerImageOnCodeBuild',
+      actionName: 'BuildReactonCodeBuild',
       project: buildActionProject,
       input: sourceOutput,
       outputs: [buildOutput],
