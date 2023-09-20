@@ -10,7 +10,6 @@ exports.stages = {
     enabledPrivateLink: false,
     windowsBastion: true,
     linuxBastion: true,
-    serverless: false,
     domainName: 'app.templateapp.local',
   },
   johndoe: {
@@ -22,7 +21,6 @@ exports.stages = {
     enabledPrivateLink: false,
     windowsBastion: true,
     linuxBastion: true,
-    serverless: false,
     domainName: 'templateapp.local',
   },
 };
