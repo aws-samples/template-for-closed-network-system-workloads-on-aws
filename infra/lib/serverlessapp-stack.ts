@@ -1,4 +1,4 @@
-import { CfnOutput,Duration,aws_codecommit, aws_ec2, StackProps, Stack,custom_resources,CustomResource,aws_lambda_nodejs,aws_lambda } from 'aws-cdk-lib';
+import { aws_codecommit, aws_ec2, StackProps, Stack,custom_resources,CustomResource } from 'aws-cdk-lib';
 import { Bastion } from './constructs/ec2/bastion';
 import { Construct } from 'constructs';
 import { ServerlessAppBase } from './constructs/apigw/serverless-app-base';
@@ -8,7 +8,7 @@ import { NagSuppressions } from 'cdk-nag';
 import * as path from 'path'
 import { DefaultLambda } from './constructs/apigw/lambda';
 
-interface WebappStackServerlessProps extends StackProps {
+interface WebappServerlessStackProps extends StackProps {
   auroraSecretName: string;
   auroraSecretArn: string;
   auroraSecurityGroupId: string;
@@ -27,8 +27,8 @@ interface WebappStackServerlessProps extends StackProps {
   certificateArn: string;
 }
 
-export class WebappStackServerless extends Stack {
-  constructor(scope: Construct, id: string, props: WebappStackServerlessProps) {
+export class WebappServerlessStack extends Stack {
+  constructor(scope: Construct, id: string, props: WebappServerlessStackProps) {
     super(scope, id, props);
 
     // Import vpc
@@ -163,7 +163,7 @@ export class WebappStackServerless extends Stack {
         }
     )
   
-    const dbinitResource = new CustomResource(
+    new CustomResource(
         this, 'DBInitResource',{
          serviceToken:provider.serviceToken,
          properties:{
