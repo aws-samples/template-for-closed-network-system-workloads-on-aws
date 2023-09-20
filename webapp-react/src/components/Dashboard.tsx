@@ -9,9 +9,10 @@ import { getFromEndpoint } from "../modules/requests";
 
 export const Dashboard: React.FC<{}> = ({}) => {
     const [samplerecords, setSamplerecords] = React.useState<Record[]>([])
-    useEffect(()=>{
-        getFromEndpoint().then((res)=>setSamplerecords(res));
-    },[]);
+    useEffect(() => {(async()=>{
+        const res=await getFromEndpoint();
+        setSamplerecords(res);
+    })()},[]);
     return(<React.Fragment>
         <HashRouter>
         <h1>Hello From S3 through CodePipeline ! </h1><br/>            
