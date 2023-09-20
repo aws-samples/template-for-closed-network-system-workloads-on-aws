@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Record } from "../types/types";
+import { Record } from "../types/record";
 
 //mui
 import Box from '@mui/material/Box';
