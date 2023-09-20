@@ -1,12 +1,11 @@
-import { CfnOutput,Duration,aws_codecommit, aws_ec2, StackProps, Stack,custom_resources,CustomResource,aws_lambda_nodejs,aws_lambda } from 'aws-cdk-lib';
+import { aws_codecommit, aws_ec2, StackProps, Stack } from 'aws-cdk-lib';
 import { Bastion } from './constructs/ec2/bastion';
 import { Construct } from 'constructs';
-import { ServerlessAppBase } from './constructs/apigw/serverless-app-base';
+import { ServerlessAppBase } from './constructs/serverless/serverless-app-base';
 import { CodePipelineServerless } from './constructs/codepipeline/codepipline-serverless';
 import { Network } from './constructs/network/network';
 import { NagSuppressions } from 'cdk-nag';
-import * as path from 'path'
-import { DefaultLambda } from './constructs/apigw/lambda';
+import { DBinitLambda } from './constructs/serverless/dbinitlambda';
 
 interface WebappStackServerlessProps extends StackProps {
   auroraSecretName: string;
@@ -141,36 +140,15 @@ export class WebappStackServerless extends Stack {
       }
     }
 
-     ///////////////////////////
-    // Initialize Aurora DB  //
-    ///////////////////////////
-    const initFunc = new DefaultLambda(this,'DbInitLambdaConstruct',{
-      resourceId:'DbInitLambda',
-      entry:path.join(__dirname, '../../functions/init.ts'),
+    new DBinitLambda(this,'DBInitLambdaConstruct',{
       vpc: vpc,
+      sgForLambda:serverlessBase.sgForLambda,
       auroraSecretName: props.auroraSecretName,
       auroraSecretArn: props.auroraSecretArn,
-      auroraSecurityGroupId: props.auroraSecurityGroupId,
       auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-      auroraEdition: props.auroraEdition,
       rdsProxyEndpoint:props.rdsProxyEndpoint,
-      rdsProxyArn:props.rdsProxyArn,
-      sgForLambda:serverlessBase.sgForLambda,
+      rdsProxyArn:props.rdsProxyArn
     })
-      const provider = new custom_resources.Provider(
-        this, 'DBInitProvider',{
-          onEventHandler:initFunc.lambda,
-        }
-    )
-  
-    const dbinitResource = new CustomResource(
-        this, 'DBInitResource',{
-         serviceToken:provider.serviceToken,
-         properties:{
-            time:Date.now().toString()
-         }
-        }
-    )
 
     // [CHANGE HERE] Nag suppressions with path : you need to change here for deployment...
     NagSuppressions.addResourceSuppressionsByPath(
@@ -194,23 +172,5 @@ export class WebappStackServerless extends Stack {
         },
       ]
     );
-    NagSuppressions.addResourceSuppressions(provider, [
-        {
-          id: 'AwsSolutions-L1',
-          reason: 'This is Custom Resource managed by AWS',
-        },
-      ],true);
-      NagSuppressions.addResourceSuppressions(provider, [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason: 'This is Custom Resource managed by AWS',
-        },
-      ],true);
-      NagSuppressions.addResourceSuppressions(provider, [
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: 'This is Custom Resource managed by AWS',
-        },
-      ],true);
   }
 }
