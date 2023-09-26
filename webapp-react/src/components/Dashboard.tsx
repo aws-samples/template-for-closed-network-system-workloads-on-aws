@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Record } from "../types/types";
+import { Record } from "../types/record";
 import { HashRouter, Routes, Route, Link } from "react-router-dom";
 import { RecordForm } from "./Form";
 import { RecordList } from "./List";
