@@ -1,16 +1,12 @@
 const referSecrets = async () => {
 	const {SecretsManager}  = await import("@aws-sdk/client-secrets-manager");
-	try {
-		const secretsManager = new SecretsManager({
-		region: process.env.REGION!,
-		})
-		const response = await secretsManager.getSecretValue({
-		SecretId: process.env.SECRET_NAME!,
-		})
-		return JSON.parse(response.SecretString!)
-	} catch(err) {
-		return JSON.stringify({err}, null, 2)
-	}
+	const secretsManager = new SecretsManager({
+	region: process.env.REGION!,
+	})
+	const response = await secretsManager.getSecretValue({
+	SecretId: process.env.SECRET_NAME!,
+	})
+	return JSON.parse(response.SecretString!)
 }
 
 export default async function Connection(){
