@@ -1,14 +1,12 @@
 import React, { useState, useEffect,Dispatch,SetStateAction } from "react";
 import axios from 'axios';
 import { Record } from '../types/types';
-//CHANGE HERE same domain to infra/stage.js
-const endpoint = "https://app.templateapp.local/apigw/";
 
-export const getFromEndpoint =  async () => {
-    const response = await axios.get(endpoint+'sample/');
+export const get =  async (endpoint:string) => {
+    const response = await axios.get(endpoint);
     return response.data as Record[];
 };
 
-export const postToEndpoint = async (row:Record) => {
-    return axios.post(endpoint+'sample/',null,{params:row})
+export const post = async (endpoint:string,row:Record) => {
+    return axios.post(endpoint,null,{params:row})
 };
