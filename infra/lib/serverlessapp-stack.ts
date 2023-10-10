@@ -8,7 +8,7 @@ import { NagSuppressions } from 'cdk-nag';
 import * as path from 'path'
 import { DefaultLambda } from './constructs/apigw/lambda';
 
-interface WebappServerlessStackProps extends StackProps {
+interface ServerlessappStackProps extends StackProps {
   auroraSecretName: string;
   auroraSecretArn: string;
   auroraSecurityGroupId: string;
@@ -27,8 +27,8 @@ interface WebappServerlessStackProps extends StackProps {
   certificateArn: string;
 }
 
-export class WebappServerlessStack extends Stack {
-  constructor(scope: Construct, id: string, props: WebappServerlessStackProps) {
+export class ServerlessappStack extends Stack {
+  constructor(scope: Construct, id: string, props: ServerlessappStackProps) {
     super(scope, id, props);
 
     // Import vpc

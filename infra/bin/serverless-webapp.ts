@@ -1,6 +1,6 @@
 import { capitalize } from 'lodash';
 import * as cdk from 'aws-cdk-lib';
-import { WebappServerlessStack } from '../lib/serverlessapp-stack';
+import { ServerlessappStack } from '../lib/serverlessapp-stack';
 import { DefaultStackSynthesizer } from 'aws-cdk-lib';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 import { Aspects } from 'aws-cdk-lib';
@@ -38,7 +38,7 @@ const sourceRepositoryName = cdk.Fn.importValue('WebappSourceRepositoryName');
 const qualifier = `${stageAlias.slice(0, 5)}${deployEnv.slice(0, 5)}`;
 
 const id = `${capitalize(stageAlias)}${capitalize(deployEnv)}${capitalize(appName)}`;
-const webappStack = new WebappServerlessStack(app, `${id}Webapp`, {
+const webappStack = new ServerlessappStack(app, `${id}Webapp`, {
     env:env,
     synthesizer: new DefaultStackSynthesizer({
         qualifier,
