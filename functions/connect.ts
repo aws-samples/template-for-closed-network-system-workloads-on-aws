@@ -1,12 +1,12 @@
 const referSecrets = async () => {
-	const AWS = await import("aws-sdk");
+	const {SecretsManager}  = await import("@aws-sdk/client-secrets-manager");
 	try {
-		const secretsManager = new AWS.SecretsManager({
+		const secretsManager = new SecretsManager({
 		region: process.env.REGION!,
 		})
 		const response = await secretsManager.getSecretValue({
 		SecretId: process.env.SECRET_NAME!,
-		}).promise()
+		})
 		return JSON.parse(response.SecretString!)
 	} catch(err) {
 		return JSON.stringify({err}, null, 2)
@@ -17,21 +17,15 @@ export default async function Connection(){
 	const {Client} = await import('pg');
 	const secrets = await referSecrets();
 	const connect = async (secrets:any) => {
-		const AWS = await import("aws-sdk");
-		const signer = new AWS.RDS.Signer({
+		const {Signer} = await import("@aws-sdk/rds-signer");
+        const signer = new Signer({
 			'region': process.env.REGION!,
 			'username': secrets.username,
 			'hostname': process.env.HOST!,
 			'port': secrets.port
 		});
 	
-		let token;
-		await signer.getAuthToken({},(error:AWS.AWSError, result:string) => {
-			if(error) {
-				throw error;
-			}
-			token = result;
-		});
+		let token = await signer.getAuthToken();
 		return token;
 	};
 	// client settings
