@@ -20,7 +20,7 @@ export const handler = async (event: any): Promise<any> => {
 	}catch (e) {
 		logger.error(e.toString());
 		const response = {
-			statusCode: 400,
+			statusCode: 500,
 			body: JSON.stringify(e),
 		};  
 		return response;
