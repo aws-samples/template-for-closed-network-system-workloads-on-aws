@@ -16,20 +16,15 @@ const referSecrets = async () => {
 export default async function Connection(){
 	const {Client} = await import('pg');
 	const secrets = await referSecrets();
-	const connect = async (secrets:any) => {
-		const {Signer} = await import("@aws-sdk/rds-signer");
-        const signer = new Signer({
-			'region': process.env.REGION!,
-			'username': secrets.username,
-			'hostname': process.env.HOST!,
-			'port': secrets.port
-		});
-	
-		let token = await signer.getAuthToken();
-		return token;
-	};
+	const {Signer} = await import("@aws-sdk/rds-signer");
+	const signer = new Signer({
+		'region': process.env.REGION!,
+		'username': secrets.username,
+		'hostname': process.env.HOST!,
+		'port': secrets.port
+	});
+	const token = await signer.getAuthToken();
 	// client settings
-	const token = await connect(secrets)
 	const client = new Client({
 		host: process.env.HOST!,
 		port: secrets.port,
