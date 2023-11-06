@@ -2,7 +2,7 @@ const referSecrets = async () => {
 	const AWS = await import("aws-sdk");
 	try {
 		const secretsManager = new AWS.SecretsManager({
-		region: process.env.REGION!,
+		region: process.env.AWS_DEFAULT_REGION!,
 		})
 		const response = await secretsManager.getSecretValue({
 		SecretId: process.env.SECRET_NAME!,
@@ -19,7 +19,7 @@ export default async function Connection(){
 	const connect = async (secrets:any) => {
 		const AWS = await import("aws-sdk");
 		const signer = new AWS.RDS.Signer({
-			'region': process.env.REGION!,
+			'region': process.env.AWS_DEFAULT_REGION!,
 			'username': secrets.username,
 			'hostname': process.env.HOST!,
 			'port': secrets.port
