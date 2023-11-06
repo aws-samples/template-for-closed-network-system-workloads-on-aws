@@ -1,4 +1,4 @@
-import Connection from './connect';
+import Connection from './lib/connect';
 import { Logger } from '@aws-lambda-powertools/logger';
 const logger = new Logger({ serviceName: 'initLambda' });
 
