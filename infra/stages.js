@@ -14,7 +14,7 @@ exports.stages = {
   },
   johndoe: {
     appName,
-    awsProfile: 'myProfile',
+    awsProfile: 'blea-sa-deploy-agent',
     alias: 'johndoe',
     deployEnv: 'dev',
     notifyEmail: 'johndoe@xxxx.com',
