@@ -65,6 +65,7 @@ This is the directory tree and its overview.
 - `aws-cdk` >= `2.65.0`
 - `aws-cdk-lib` >= `2.65.0`
 - `OpenSSL` >= `3.0.8`
+- `Docker`
 
 ## Architecture
 
