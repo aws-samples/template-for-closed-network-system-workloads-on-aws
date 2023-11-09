@@ -1,7 +1,7 @@
 import { aws_ec2,custom_resources,CustomResource } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { NagSuppressions } from "cdk-nag";
-import { DefaultLambda } from "./lambda";
+import { DefaultLambda } from "../serverless/lambda";
 import * as path from 'path';
 
 export class DBinitLambda extends Construct {

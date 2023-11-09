@@ -5,7 +5,7 @@ import { ServerlessAppBase } from './constructs/serverless/serverless-app-base';
 import { CodePipelineServerless } from './constructs/codepipeline/codepipline-serverless';
 import { Network } from './constructs/network/network';
 import { NagSuppressions } from 'cdk-nag';
-import { DBinitLambda } from './constructs/serverless/dbinitlambda';
+import { DBinitLambda } from './constructs/aurora/dbinitlambda';
 
 interface WebappStackServerlessProps extends StackProps {
   auroraSecretName: string;
