@@ -3,7 +3,7 @@ import { Bastion } from './constructs/ec2/bastion';
 import { Construct } from 'constructs';
 import { EcsAppBase } from './constructs/ecs/ecs-app-base';
 import { EcsAppService } from './constructs/ecs/ecs-app-service';
-import { CodePipeline } from './constructs/codepipeline/codepipeline';
+import { CodePipeline } from './constructs/codepipeline/codepipeline-webapp-java';
 import { Network } from './constructs/network/network';
 
 interface WebappStackProps extends StackProps {

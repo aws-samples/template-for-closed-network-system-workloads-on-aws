@@ -2,7 +2,7 @@ import { aws_codecommit, aws_ec2, StackProps, Stack,custom_resources,CustomResou
 import { Bastion } from './constructs/ec2/bastion';
 import { Construct } from 'constructs';
 import { ServerlessAppBase } from './constructs/apigw/serverless-app-base';
-import { CodePipelineServerless } from './constructs/codepipeline/codepipline-serverless';
+import { CodePipelineServerless } from './constructs/codepipeline/codepipline-webapp-react';
 import { Network } from './constructs/network/network';
 import { NagSuppressions } from 'cdk-nag';
 import * as path from 'path'
