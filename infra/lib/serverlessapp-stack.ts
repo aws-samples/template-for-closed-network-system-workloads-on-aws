@@ -7,7 +7,7 @@ import { Network } from './constructs/network/network';
 import { NagSuppressions } from 'cdk-nag';
 import { DBinitLambda } from './constructs/aurora/dbinitlambda';
 
-interface WebappStackServerlessProps extends StackProps {
+interface ServerlessappStackProps extends StackProps {
   auroraSecretName: string;
   auroraSecretArn: string;
   auroraSecurityGroupId: string;
@@ -26,8 +26,8 @@ interface WebappStackServerlessProps extends StackProps {
   certificateArn: string;
 }
 
-export class WebappStackServerless extends Stack {
-  constructor(scope: Construct, id: string, props: WebappStackServerlessProps) {
+export class ServerlessappStack extends Stack {
+  constructor(scope: Construct, id: string, props: ServerlessappStackProps) {
     super(scope, id, props);
 
     // Import vpc
@@ -149,6 +149,20 @@ export class WebappStackServerless extends Stack {
       rdsProxyEndpoint:props.rdsProxyEndpoint,
       rdsProxyArn:props.rdsProxyArn
     })
+      const provider = new custom_resources.Provider(
+        this, 'DBInitProvider',{
+          onEventHandler:initFunc.lambda,
+        }
+    )
+  
+    new CustomResource(
+        this, 'DBInitResource',{
+         serviceToken:provider.serviceToken,
+         properties:{
+            time:Date.now().toString()
+         }
+        }
+    )
 
     // [CHANGE HERE] Nag suppressions with path : you need to change here for deployment...
     NagSuppressions.addResourceSuppressionsByPath(
