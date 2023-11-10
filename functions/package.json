@@ -7,6 +7,7 @@
     "@aws-lambda-powertools/logger": "^1.13.0",
     "aws-sdk": "^2.1460.0",
     "cfn-response": "^1.0.1",
+    "lodash": "^4.17.21",
     "pg": "^8.11.3"
   },
   "scripts": {
