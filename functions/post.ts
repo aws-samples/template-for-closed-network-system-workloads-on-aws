@@ -1,5 +1,6 @@
 import Connection from './connect';
 import { Logger } from '@aws-lambda-powertools/logger';
+var lodash = require('lodash');
 const logger = new Logger({ serviceName: 'postLambda' });
 export const handler = async (event: any): Promise<any> => {
 	const id=event.queryStringParameters.id;
@@ -12,18 +13,22 @@ export const handler = async (event: any): Promise<any> => {
 	if(!id || !job0001_flag  || !job0001_flag || !job0002_flag || !job0003_flag || !job0004_flag || !job0005_flag ){
 		const response = {
 			statusCode: 400,
-			body: JSON.stringify("querystring is undefined"),
+			body: JSON.stringify("Some querystrings are undefined"),
 		};  
+		logger.error("Error in queryStringParameters : Some querystrings are undefined");
 		return response;
 	}
 	// check their types and formats
-	if(Number.isNaN(parseInt(id)))return {statusCode:400, body:JSON.stringify("id is not number")}
-	if(job0001_flag != "true" && job0001_flag != "false")return {statusCode:400, body:JSON.stringify("flag is not true or false")}
-	if(job0002_flag != "true" && job0002_flag != "false")return {statusCode:400, body:JSON.stringify("flag is not true or false")}
-	if(job0003_flag != "true" && job0003_flag != "false")return {statusCode:400, body:JSON.stringify("flag is not true or false")}
-	if(job0004_flag != "true" && job0004_flag != "false")return {statusCode:400, body:JSON.stringify("flag is not true or false")}
-	if(job0005_flag != "true" && job0005_flag != "false")return {statusCode:400, body:JSON.stringify("flag is not true or false")}
+	if(Number.isNaN(parseInt(id))){
+		logger.error("Error in queryStringParameters : id is not a number");
+		return {statusCode:400, body:JSON.stringify("id is not a number")}
+	}
+	if(lodash.isBoolean(job0001_flag) || lodash.isBoolean(job0002_flag) || lodash.isBoolean(job0003_flag) || lodash.isBoolean(job0004_flag) || lodash.isBoolean(job0005_flag)) {
+		logger.error("Error in queryStringParameters : Any flag parameters are not Boolean");
+		return {statusCode:400, body:JSON.stringify("Any flag parameters are not Boolean")}
+	  }
 
+	  
 	try{
 		const client = await Connection();
 		// Connection
