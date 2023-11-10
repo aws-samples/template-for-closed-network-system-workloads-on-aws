@@ -64,7 +64,6 @@ export class DefaultLambda extends Construct {
       timeout: Duration.seconds(600),
       environment: {
         SECRET_NAME: props.auroraSecretName,
-        REGION: props.vpc.env.region.toString(),
         HOST: props.rdsProxyEndpoint
       },
       bundling: {
