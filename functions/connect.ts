@@ -1,11 +1,11 @@
 const referSecrets = async () => {
-	const {SecretsManager}  = await import("@aws-sdk/client-secrets-manager");
-	const secretsManager = new SecretsManager({
-	region: process.env.REGION!,
+	const {SecretsManagerClient,GetSecretValueCommand }  = await import("@aws-sdk/client-secrets-manager");
+	const secretsManager = new SecretsManagerClient({
+		region: process.env.REGION!,
 	})
-	const response = await secretsManager.getSecretValue({
-	SecretId: process.env.SECRET_NAME!,
-	})
+	const response = await secretsManager.send(new GetSecretValueCommand({
+		SecretId: process.env.SECRET_NAME!,
+	}))
 	return JSON.parse(response.SecretString!)
 }
 
