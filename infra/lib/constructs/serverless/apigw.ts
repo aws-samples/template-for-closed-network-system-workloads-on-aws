@@ -1,9 +1,6 @@
-import { aws_apigateway, aws_ec2,aws_lambda_nodejs,aws_lambda,aws_iam,aws_logs,custom_resources,CustomResource,Fn,aws_secretsmanager,aws_kms } from 'aws-cdk-lib';
+import { aws_apigateway, aws_ec2,aws_iam,aws_logs } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import * as path from 'path'
 import { NagSuppressions } from 'cdk-nag';
-import { BundlingOptions, Duration, ILocalBundling } from 'aws-cdk-lib';
-import { execFileSync } from 'child_process';
 // private Apigw with vpc endpoint
 export class Apigw extends Construct {
   public readonly vpcEndpointSecurityGroup: aws_ec2.SecurityGroup;

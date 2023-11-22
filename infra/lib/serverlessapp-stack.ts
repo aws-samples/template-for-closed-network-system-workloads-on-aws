@@ -1,12 +1,11 @@
-import { aws_codecommit, aws_ec2, StackProps, Stack,custom_resources,CustomResource } from 'aws-cdk-lib';
+import { aws_codecommit, aws_ec2, StackProps, Stack } from 'aws-cdk-lib';
 import { Bastion } from './constructs/ec2/bastion';
 import { Construct } from 'constructs';
-import { ServerlessAppBase } from './constructs/apigw/serverless-app-base';
-import { CodePipelineServerless } from './constructs/codepipeline/codepipline-webapp-react';
+import { ServerlessAppBase } from './constructs/serverless/serverless-app-base';
+import { CodePipelineServerless } from './constructs/codepipeline/codepipline-serverless';
 import { Network } from './constructs/network/network';
 import { NagSuppressions } from 'cdk-nag';
-import * as path from 'path'
-import { DefaultLambda } from './constructs/apigw/lambda';
+import { DBinitLambda } from './constructs/aurora/dbinitlambda';
 
 interface ServerlessappStackProps extends StackProps {
   auroraSecretName: string;
@@ -141,21 +140,14 @@ export class ServerlessappStack extends Stack {
       }
     }
 
-     ///////////////////////////
-    // Initialize Aurora DB  //
-    ///////////////////////////
-    const initFunc = new DefaultLambda(this,'DbInitLambdaConstruct',{
-      resourceId:'DbInitLambda',
-      entry:path.join(__dirname, '../../functions/init.ts'),
+    new DBinitLambda(this,'DBInitLambdaConstruct',{
       vpc: vpc,
+      sgForLambda:serverlessBase.sgForLambda,
       auroraSecretName: props.auroraSecretName,
       auroraSecretArn: props.auroraSecretArn,
-      auroraSecurityGroupId: props.auroraSecurityGroupId,
       auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-      auroraEdition: props.auroraEdition,
       rdsProxyEndpoint:props.rdsProxyEndpoint,
-      rdsProxyArn:props.rdsProxyArn,
-      sgForLambda:serverlessBase.sgForLambda,
+      rdsProxyArn:props.rdsProxyArn
     })
       const provider = new custom_resources.Provider(
         this, 'DBInitProvider',{
@@ -194,23 +186,5 @@ export class ServerlessappStack extends Stack {
         },
       ]
     );
-    NagSuppressions.addResourceSuppressions(provider, [
-        {
-          id: 'AwsSolutions-L1',
-          reason: 'This is Custom Resource managed by AWS',
-        },
-      ],true);
-      NagSuppressions.addResourceSuppressions(provider, [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason: 'This is Custom Resource managed by AWS',
-        },
-      ],true);
-      NagSuppressions.addResourceSuppressions(provider, [
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: 'This is Custom Resource managed by AWS',
-        },
-      ],true);
   }
 }
