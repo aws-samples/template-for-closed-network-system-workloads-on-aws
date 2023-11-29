@@ -4,12 +4,11 @@ import { HashRouter, Routes, Route, Link } from "react-router-dom";
 import { RecordForm } from "./Form";
 import { RecordList } from "./List";
 import { get } from "../modules/requests";
-import { endpoint } from "./endpoint";
 
 export const Dashboard: React.FC<{}> = ({}) => {
     const [samplerecords, setSamplerecords] = React.useState<Record[]>([])
     useEffect(() => {(async()=>{
-        const res=await get(endpoint);
+        const res=await get("sample/");
         setSamplerecords(res);
     })()},[]);
     return(<React.Fragment>
