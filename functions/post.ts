@@ -1,6 +1,6 @@
 import Connection from './connect';
 import { Logger } from '@aws-lambda-powertools/logger';
-var lodash = require('lodash');
+import {isBoolean} from 'lodash';
 const logger = new Logger({ serviceName: 'postLambda' });
 export const handler = async (event: any): Promise<any> => {
 	const id=event.queryStringParameters.id;
@@ -23,7 +23,7 @@ export const handler = async (event: any): Promise<any> => {
 		logger.error("Error in queryStringParameters : id is not a number");
 		return {statusCode:400, body:JSON.stringify("id is not a number")}
 	}
-	if(lodash.isBoolean(job0001_flag) || lodash.isBoolean(job0002_flag) || lodash.isBoolean(job0003_flag) || lodash.isBoolean(job0004_flag) || lodash.isBoolean(job0005_flag)) {
+	if(isBoolean(job0001_flag) || isBoolean(job0002_flag) || isBoolean(job0003_flag) || isBoolean(job0004_flag) || isBoolean(job0005_flag)) {
 		logger.error("Error in queryStringParameters : Any flag parameters are not Boolean");
 		return {statusCode:400, body:JSON.stringify("Any flag parameters are not Boolean")}
 	  }
