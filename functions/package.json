@@ -5,7 +5,8 @@
   "main": "init.ts",
   "dependencies": {
     "@aws-lambda-powertools/logger": "^1.13.0",
-    "aws-sdk": "^2.1460.0",
+    "@aws-sdk/client-secrets-manager": "^3.427.0",
+    "@aws-sdk/rds-signer": "^3.427.0",
     "cfn-response": "^1.0.1",
     "pg": "^8.11.3"
   },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Record } from "../types/types";
+import { Record } from "../types/record";
 import { Dispatch,SetStateAction } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
