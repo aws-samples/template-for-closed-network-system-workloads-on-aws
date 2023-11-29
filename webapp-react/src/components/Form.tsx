@@ -14,7 +14,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Checkbox from '@mui/material/Checkbox';
 import { post } from "../modules/requests";
-import { endpoint } from "./endpoint";
+var resource = "sample/"
 
 export const RecordForm: React.FC<{records:Record[], setRecords:Dispatch<SetStateAction<Record[]>>}> = ({records,setRecords}) => {
     return(<React.Fragment>
@@ -42,23 +42,23 @@ export const RecordForm: React.FC<{records:Record[], setRecords:Dispatch<SetStat
                             <TableCell>{row.name} </TableCell>
                             <TableCell><Checkbox checked={row.job0001_flag} onClick={()=>{
                                 setRecords(records.map((obj) => (obj.id === row.id ? {...row,job0001_flag:!obj.job0001_flag} : obj)))
-                                post(endpoint,{...row,job0001_flag:!row.job0001_flag});
+                                post(resource,{...row,job0001_flag:!row.job0001_flag});
                             }}/></TableCell>
                              <TableCell><Checkbox checked={row.job0002_flag} onClick={()=>{
                                 setRecords(records.map((obj) => (obj.id === row.id ? {...row,job0002_flag:!obj.job0002_flag} : obj)))
-                                post(endpoint,{...row,job0002_flag:!row.job0002_flag});
+                                post(resource,{...row,job0002_flag:!row.job0002_flag});
                             }}/></TableCell>
                              <TableCell><Checkbox checked={row.job0003_flag} onClick={()=>{
                                 setRecords(records.map((obj) => (obj.id === row.id ? {...row,job0003_flag:!obj.job0003_flag} : obj)))
-                                post(endpoint,{...row,job0003_flag:!row.job0003_flag});
+                                post(resource,{...row,job0003_flag:!row.job0003_flag});
                             }}/></TableCell>
                              <TableCell><Checkbox checked={row.job0004_flag} onClick={()=>{
                                 setRecords(records.map((obj) => (obj.id === row.id ? {...row,job0004_flag:!obj.job0004_flag} : obj)))
-                                post(endpoint,{...row,job0004_flag:!row.job0004_flag});
+                                post(resource,{...row,job0004_flag:!row.job0004_flag});
                             }}/></TableCell>
                              <TableCell><Checkbox checked={row.job0005_flag} onClick={()=>{
                                 setRecords(records.map((obj) => (obj.id === row.id ? {...row,job0005_flag:!obj.job0005_flag} : obj)))
-                                post(endpoint,{...row,job0005_flag:!row.job0005_flag});
+                                post(resource,{...row,job0005_flag:!row.job0005_flag});
                             }}/></TableCell>
                         </TableRow>
                     )
