@@ -18,13 +18,12 @@ Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true, reports: true }));
 const stageAlias = app.node.tryGetContext('stage_alias') || 'defaultAlias';
 const appName = app.node.tryGetContext('app_name') || 'defaultApp';
 const deployEnv = app.node.tryGetContext('deploy_env') || 'defaultEnv';
-const serverless = app.node.tryGetContext('serverless') || false;
 
 const qualifier = `${stageAlias.slice(0, 5)}${deployEnv.slice(0, 5)}`;
 
 const id = `${capitalize(stageAlias)}${capitalize(deployEnv)}${capitalize(appName)}`;
 
-const base = new BaseStack(app, `${id}Base`,serverless, {
+const base = new BaseStack(app, `${id}Base`, {
   env,
   synthesizer: new DefaultStackSynthesizer({
     qualifier,

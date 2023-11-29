@@ -14,9 +14,7 @@ export class DefaultLambda extends Construct {
           vpc: aws_ec2.IVpc;
           auroraSecretName: string;
           auroraSecretArn: string;
-          auroraSecurityGroupId: string;
           auroraSecretEncryptionKeyArn: string;
-          auroraEdition: string;
           rdsProxyEndpoint:string;
           rdsProxyArn:string;
           sgForLambda:aws_ec2.SecurityGroup;
@@ -64,7 +62,6 @@ export class DefaultLambda extends Construct {
       timeout: Duration.seconds(600),
       environment: {
         SECRET_NAME: props.auroraSecretName,
-        REGION: props.vpc.env.region.toString(),
         HOST: props.rdsProxyEndpoint
       },
       bundling: {
