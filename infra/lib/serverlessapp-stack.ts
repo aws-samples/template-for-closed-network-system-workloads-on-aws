@@ -1,4 +1,4 @@
-import { aws_codecommit, aws_ec2, StackProps, Stack} from 'aws-cdk-lib';
+import { aws_codecommit, aws_ec2, StackProps, Stack } from 'aws-cdk-lib';
 import { Bastion } from './constructs/ec2/bastion';
 import { Construct } from 'constructs';
 import { ServerlessAppBase } from './constructs/serverless/serverless-app-base';
@@ -12,9 +12,9 @@ interface ServerlessappStackProps extends StackProps {
   auroraSecretArn: string;
   auroraSecurityGroupId: string;
   auroraSecretEncryptionKeyArn: string;
-  auroraEdition:string;
-  rdsProxyEndpoint:string;
-  rdsProxyArn:string;
+  auroraEdition: string;
+  rdsProxyEndpoint: string;
+  rdsProxyArn: string;
   containerRepositoryName: string;
   enabledPrivateLink: boolean;
   testVpcCidr: string;
@@ -61,9 +61,9 @@ export class ServerlessappStack extends Stack {
         auroraSecretArn: props.auroraSecretArn,
         auroraSecurityGroupId: props.auroraSecurityGroupId,
         auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-        auroraEdition:props.auroraEdition,
-        rdsProxyEndpoint:props.rdsProxyEndpoint,
-        rdsProxyArn:props.rdsProxyArn
+        auroraEdition: props.auroraEdition,
+        rdsProxyEndpoint: props.rdsProxyEndpoint,
+        rdsProxyArn: props.rdsProxyArn,
       });
     } else {
       serverlessBase = new ServerlessAppBase(this, `WebappBase`, {
@@ -74,9 +74,9 @@ export class ServerlessappStack extends Stack {
         auroraSecretArn: props.auroraSecretArn,
         auroraSecurityGroupId: props.auroraSecurityGroupId,
         auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-        auroraEdition:props.auroraEdition,
-        rdsProxyEndpoint:props.rdsProxyEndpoint,
-        rdsProxyArn:props.rdsProxyArn
+        auroraEdition: props.auroraEdition,
+        rdsProxyEndpoint: props.rdsProxyEndpoint,
+        rdsProxyArn: props.rdsProxyArn,
       });
     }
 
@@ -121,7 +121,10 @@ export class ServerlessappStack extends Stack {
           aws_ec2.Port.tcp(443)
         );
 
-        serverlessBase.alb.connections.allowFrom(windowsBastion.bastionInstance, aws_ec2.Port.tcp(443));
+        serverlessBase.alb.connections.allowFrom(
+          windowsBastion.bastionInstance,
+          aws_ec2.Port.tcp(443)
+        );
       }
 
       if (props.linuxBastion) {
@@ -136,39 +139,44 @@ export class ServerlessappStack extends Stack {
           aws_ec2.Port.tcp(443)
         );
 
-        serverlessBase.alb.connections.allowFrom(linuxBastion.bastionInstance, aws_ec2.Port.tcp(443));
+        serverlessBase.alb.connections.allowFrom(
+          linuxBastion.bastionInstance,
+          aws_ec2.Port.tcp(443)
+        );
       }
     }
 
-    new DBinitLambda(this,'DBInitLambdaConstruct',{
+    new DBinitLambda(this, 'DBInitLambdaConstruct', {
       vpc: vpc,
-      sgForLambda:serverlessBase.sgForLambda,
+      sgForLambda: serverlessBase.sgForLambda,
       auroraSecretName: props.auroraSecretName,
       auroraSecretArn: props.auroraSecretArn,
       auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-      rdsProxyEndpoint:props.rdsProxyEndpoint,
-      rdsProxyArn:props.rdsProxyArn
-    })
+      rdsProxyEndpoint: props.rdsProxyEndpoint,
+      rdsProxyArn: props.rdsProxyArn,
+    });
 
     // [CHANGE HERE] Nag suppressions with path : you need to change here for deployment...
     NagSuppressions.addResourceSuppressionsByPath(
       this,
-      "/RayohopeDevTemplateappWebapp/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource",
+      '/RayohopeDevTemplateappWebapp/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource',
       [
         {
-          id: "AwsSolutions-IAM4",
-          reason: "CDK managed resource",
-          appliesTo: ["Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"],
+          id: 'AwsSolutions-IAM4',
+          reason: 'CDK managed resource',
+          appliesTo: [
+            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
+          ],
         },
       ]
     );
     NagSuppressions.addResourceSuppressionsByPath(
       this,
-      "/RayohopeDevTemplateappWebapp/AWS679f53fac002430cb0da5b7982bd2287/Resource",
+      '/RayohopeDevTemplateappWebapp/AWS679f53fac002430cb0da5b7982bd2287/Resource',
       [
         {
-          id: "AwsSolutions-L1",
-          reason: "CDK managed resource",
+          id: 'AwsSolutions-L1',
+          reason: 'CDK managed resource',
         },
       ]
     );

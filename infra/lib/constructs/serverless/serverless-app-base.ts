@@ -18,7 +18,7 @@ import { WebAppBucket } from '../s3/webappbucket';
 import { Apigw } from './apigw';
 import { DefaultLambda } from './lambda';
 import { NagSuppressions } from 'cdk-nag';
-import * as path from 'path'
+import * as path from 'path';
 export class ServerlessAppBase extends Construct {
   public readonly targetGroup: aws_elasticloadbalancingv2.ApplicationTargetGroup;
   public readonly vpcEndpointTargetGroup: aws_elasticloadbalancingv2.ApplicationTargetGroup;
@@ -27,8 +27,8 @@ export class ServerlessAppBase extends Construct {
   public readonly alb: aws_elasticloadbalancingv2.ApplicationLoadBalancer;
   public readonly nlb: aws_elasticloadbalancingv2.NetworkLoadBalancer;
   public readonly webapps3bucket: aws_s3.Bucket;
-  public readonly lambdaFunctionRole : aws_iam.Role;
-  public readonly sgForLambda:aws_ec2.SecurityGroup;
+  public readonly lambdaFunctionRole: aws_iam.Role;
+  public readonly sgForLambda: aws_ec2.SecurityGroup;
   constructor(
     scope: Construct,
     id: string,
@@ -41,9 +41,9 @@ export class ServerlessAppBase extends Construct {
       auroraSecretArn: string;
       auroraSecurityGroupId: string;
       auroraSecretEncryptionKeyArn: string;
-      auroraEdition:string;
-      rdsProxyEndpoint:string;
-      rdsProxyArn:string;
+      auroraEdition: string;
+      rdsProxyEndpoint: string;
+      rdsProxyArn: string;
     }
   ) {
     super(scope, id);
@@ -72,7 +72,7 @@ export class ServerlessAppBase extends Construct {
       vpc: props.vpc,
       internetFacing: false,
       securityGroup: sgForAlb,
-      loadBalancerName: "alb",
+      loadBalancerName: 'alb',
       vpcSubnets: props.vpc.selectSubnets({
         subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED,
       }),
@@ -105,133 +105,142 @@ export class ServerlessAppBase extends Construct {
 
     const s3InterfaceEndpoint = props.vpc.addInterfaceEndpoint('S3InterfaceEndpoint', {
       service: aws_ec2.InterfaceVpcEndpointAwsService.S3,
-      subnets: { subnets: props.vpc.isolatedSubnets},
+      subnets: { subnets: props.vpc.isolatedSubnets },
       privateDnsEnabled: true,
     });
 
-    
-     // use CDK custom resources to get the Network Interfaces and IP addresses of the API Endpoint
+    // use CDK custom resources to get the Network Interfaces and IP addresses of the API Endpoint
     // get IP Address from S3 VPC Endpoint
     // See here : https://repost.aws/ja/questions/QUjISNyk6aTA6jZgZQwKWf4Q/how-to-connect-a-load-balancer-and-an-interface-vpc-endpoint-together-using-cdk?sc_ichannel=ha&sc_ilang=en&sc_isite=repost&sc_iplace=hp&sc_icontent=QUjISNyk6aTA6jZgZQwKWf4Q&sc_ipos=7
-    const eni = new custom_resources.AwsCustomResource(
+    const eni = new custom_resources.AwsCustomResource(this, 'DescribeNetworkInterfaces', {
+      onCreate: {
+        service: 'EC2',
+        action: 'describeNetworkInterfaces',
+        parameters: {
+          NetworkInterfaceIds: s3InterfaceEndpoint.vpcEndpointNetworkInterfaceIds,
+        },
+        physicalResourceId: custom_resources.PhysicalResourceId.of(Date.now().toString()),
+      },
+      onUpdate: {
+        service: 'EC2',
+        action: 'describeNetworkInterfaces',
+        parameters: {
+          NetworkInterfaceIds: s3InterfaceEndpoint.vpcEndpointNetworkInterfaceIds,
+        },
+        physicalResourceId: custom_resources.PhysicalResourceId.of(Date.now().toString()),
+      },
+      policy: {
+        statements: [
+          new aws_iam.PolicyStatement({
+            actions: ['ec2:DescribeNetworkInterfaces'],
+            resources: ['*'],
+          }),
+        ],
+      },
+    });
+
+    // Import Web App S3
+    const s3Buckets = new WebAppBucket(this, 'WebappBucket', {
+      bucketName: `app.${props.domainName}`,
+    });
+    this.webapps3bucket = s3Buckets.webAppBucket;
+    // create ALB Target Group (for s3)
+    this.vpcEndpointTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(
       this,
-      "DescribeNetworkInterfaces",
+      'VpcEndpointTargetGroup',
       {
-        onCreate: {
-          service: "EC2",
-          action: "describeNetworkInterfaces",
-          parameters: {
-            NetworkInterfaceIds: s3InterfaceEndpoint.vpcEndpointNetworkInterfaceIds,
-          },
-          physicalResourceId: custom_resources.PhysicalResourceId.of(Date.now().toString()),
-        },
-        onUpdate: {
-          service: "EC2",
-          action: "describeNetworkInterfaces",
-          parameters: {
-            NetworkInterfaceIds: s3InterfaceEndpoint.vpcEndpointNetworkInterfaceIds,
-          },
-          physicalResourceId: custom_resources.PhysicalResourceId.of(Date.now().toString()),
-        },
-        policy: {
-          statements: [
-            new aws_iam.PolicyStatement({
-              actions: ["ec2:DescribeNetworkInterfaces"],
-              resources: ["*"],
-            }),
-          ],
+        vpc: props.vpc,
+        targetType: aws_elasticloadbalancingv2.TargetType.IP,
+        port: 443,
+        protocol: aws_elasticloadbalancingv2.ApplicationProtocol.HTTPS,
+        healthCheck: {
+          healthyHttpCodes: '307,405',
         },
       }
     );
-
-    // Import Web App S3
-    const s3Buckets = new WebAppBucket(this, 'WebappBucket',{bucketName:`app.${props.domainName}`});
-    this.webapps3bucket=s3Buckets.webAppBucket
-    // create ALB Target Group (for s3)
-    this.vpcEndpointTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(this, "VpcEndpointTargetGroup", {
-      vpc: props.vpc,
-      targetType: aws_elasticloadbalancingv2.TargetType.IP,
-      port: 443,
-      protocol: aws_elasticloadbalancingv2.ApplicationProtocol.HTTPS,
-      healthCheck: {
-        healthyHttpCodes: "307,405",
-      },
-    });
     // get isolated subnets num
     const numOfIp = props.vpc.isolatedSubnets.length;
-    for (let i =0;i<numOfIp;i++ ) {
-      this.vpcEndpointTargetGroup.addTarget(new aws_elasticloadbalancingv2_targets.IpTarget(eni.getResponseField(`NetworkInterfaces.${i}.PrivateIpAddress`)));
+    for (let i = 0; i < numOfIp; i++) {
+      this.vpcEndpointTargetGroup.addTarget(
+        new aws_elasticloadbalancingv2_targets.IpTarget(
+          eni.getResponseField(`NetworkInterfaces.${i}.PrivateIpAddress`)
+        )
+      );
     }
     httpsListener.addTargetGroups('VPCEndpointTargetGroup', {
       targetGroups: [this.vpcEndpointTargetGroup],
     });
-    s3Buckets.webAppBucket.addToResourcePolicy(new aws_iam.PolicyStatement({
-      actions:["s3:GetObject"],
-      principals: [new aws_iam.ArnPrincipal('*')],
-      effect:aws_iam.Effect.ALLOW,
-      resources:[
-        s3Buckets.webAppBucket.bucketArn,
-        s3Buckets.webAppBucket.bucketArn+"/*",
-      ],
-      conditions: {
-        "StringEquals": {
-          "aws:SourceVpce": [ s3InterfaceEndpoint.vpcEndpointId ]
-        }
-      }
+    s3Buckets.webAppBucket.addToResourcePolicy(
+      new aws_iam.PolicyStatement({
+        actions: ['s3:GetObject'],
+        principals: [new aws_iam.ArnPrincipal('*')],
+        effect: aws_iam.Effect.ALLOW,
+        resources: [s3Buckets.webAppBucket.bucketArn, s3Buckets.webAppBucket.bucketArn + '/*'],
+        conditions: {
+          StringEquals: {
+            'aws:SourceVpce': [s3InterfaceEndpoint.vpcEndpointId],
+          },
+        },
       })
-    )
+    );
     // APIGW
     const apigw = new Apigw(this, `WebappAPIGW`, {
-      vpc:props.vpc,
+      vpc: props.vpc,
       auroraSecretName: props.auroraSecretName,
       auroraSecurityGroupId: props.auroraSecurityGroupId,
       auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-      auroraEdition:props.auroraEdition,
+      auroraEdition: props.auroraEdition,
       auroraSecretArn: props.auroraSecretArn,
-      rdsProxyEndpoint:props.rdsProxyEndpoint,
-      rdsProxyArn:props.rdsProxyArn
+      rdsProxyEndpoint: props.rdsProxyEndpoint,
+      rdsProxyArn: props.rdsProxyArn,
     });
-    this.sgForLambda=apigw.sgForLambda;
+    this.sgForLambda = apigw.sgForLambda;
     // add resource
-    const sampleResource = apigw.addResource('sample')
-    const methodResponses=[
+    const sampleResource = apigw.addResource('sample');
+    const methodResponses = [
       {
-        statusCode:"200",
-        responseParameters:{
+        statusCode: '200',
+        responseParameters: {
           'method.response.header.Content-Type': true,
           'method.response.header.Access-Control-Allow-Origin': true,
           'method.response.header.Access-Control-Allow-Credentials': true,
-          'method.response.header.Access-Control-Allow-Methods' :true,
-        }
+          'method.response.header.Access-Control-Allow-Methods': true,
+        },
       },
       {
-        statusCode:"400",
-        responseParameters:{
+        statusCode: '400',
+        responseParameters: {
           'method.response.header.Content-Type': true,
           'method.response.header.Access-Control-Allow-Origin': true,
           'method.response.header.Access-Control-Allow-Credentials': true,
-          'method.response.header.Access-Control-Allow-Methods' :true,
-        }
-      }
-    ]
-    const integrationResponses=[
+          'method.response.header.Access-Control-Allow-Methods': true,
+        },
+      },
+    ];
+    const integrationResponses = [
       {
-        statusCode: "200",
-        responseParameters:{
-          'method.response.header.Content-Type': "integration.response.header.Content-Type",
-          'method.response.header.Access-Control-Allow-Origin': "integration.response.header.Access-Control-Allow-Origin",
-          'method.response.header.Access-Control-Allow-Credentials': "integration.response.header.Access-Control-Allow-Credentials",
-          'method.response.header.Access-Control-Allow-Methods' : "integration.response.header.Access-Control-Allow-Methods",
-        }
+        statusCode: '200',
+        responseParameters: {
+          'method.response.header.Content-Type': 'integration.response.header.Content-Type',
+          'method.response.header.Access-Control-Allow-Origin':
+            'integration.response.header.Access-Control-Allow-Origin',
+          'method.response.header.Access-Control-Allow-Credentials':
+            'integration.response.header.Access-Control-Allow-Credentials',
+          'method.response.header.Access-Control-Allow-Methods':
+            'integration.response.header.Access-Control-Allow-Methods',
+        },
       },
       {
         selectionPattern: '(\n|.)+',
-        statusCode: "400",
+        statusCode: '400',
         responseTemplates: {
-            'application/json': JSON.stringify({ state: 'error', message: "$util.escapeJavaScript($input.path('$.errorMessage'))" })
+          'application/json': JSON.stringify({
+            state: 'error',
+            message: "$util.escapeJavaScript($input.path('$.errorMessage'))",
+          }),
         },
-      }
-    ]
+      },
+    ];
     const lambdaProps = {
       vpc: props.vpc,
       auroraSecretName: props.auroraSecretName,
@@ -239,55 +248,59 @@ export class ServerlessAppBase extends Construct {
       auroraSecurityGroupId: props.auroraSecurityGroupId,
       auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
       auroraEdition: props.auroraEdition,
-      rdsProxyEndpoint:props.rdsProxyEndpoint,
-      rdsProxyArn:props.rdsProxyArn,
-      sgForLambda:this.sgForLambda,
-    }
-    const getLambda = new DefaultLambda(this,'sampleGetLambdaFunction',{
-      resourceId:'GetLambda',
-      entry:path.join(__dirname, '../../../../functions/get.ts'),
-      ...lambdaProps
-    })
-    const postLambda = new DefaultLambda(this,'samplePostLambdaFunction',{
-      resourceId:'PostLambda',
-      entry:path.join(__dirname, '../../../../functions/post.ts'),
-      ...lambdaProps
-    })
-    sampleResource.addMethod("GET", 
-      new aws_apigateway.LambdaIntegration(getLambda.lambda,{
-          integrationResponses: integrationResponses
-        }
-      ),{
-        methodResponses:methodResponses
-    })
-      //POST/sample
-    sampleResource.addMethod("POST", 
-    new aws_apigateway.LambdaIntegration(postLambda.lambda,{
-      integrationResponses: integrationResponses
+      rdsProxyEndpoint: props.rdsProxyEndpoint,
+      rdsProxyArn: props.rdsProxyArn,
+      sgForLambda: this.sgForLambda,
+    };
+    const getLambda = new DefaultLambda(this, 'sampleGetLambdaFunction', {
+      resourceId: 'GetLambda',
+      entry: path.join(__dirname, '../../../../functions/get.ts'),
+      ...lambdaProps,
+    });
+    const postLambda = new DefaultLambda(this, 'samplePostLambdaFunction', {
+      resourceId: 'PostLambda',
+      entry: path.join(__dirname, '../../../../functions/post.ts'),
+      ...lambdaProps,
+    });
+    sampleResource.addMethod(
+      'GET',
+      new aws_apigateway.LambdaIntegration(getLambda.lambda, {
+        integrationResponses: integrationResponses,
+      }),
+      {
+        methodResponses: methodResponses,
       }
-    ),{
-      methodResponses:methodResponses
-    })
+    );
+    //POST/sample
+    sampleResource.addMethod(
+      'POST',
+      new aws_apigateway.LambdaIntegration(postLambda.lambda, {
+        integrationResponses: integrationResponses,
+      }),
+      {
+        methodResponses: methodResponses,
+      }
+    );
     // allow alb to apigw
-    apigw.vpcEndpointSecurityGroup.addIngressRule(sgForAlb,aws_ec2.Port.tcp(443));
+    apigw.vpcEndpointSecurityGroup.addIngressRule(sgForAlb, aws_ec2.Port.tcp(443));
     // use CDK custom resources to get the Network Interfaces and IP addresses of the API Endpoint
     // get IP Address from APIGW VPC Endpoint
     // See here : https://repost.aws/ja/questions/QUjISNyk6aTA6jZgZQwKWf4Q/how-to-connect-a-load-balancer-and-an-interface-vpc-endpoint-together-using-cdk?sc_ichannel=ha&sc_ilang=en&sc_isite=repost&sc_iplace=hp&sc_icontent=QUjISNyk6aTA6jZgZQwKWf4Q&sc_ipos=7
     const apigwEni = new custom_resources.AwsCustomResource(
       this,
-      "DescribeNetworkInterfacesAPIGW",
+      'DescribeNetworkInterfacesAPIGW',
       {
         onCreate: {
-          service: "EC2",
-          action: "describeNetworkInterfaces",
+          service: 'EC2',
+          action: 'describeNetworkInterfaces',
           parameters: {
             NetworkInterfaceIds: apigw.privateApiVpcEndpoint.vpcEndpointNetworkInterfaceIds,
           },
           physicalResourceId: custom_resources.PhysicalResourceId.of(Date.now().toString()),
         },
         onUpdate: {
-          service: "EC2",
-          action: "describeNetworkInterfaces",
+          service: 'EC2',
+          action: 'describeNetworkInterfaces',
           parameters: {
             NetworkInterfaceIds: apigw.privateApiVpcEndpoint.vpcEndpointNetworkInterfaceIds,
           },
@@ -296,25 +309,33 @@ export class ServerlessAppBase extends Construct {
         policy: {
           statements: [
             new aws_iam.PolicyStatement({
-              actions: ["ec2:DescribeNetworkInterfaces"],
-              resources: ["*"],
+              actions: ['ec2:DescribeNetworkInterfaces'],
+              resources: ['*'],
             }),
           ],
         },
       }
     );
     // create ALB Target Group (for apigw)
-    this.apigwTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(this, "ApigwTarget", {
-      vpc: props.vpc,
-      targetType: aws_elasticloadbalancingv2.TargetType.IP,
-      port: 443,
-      protocol: aws_elasticloadbalancingv2.ApplicationProtocol.HTTPS,
-      healthCheck: {
-        healthyHttpCodes: '200-202,400-404',
-      },
-    });
-    for (let i =0;i<numOfIp;i++ ) {
-      this.apigwTargetGroup.addTarget(new aws_elasticloadbalancingv2_targets.IpTarget(apigwEni.getResponseField(`NetworkInterfaces.${i}.PrivateIpAddress`)));
+    this.apigwTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(
+      this,
+      'ApigwTarget',
+      {
+        vpc: props.vpc,
+        targetType: aws_elasticloadbalancingv2.TargetType.IP,
+        port: 443,
+        protocol: aws_elasticloadbalancingv2.ApplicationProtocol.HTTPS,
+        healthCheck: {
+          healthyHttpCodes: '200-202,400-404',
+        },
+      }
+    );
+    for (let i = 0; i < numOfIp; i++) {
+      this.apigwTargetGroup.addTarget(
+        new aws_elasticloadbalancingv2_targets.IpTarget(
+          apigwEni.getResponseField(`NetworkInterfaces.${i}.PrivateIpAddress`)
+        )
+      );
     }
 
     // Enable PrivateLink
@@ -408,53 +429,65 @@ export class ServerlessAppBase extends Construct {
 
       // Create the API domain
       const apiDomain = new aws_apigateway.DomainName(this, 'apiDomain', {
-        domainName:  `app.${props.domainName}`,
-        certificate:aws_certificatemanager.Certificate.fromCertificateArn(this,"certificate",props.certificateArn),
+        domainName: `app.${props.domainName}`,
+        certificate: aws_certificatemanager.Certificate.fromCertificateArn(
+          this,
+          'certificate',
+          props.certificateArn
+        ),
         endpointType: aws_apigateway.EndpointType.REGIONAL, // API domains can only be created for Regional endpoints, but it will work with the Private endpoint anyway
-        securityPolicy:  aws_apigateway.SecurityPolicy.TLS_1_2,
-    });
+        securityPolicy: aws_apigateway.SecurityPolicy.TLS_1_2,
+      });
       new aws_apigateway.BasePathMapping(this, 'apigwPathMapping', {
-        basePath: "apigw",
+        basePath: 'apigw',
         domainName: apiDomain,
         restApi: apigw.privateApi,
-    });
-    httpsListener.addAction('apis', {
-      action: aws_elasticloadbalancingv2.ListenerAction.forward([this.apigwTargetGroup]),
-      conditions: [
-        aws_elasticloadbalancingv2.ListenerCondition.pathPatterns([`/apigw/*`]),
-      ],
-      priority: 1,
-    });
-    httpsListener.addAction('Fixed', {
-      priority: 5,
-      conditions: [
-        aws_elasticloadbalancingv2.ListenerCondition.pathPatterns(["/"]),
-      ],
-      action: aws_elasticloadbalancingv2.ListenerAction.redirect({
-        protocol: aws_elasticloadbalancingv2.Protocol.HTTPS,
-        host: "#{host}",
-        path: "/index.html",
-        query: "#{query}"
-      })
-    });
+      });
+      httpsListener.addAction('apis', {
+        action: aws_elasticloadbalancingv2.ListenerAction.forward([this.apigwTargetGroup]),
+        conditions: [aws_elasticloadbalancingv2.ListenerCondition.pathPatterns([`/apigw/*`])],
+        priority: 1,
+      });
+      httpsListener.addAction('Fixed', {
+        priority: 5,
+        conditions: [aws_elasticloadbalancingv2.ListenerCondition.pathPatterns(['/'])],
+        action: aws_elasticloadbalancingv2.ListenerAction.redirect({
+          protocol: aws_elasticloadbalancingv2.Protocol.HTTPS,
+          host: '#{host}',
+          path: '/index.html',
+          query: '#{query}',
+        }),
+      });
     }
-    NagSuppressions.addResourceSuppressions(apigw.privateApi, [
-      {
-        id: 'AwsSolutions-COG4',
-        reason: 'This APIGW does not use an authorizer, because its sample.',
-      },
-    ],true);
-    NagSuppressions.addResourceSuppressions(apigw.privateApi, [
-      {
-        id: 'AwsSolutions-APIG4',
-        reason: 'This APIGW does not use an authorizer, because its sample.',
-      },
-    ],true);
-    NagSuppressions.addResourceSuppressions(apigw.privateApi, [
-      {
-        id: 'AwsSolutions-IAM4',
-        reason: 'CloudWatchRole managed by SDK.',
-      },
-    ],true);
+    NagSuppressions.addResourceSuppressions(
+      apigw.privateApi,
+      [
+        {
+          id: 'AwsSolutions-COG4',
+          reason: 'This APIGW does not use an authorizer, because its sample.',
+        },
+      ],
+      true
+    );
+    NagSuppressions.addResourceSuppressions(
+      apigw.privateApi,
+      [
+        {
+          id: 'AwsSolutions-APIG4',
+          reason: 'This APIGW does not use an authorizer, because its sample.',
+        },
+      ],
+      true
+    );
+    NagSuppressions.addResourceSuppressions(
+      apigw.privateApi,
+      [
+        {
+          id: 'AwsSolutions-IAM4',
+          reason: 'CloudWatchRole managed by SDK.',
+        },
+      ],
+      true
+    );
   }
 }
