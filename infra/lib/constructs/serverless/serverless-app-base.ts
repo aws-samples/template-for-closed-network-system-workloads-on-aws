@@ -15,18 +15,17 @@ import {
 import { Bucket } from '../s3/bucket';
 import { Construct } from 'constructs';
 import { WebAppBucket } from '../s3/webappbucket';
-import { Apigw } from './apigw';
+import { ApiGw } from './apigw';
 import { DefaultLambda } from './lambda';
 import { NagSuppressions } from 'cdk-nag';
 import * as path from 'path';
 export class ServerlessAppBase extends Construct {
   public readonly targetGroup: aws_elasticloadbalancingv2.ApplicationTargetGroup;
   public readonly vpcEndpointTargetGroup: aws_elasticloadbalancingv2.ApplicationTargetGroup;
-  public readonly apigwTargetGroup: aws_elasticloadbalancingv2.ApplicationTargetGroup;
   public readonly httpsTargetGroup: aws_elasticloadbalancingv2.ApplicationTargetGroup;
   public readonly alb: aws_elasticloadbalancingv2.ApplicationLoadBalancer;
   public readonly nlb: aws_elasticloadbalancingv2.NetworkLoadBalancer;
-  public readonly webapps3bucket: aws_s3.Bucket;
+  public readonly webappS3bucket: aws_s3.Bucket;
   public readonly lambdaFunctionRole: aws_iam.Role;
   public readonly sgForLambda: aws_ec2.SecurityGroup;
   constructor(
@@ -143,7 +142,7 @@ export class ServerlessAppBase extends Construct {
     const s3Buckets = new WebAppBucket(this, 'WebappBucket', {
       bucketName: `app.${props.domainName}`,
     });
-    this.webapps3bucket = s3Buckets.webAppBucket;
+    this.webappS3bucket = s3Buckets.webAppBucket;
     // create ALB Target Group (for s3)
     this.vpcEndpointTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(
       this,
@@ -183,8 +182,8 @@ export class ServerlessAppBase extends Construct {
         },
       })
     );
-    // APIGW
-    const apigw = new Apigw(this, `WebappAPIGW`, {
+    // ApiGw
+    const apiGw = new ApiGw(this, `WebappApiGw`, {
       vpc: props.vpc,
       auroraSecretName: props.auroraSecretName,
       auroraSecurityGroupId: props.auroraSecurityGroupId,
@@ -194,9 +193,9 @@ export class ServerlessAppBase extends Construct {
       rdsProxyEndpoint: props.rdsProxyEndpoint,
       rdsProxyArn: props.rdsProxyArn,
     });
-    this.sgForLambda = apigw.sgForLambda;
+    this.sgForLambda = apiGw.sgForLambda;
     // add resource
-    const sampleResource = apigw.addResource('sample');
+    const sampleResource = apiGw.addResource('sample');
     const methodResponses = [
       {
         statusCode: '200',
@@ -281,20 +280,20 @@ export class ServerlessAppBase extends Construct {
         methodResponses: methodResponses,
       }
     );
-    // allow alb to apigw
-    apigw.vpcEndpointSecurityGroup.addIngressRule(sgForAlb, aws_ec2.Port.tcp(443));
+    // allow alb to ApiGw
+    apiGw.vpcEndpointSecurityGroup.addIngressRule(sgForAlb, aws_ec2.Port.tcp(443));
     // use CDK custom resources to get the Network Interfaces and IP addresses of the API Endpoint
-    // get IP Address from APIGW VPC Endpoint
+    // get IP Address from ApiGw VPC Endpoint
     // See here : https://repost.aws/ja/questions/QUjISNyk6aTA6jZgZQwKWf4Q/how-to-connect-a-load-balancer-and-an-interface-vpc-endpoint-together-using-cdk?sc_ichannel=ha&sc_ilang=en&sc_isite=repost&sc_iplace=hp&sc_icontent=QUjISNyk6aTA6jZgZQwKWf4Q&sc_ipos=7
-    const apigwEni = new custom_resources.AwsCustomResource(
+    const apiGwEni = new custom_resources.AwsCustomResource(
       this,
-      'DescribeNetworkInterfacesAPIGW',
+      'DescribeNetworkInterfacesApiGw',
       {
         onCreate: {
           service: 'EC2',
           action: 'describeNetworkInterfaces',
           parameters: {
-            NetworkInterfaceIds: apigw.privateApiVpcEndpoint.vpcEndpointNetworkInterfaceIds,
+            NetworkInterfaceIds: apiGw.privateApiVpcEndpoint.vpcEndpointNetworkInterfaceIds,
           },
           physicalResourceId: custom_resources.PhysicalResourceId.of(Date.now().toString()),
         },
@@ -302,7 +301,7 @@ export class ServerlessAppBase extends Construct {
           service: 'EC2',
           action: 'describeNetworkInterfaces',
           parameters: {
-            NetworkInterfaceIds: apigw.privateApiVpcEndpoint.vpcEndpointNetworkInterfaceIds,
+            NetworkInterfaceIds: apiGw.privateApiVpcEndpoint.vpcEndpointNetworkInterfaceIds,
           },
           physicalResourceId: custom_resources.PhysicalResourceId.of(Date.now().toString()),
         },
@@ -316,10 +315,10 @@ export class ServerlessAppBase extends Construct {
         },
       }
     );
-    // create ALB Target Group (for apigw)
-    this.apigwTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(
+    // create ALB Target Group (for ApiGw)
+    const apiGwTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(
       this,
-      'ApigwTarget',
+      'ApiGwTarget',
       {
         vpc: props.vpc,
         targetType: aws_elasticloadbalancingv2.TargetType.IP,
@@ -331,9 +330,9 @@ export class ServerlessAppBase extends Construct {
       }
     );
     for (let i = 0; i < numOfIp; i++) {
-      this.apigwTargetGroup.addTarget(
+      apiGwTargetGroup.addTarget(
         new aws_elasticloadbalancingv2_targets.IpTarget(
-          apigwEni.getResponseField(`NetworkInterfaces.${i}.PrivateIpAddress`)
+          apiGwEni.getResponseField(`NetworkInterfaces.${i}.PrivateIpAddress`)
         )
       );
     }
@@ -383,7 +382,7 @@ export class ServerlessAppBase extends Construct {
       );
 
       // Create VPC endpoint
-      const sgForVpcEndpoint = new aws_ec2.SecurityGroup(this, 'VpcEndpointSecurityGroupsg', {
+      const sgForVpcEndpoint = new aws_ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
         vpc: props.privateLinkVpc,
       });
 
@@ -438,13 +437,13 @@ export class ServerlessAppBase extends Construct {
         endpointType: aws_apigateway.EndpointType.REGIONAL, // API domains can only be created for Regional endpoints, but it will work with the Private endpoint anyway
         securityPolicy: aws_apigateway.SecurityPolicy.TLS_1_2,
       });
-      new aws_apigateway.BasePathMapping(this, 'apigwPathMapping', {
+      new aws_apigateway.BasePathMapping(this, 'ApiGwPathMapping', {
         basePath: 'apigw',
         domainName: apiDomain,
-        restApi: apigw.privateApi,
+        restApi: apiGw.privateApi,
       });
       httpsListener.addAction('apis', {
-        action: aws_elasticloadbalancingv2.ListenerAction.forward([this.apigwTargetGroup]),
+        action: aws_elasticloadbalancingv2.ListenerAction.forward([apiGwTargetGroup]),
         conditions: [aws_elasticloadbalancingv2.ListenerCondition.pathPatterns([`/apigw/*`])],
         priority: 1,
       });
@@ -460,27 +459,27 @@ export class ServerlessAppBase extends Construct {
       });
     }
     NagSuppressions.addResourceSuppressions(
-      apigw.privateApi,
+      apiGw.privateApi,
       [
         {
           id: 'AwsSolutions-COG4',
-          reason: 'This APIGW does not use an authorizer, because its sample.',
+          reason: 'This ApiGw does not use an authorizer, because its sample.',
         },
       ],
       true
     );
     NagSuppressions.addResourceSuppressions(
-      apigw.privateApi,
+      apiGw.privateApi,
       [
         {
           id: 'AwsSolutions-APIG4',
-          reason: 'This APIGW does not use an authorizer, because its sample.',
+          reason: 'This ApiGw does not use an authorizer, because its sample.',
         },
       ],
       true
     );
     NagSuppressions.addResourceSuppressions(
-      apigw.privateApi,
+      apiGw.privateApi,
       [
         {
           id: 'AwsSolutions-IAM4',

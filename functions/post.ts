@@ -13,9 +13,9 @@ export const handler = async (event: any): Promise<any> => {
 	if(!id || !job0001_flag  || !job0001_flag || !job0002_flag || !job0003_flag || !job0004_flag || !job0005_flag ){
 		const response = {
 			statusCode: 400,
-			body: JSON.stringify("Some querystrings are undefined"),
+			body: JSON.stringify("Some query-string are undefined"),
 		};  
-		logger.error("Error in queryStringParameters : Some querystrings are undefined");
+		logger.error("Error in queryStringParameters : Some query-strings are undefined");
 		return response;
 	}
 	// check their types and formats

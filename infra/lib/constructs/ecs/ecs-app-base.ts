@@ -156,7 +156,7 @@ export class EcsAppBase extends Construct {
       );
 
       // Create VPC endpoint
-      const sgForVpcEndpoint = new aws_ec2.SecurityGroup(this, 'VpcEndpointSecurityGroupsg', {
+      const sgForVpcEndpoint = new aws_ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
         vpc: props.privateLinkVpc,
       });
 

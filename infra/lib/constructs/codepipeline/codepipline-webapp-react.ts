@@ -78,7 +78,7 @@ export class CodePipelineServerless extends Construct {
 
     // Deploy stage
     const deployAction = new aws_codepipeline_actions.S3DeployAction({
-      actionName: 'DeployBuildFiletoS3',
+      actionName: 'DeployBuildFileToS3',
       input: buildOutput,
       bucket: props.s3bucket,
     });

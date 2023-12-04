@@ -1,8 +1,8 @@
 import { aws_apigateway, aws_ec2, aws_iam, aws_logs } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { NagSuppressions } from 'cdk-nag';
-// private Apigw with vpc endpoint
-export class Apigw extends Construct {
+// private ApiGw with vpc endpoint
+export class ApiGw extends Construct {
   public readonly vpcEndpointSecurityGroup: aws_ec2.SecurityGroup;
   public readonly privateApiVpcEndpoint: aws_ec2.InterfaceVpcEndpoint;
   public readonly privateApi: aws_apigateway.LambdaRestApi;
@@ -38,13 +38,13 @@ export class Apigw extends Construct {
       open: false,
     });
 
-    //Aurora and APIGW  SG Settings
+    //Aurora and ApiGw  SG Settings
     const sgForAurora = aws_ec2.SecurityGroup.fromSecurityGroupId(
       this,
       'AuroraSecurityGroup',
       props.auroraSecurityGroupId
     );
-    this.sgForLambda = new aws_ec2.SecurityGroup(this, 'APIGWSecurityGroup', {
+    this.sgForLambda = new aws_ec2.SecurityGroup(this, 'ApiGwSecurityGroup', {
       vpc: props.vpc,
       allowAllOutbound: true,
     });

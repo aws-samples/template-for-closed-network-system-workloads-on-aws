@@ -45,7 +45,7 @@ export class WebappStack extends Stack {
 
     let ecsBase;
     if (props.enabledPrivateLink) {
-      const privateLinkVpc = new Network(this, `PrivatelinkNetwork`, {
+      const privateLinkVpc = new Network(this, `PrivateLinkNetwork`, {
         cidr: '10.0.0.0/16',
         cidrMask: 24,
         publicSubnet: false,

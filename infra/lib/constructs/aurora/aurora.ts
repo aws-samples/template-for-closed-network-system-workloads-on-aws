@@ -24,7 +24,7 @@ export class Aurora extends Construct {
 
     // Check whether isolated subnets which you chose or not
     if (isEmpty(props.vpc.isolatedSubnets)) {
-      throw new Error('You should speficy the isolated subnets in subnets');
+      throw new Error('You should specify the isolated subnets in subnets');
     }
 
     const secretName = 'AuroraSecret';
