@@ -1,8 +1,8 @@
-import { aws_codecommit, aws_ec2, StackProps, Stack } from 'aws-cdk-lib';
+import { aws_codecommit, aws_ec2, StackProps, Stack} from 'aws-cdk-lib';
 import { Bastion } from './constructs/ec2/bastion';
 import { Construct } from 'constructs';
 import { ServerlessAppBase } from './constructs/serverless/serverless-app-base';
-import { CodePipelineServerless } from './constructs/codepipeline/codepipline-serverless';
+import { CodePipelineServerless } from './constructs/codepipeline/codepipline-webapp-react';
 import { Network } from './constructs/network/network';
 import { NagSuppressions } from 'cdk-nag';
 import { DBinitLambda } from './constructs/aurora/dbinitlambda';
@@ -149,20 +149,6 @@ export class ServerlessappStack extends Stack {
       rdsProxyEndpoint:props.rdsProxyEndpoint,
       rdsProxyArn:props.rdsProxyArn
     })
-      const provider = new custom_resources.Provider(
-        this, 'DBInitProvider',{
-          onEventHandler:initFunc.lambda,
-        }
-    )
-  
-    new CustomResource(
-        this, 'DBInitResource',{
-         serviceToken:provider.serviceToken,
-         properties:{
-            time:Date.now().toString()
-         }
-        }
-    )
 
     // [CHANGE HERE] Nag suppressions with path : you need to change here for deployment...
     NagSuppressions.addResourceSuppressionsByPath(
