@@ -46,6 +46,11 @@
     ]
   },
   "devDependencies": {
-    "@types/react-router-hash-link": "^2.4.6"
+    "@types/react-router-hash-link": "^2.4.6",
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.1.0"
   }
 }

@@ -6,7 +6,7 @@ import {
   aws_iam,
   aws_kms,
   aws_logs,
-  aws_s3
+  aws_s3,
 } from 'aws-cdk-lib';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
@@ -61,7 +61,7 @@ export class CodePipelineServerless extends Construct {
       environment: {
         privileged: true,
         buildImage: aws_codebuild.LinuxBuildImage.AMAZON_LINUX_2_4,
-      }
+      },
     });
 
     const buildOutput = new aws_codepipeline.Artifact();
