@@ -196,7 +196,7 @@ export class ServerlessAppBase extends Construct {
     this.sgForLambda = apiGw.sgForLambda;
     // add resource
     const sampleResource = apiGw.addResource('sample');
-    const methodResponses = [
+    const methodResponses : aws_apigateway.MethodResponse[] =  [
       {
         statusCode: '200',
         responseParameters: {
@@ -216,7 +216,7 @@ export class ServerlessAppBase extends Construct {
         },
       },
     ];
-    const integrationResponses = [
+    const integrationResponses : aws_apigateway.IntegrationResponse[] = [
       {
         statusCode: '200',
         responseParameters: {
