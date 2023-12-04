@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Record } from "../types/record";
-import { HashRouter, Routes, Route, Link } from "react-router-dom";
+import { HashRouter, Routes, Route} from "react-router-dom";
 import { RecordForm } from "./Form";
 import { RecordList } from "./List";
 import { get } from "../modules/requests";

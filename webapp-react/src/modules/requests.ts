@@ -1,4 +1,3 @@
-import React, { useState, useEffect,Dispatch,SetStateAction } from "react";
 import axios from 'axios';
 import { Record } from '../types/types';
 
