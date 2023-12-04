@@ -45,7 +45,7 @@ export class ServerlessappStack extends Stack {
 
     let serverlessBase;
     if (props.enabledPrivateLink) {
-      const privateLinkVpc = new Network(this, `PrivatelinkNetwork`, {
+      const privateLinkVpc = new Network(this, `PrivateLinkNetwork`, {
         cidr: '10.0.0.0/16',
         cidrMask: 24,
         publicSubnet: false,
@@ -83,7 +83,7 @@ export class ServerlessappStack extends Stack {
     // Create Deploy Pipeline
     new CodePipelineServerless(this, `WebappCodePipeline`, {
       codeCommitRepository: webappSourceRepository,
-      s3bucket: serverlessBase.webapps3bucket,
+      s3bucket: serverlessBase.webappS3bucket,
     });
 
     if (props.windowsBastion || props.linuxBastion) {

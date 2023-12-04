@@ -6,17 +6,17 @@ import { RecordList } from "./List";
 import { get } from "../modules/requests";
 
 export const Dashboard: React.FC<{}> = ({}) => {
-    const [samplerecords, setSamplerecords] = React.useState<Record[]>([])
+    const [sampleRecords, setSampleRecords] = React.useState<Record[]>([])
     useEffect(() => {(async()=>{
         const res=await get("sample/");
-        setSamplerecords(res);
+        setSampleRecords(res);
     })()},[]);
     return(<React.Fragment>
         <HashRouter>
         <h1>Hello From S3 through CodePipeline ! </h1><br/>            
                 <Routes>
-                    <Route path="/" Component={({}) => {return <RecordList records={samplerecords}/>}} />
-                    <Route path="/sampleapp/form" Component={({}) => {return <RecordForm records={samplerecords} setRecords={setSamplerecords}/>}} />
+                    <Route path="/" Component={({}) => {return <RecordList records={sampleRecords}/>}} />
+                    <Route path="/sampleapp/form" Component={({}) => {return <RecordForm records={sampleRecords} setRecords={setSampleRecords}/>}} />
                 </Routes>
             
         </HashRouter>
