@@ -11,7 +11,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Checkbox from '@mui/material/Checkbox';
 import { post } from "../modules/requests";
-var resource = "sample/"
+const resource = "sample/"
 
 export const RecordForm: React.FC<{records:Record[], setRecords:Dispatch<SetStateAction<Record[]>>}> = ({records,setRecords}) => {
     return(<React.Fragment>
@@ -32,7 +32,7 @@ export const RecordForm: React.FC<{records:Record[], setRecords:Dispatch<SetStat
                 </TableRow>
             </TableHead>
             <TableBody>
-                {records.map((row:Record, index:number) => {
+                {records.map((row:Record) => {
                     return (
                         <TableRow>
                             <TableCell>{row.id} </TableCell>

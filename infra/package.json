@@ -12,6 +12,7 @@
     "cdk": "cdk",
     "gulp": "gulp --color",
     "diff": "gulp diff",
+    "diff-serverless": "gulp diffServerless",
     "synth": "gulp synth",
     "synth-serverless": "gulp synthServerless",
     "synth-base": "gulp synthBase",

@@ -71,7 +71,7 @@ exports.deployWebapp = series(
   getCertificateArn,
   deployWebapp
 );
-exports.deployWebapp = series(
+exports.deployServerlessWebapp = series(
   setStage,
   bootstrapServerlessWebApp,
   buildBaseEnv,
