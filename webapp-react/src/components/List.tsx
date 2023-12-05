@@ -29,7 +29,7 @@ export const RecordList: React.FC<{records:Record[]}> = ({records}) => {
                 </TableRow>
             </TableHead>
             <TableBody>
-                {records.map((row:Record, index:number) => {
+                {records.map((row:Record) => {
                     return (
                         <TableRow>
                             <TableCell>{row.id} </TableCell>

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Record } from '../types/types';
+import { Record } from '../types/record';
 
 export const get = async (resource: string) => {
   const response = await axios.get(process.env.REACT_APP_ENDPOINT_URL + resource);

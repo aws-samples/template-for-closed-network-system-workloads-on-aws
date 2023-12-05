@@ -1,11 +1,15 @@
-# infra
+# infra（サーバーレス）
 
-[View this page in English](./README.md)
-[サーバーレスのサンプルアプリケーションを構築する場合はこちら](./README_serverless_ja.md)
+AWS 上にサーバーレスなサンプルアプリケーションやバッチシステムを動かす環境を構築する CDK のコードです。
+## 概要
 
-AWS 上にサンプルアプリケーションやバッチシステムを動かす環境を構築する CDK のコードです。
+アクセス数が少ない、またはほとんどアクセスしない時間帯があるようなアプリケーションを、ECS/Fargate を用いて常時稼働しておくと、利用量に対して多くの費用がかかります。また、コンテナイメージなどの運用コストもあります。
 
-## 準備
+そのような場合に、 Lambda を用いてサーバレスに構成することによって、費用や運用の手間を減らすことができます。
+
+構成図は以下のとおりです。
+
+![構成図](../docs/images/template_architecture_serverless_ja.png)
 
 ### 1. AWS CLI の設定
 
@@ -46,7 +50,7 @@ alias: {
     enabledPrivateLink: false, // PrivateLinkを利用するかどうか。trueは利用し、falseは利用しない
     windowsBastion: true,      // WindowsのBastionインスタンスを利用する場合はtrue、利用しない場合はfalse
     linuxBastion: true,        // Amazon LinuxのBastionインスタンスを利用する場合はtrue、利用しない場合はfalse
-    domainName: 'templateapp.local', // Private Hosted Zoneに登録されるドメイン名
+    domainName: '', // Private Hosted Zoneに登録されるドメイン名（このドメイン名がS3のバケット名になり、S3 のバケット名はユニークである必要があるため、必ず変更してください。）
 }
 ```
 
@@ -61,6 +65,13 @@ $ npm install
 $ npm run create-certificate -- --{alias}
 ```
 
+### 4. Lambda 関数に必要なモジュールのインストール
+
+`functions`ディレクトリで次のコマンドを実行し、Lambda 関数に必要なモジュールをインストールしてください。
+```bash
+$ npm install
+```
+
 ## デプロイ
 
 ### 1. CDK
@@ -69,7 +80,7 @@ $ npm run create-certificate -- --{alias}
 自動的に CDK が実行され、AWS の各リソースが生成されます。
 
 ```bash
-$ npm run deploy -- --{alias}
+$ npm run deploy-serverless -- --{alias}
 ```
 
 デプロイ後、ターミナル上に以下に示すようなコマンドが出力されますので、コピーして実行してください。
@@ -93,8 +104,8 @@ $ {alias}{stage}{appName}Webapp.LinuxGetSSHKeyForLinuxInstanceCommand = aws ssm 
 
 ジョブが失敗した通知を受けるために、届いたメールの内容に従い、サブスクリプションの Confirmation を実施してください。
 
-また、バッチジョブは平日 21 時に実行される設定になっています。このあと実施する、サンプル Web アプリのデプロイによって登録される初期データは、ジョブがすべて成功する設定になっているため、メールは送信されません。
-もし、失敗を確認したい場合は、`webapp-java/src/main/resources/data.sql`の 5 つある`true`のいずれかを`false`へ変更した上で、Web アプリのデプロイを行ってください。
+また、バッチジョブは平日 21 時に実行される設定になっています。デプロイ時に登録される初期データは、ジョブがすべて成功する設定になっているため、メールは送信されません。
+もし、失敗を確認したい場合は、この後デプロイするサンプル Web アプリで、5 つある`true`のいずれかを`false`へ変更してください。
 
 ### 2. サンプル Web アプリ
 
@@ -105,10 +116,12 @@ CDK のデプロイが完了したことで、AWS CodeCommit に サンプル We
 > CloudFormation のコンソールを参照する場合は、`baseStack`の`出力`タブを参照ください。
 > ![Repository Url](../docs/images/repository_url_ja.png)
 
-以下の手順で、`webapp-java` ディレクトリのソースコードをプッシュすることで、サンプル Web アプリがパイプラインからデプロイされます。
+`webapp-react` ディレクトリの`.env`ファイルに定義された`REACT_APP_ENDPOINT_URL`を、`stages.js`で設定した`domainName`を使って`https://app.{domainName}/apigw/`に置き換えてください。
+
+その後、以下の手順で、`webapp-react` ディレクトリのソースコードをプッシュすることで、サンプル Web アプリがパイプラインからデプロイされます。
 
 ```bash
-$ cd ./webapp-java
+$ cd ./webapp-react
 $ git init
 $ git remote add origin https://git-codecommit.{your region}.amazonaws.com/v1/repos/{your repository name}
 $ git add .
@@ -137,7 +150,7 @@ ECR など、状況によっては残ってしまうリソースもあるため�
 コマンドが失敗した場合は、エラーメッセージや CloudFormation のコンソールで内容をご確認の上、対応ください。
 
 ```
-$ npm run destroy -- --{alias}
+$ npm run destroy-serverless -- --{alias}
 ```
 
 ### その他のコマンド
@@ -145,8 +158,8 @@ $ npm run destroy -- --{alias}
 CDK のコマンドである、`diff, list`は、gulp で実装済みのため、これらのコマンドも gulp 経由で実行可能です。
 
 ```
-$ npm run diff -- --{alias}
-$ npm run list -- --{alias}
+$ npm run diff-serverless -- --{alias}
+$ npm run list-serverless -- --{alias}
 ```
 
 ## AWS Step Functions で実装するジョブ管理基盤
@@ -226,6 +239,13 @@ Security Hub を有効にした場合、デフォルトで有効になる基準�
 
 ## 本番利用時の考慮点
 
+## S3 のバケット名について
+通信を疎通させるために、S3 のバケット名をウェブサイトのドメイン名と一致させる必要があります。
+S3 のバケット名は全ての AWS アカウント間でユニークである必要があり、この制約により希望のドメイン名でウェブサイトをデプロイできない場合があります。
+
+ALB、S3、PrivateLinkによる内部HTTPS静的ウェブサイトのホスティングについては、詳しくは[こちらのブログ](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/)もご参照ください
+
+
 ### EC2 へのパッチ適用について
 
 運用管理のため EC2 インスタンスを利用する場合、パッチを当てる方法についてもご検討ください。
@@ -237,8 +257,7 @@ Session Manager を経由して手動でパッチを当てることも可能で�
 ### コンテナイメージのタグについて
 
 本サンプルでは、バッチのコンテナイメージのタグに latest が付与されています。
-Web アプリのコンテナイメージに対しては、CodeCommit へのコミットから始まるパイプラインによって、コミットハッシュを利用したバージョンニングを実施します。
-バッチでも同様のパイプラインを導入することで、コミットハッシュを利用したバージョニングが可能です。
+コミットハッシュを利用したバージョンニングを実施することで、コミットハッシュを利用したバージョニングが可能です。
 
 ### HTTPS の証明書について
 

@@ -32,6 +32,7 @@ export class ServerlessAppBase extends Construct {
     scope: Construct,
     id: string,
     props: {
+      region:string;
       vpc: aws_ec2.IVpc;
       privateLinkVpc?: aws_ec2.IVpc;
       domainName: string;
@@ -252,11 +253,13 @@ export class ServerlessAppBase extends Construct {
       sgForLambda: this.sgForLambda,
     };
     const getLambda = new DefaultLambda(this, 'sampleGetLambdaFunction', {
+      region:props.region,
       resourceId: 'GetLambda',
       entry: path.join(__dirname, '../../../../functions/get.ts'),
       ...lambdaProps,
     });
     const postLambda = new DefaultLambda(this, 'samplePostLambdaFunction', {
+      region:props.region,
       resourceId: 'PostLambda',
       entry: path.join(__dirname, '../../../../functions/post.ts'),
       ...lambdaProps,

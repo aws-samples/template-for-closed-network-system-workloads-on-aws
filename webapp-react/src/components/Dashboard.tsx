@@ -5,7 +5,7 @@ import { RecordForm } from "./Form";
 import { RecordList } from "./List";
 import { get } from "../modules/requests";
 
-export const Dashboard: React.FC<{}> = ({}) => {
+export const Dashboard: React.FC = () => {
     const [sampleRecords, setSampleRecords] = React.useState<Record[]>([])
     useEffect(() => {(async()=>{
         const res=await get("sample/");
@@ -15,8 +15,8 @@ export const Dashboard: React.FC<{}> = ({}) => {
         <HashRouter>
         <h1>Hello From S3 through CodePipeline ! </h1><br/>            
                 <Routes>
-                    <Route path="/" Component={({}) => {return <RecordList records={sampleRecords}/>}} />
-                    <Route path="/sampleapp/form" Component={({}) => {return <RecordForm records={sampleRecords} setRecords={setSampleRecords}/>}} />
+                    <Route path="/" Component={() => {return <RecordList records={sampleRecords}/>}} />
+                    <Route path="/sampleapp/form" Component={() => {return <RecordForm records={sampleRecords} setRecords={setSampleRecords}/>}} />
                 </Routes>
             
         </HashRouter>

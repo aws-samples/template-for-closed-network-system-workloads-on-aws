@@ -2,7 +2,7 @@ version: 0.2
 phases:
   install:
     commands:
-      - npm install
+      - npm install --omit=dev
   build:
     commands:
       - npm run build
