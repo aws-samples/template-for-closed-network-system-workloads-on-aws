@@ -9,7 +9,6 @@ export class DBinitLambda extends Construct {
     scope: Construct,
     id: string,
     props: {
-      region:string
       vpc: aws_ec2.IVpc;
       sgForLambda: aws_ec2.SecurityGroup;
       auroraSecretName: string;
@@ -22,7 +21,6 @@ export class DBinitLambda extends Construct {
     super(scope, id);
 
     const initFunc = new DefaultLambda(this, 'DbInitLambdaConstruct', {
-      region:props.region,
       resourceId: 'DbInitLambda',
       entry: path.join(__dirname, '../../../../functions/init.ts'),
       vpc: props.vpc,

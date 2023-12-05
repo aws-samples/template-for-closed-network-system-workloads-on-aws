@@ -20,19 +20,14 @@ import { DefaultLambda } from './lambda';
 import { NagSuppressions } from 'cdk-nag';
 import * as path from 'path';
 export class ServerlessAppBase extends Construct {
-  public readonly targetGroup: aws_elasticloadbalancingv2.ApplicationTargetGroup;
-  public readonly vpcEndpointTargetGroup: aws_elasticloadbalancingv2.ApplicationTargetGroup;
-  public readonly httpsTargetGroup: aws_elasticloadbalancingv2.ApplicationTargetGroup;
   public readonly alb: aws_elasticloadbalancingv2.ApplicationLoadBalancer;
   public readonly nlb: aws_elasticloadbalancingv2.NetworkLoadBalancer;
   public readonly webappS3bucket: aws_s3.Bucket;
-  public readonly lambdaFunctionRole: aws_iam.Role;
   public readonly sgForLambda: aws_ec2.SecurityGroup;
   constructor(
     scope: Construct,
     id: string,
     props: {
-      region:string;
       vpc: aws_ec2.IVpc;
       privateLinkVpc?: aws_ec2.IVpc;
       domainName: string;
@@ -92,7 +87,7 @@ export class ServerlessAppBase extends Construct {
       aws_elasticloadbalancingv2.ListenerCertificate.fromArn(props.certificateArn),
     ]);
 
-    this.httpsTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(
+    new aws_elasticloadbalancingv2.ApplicationTargetGroup(
       this,
       'HttpsTarget',
       {
@@ -145,7 +140,7 @@ export class ServerlessAppBase extends Construct {
     });
     this.webappS3bucket = s3Buckets.webAppBucket;
     // create ALB Target Group (for s3)
-    this.vpcEndpointTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(
+    const vpcEndpointTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(
       this,
       'VpcEndpointTargetGroup',
       {
@@ -161,14 +156,14 @@ export class ServerlessAppBase extends Construct {
     // get isolated subnets num
     const numOfIp = props.vpc.isolatedSubnets.length;
     for (let i = 0; i < numOfIp; i++) {
-      this.vpcEndpointTargetGroup.addTarget(
+      vpcEndpointTargetGroup.addTarget(
         new aws_elasticloadbalancingv2_targets.IpTarget(
           eni.getResponseField(`NetworkInterfaces.${i}.PrivateIpAddress`)
         )
       );
     }
     httpsListener.addTargetGroups('VPCEndpointTargetGroup', {
-      targetGroups: [this.vpcEndpointTargetGroup],
+      targetGroups: [vpcEndpointTargetGroup],
     });
     s3Buckets.webAppBucket.addToResourcePolicy(
       new aws_iam.PolicyStatement({
@@ -253,13 +248,11 @@ export class ServerlessAppBase extends Construct {
       sgForLambda: this.sgForLambda,
     };
     const getLambda = new DefaultLambda(this, 'sampleGetLambdaFunction', {
-      region:props.region,
       resourceId: 'GetLambda',
       entry: path.join(__dirname, '../../../../functions/get.ts'),
       ...lambdaProps,
     });
     const postLambda = new DefaultLambda(this, 'samplePostLambdaFunction', {
-      region:props.region,
       resourceId: 'PostLambda',
       entry: path.join(__dirname, '../../../../functions/post.ts'),
       ...lambdaProps,

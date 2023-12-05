@@ -1,4 +1,4 @@
-# Bucket Construct
+# WebAppBucket Construct
 
 ## Purpose
 
@@ -11,8 +11,7 @@ B bucket is to store the logs that something access to A bucket.
 None
 
 ## Required parameters (props)
-
-None
+- `bucketName` <string>: bucket name of A bucket
 
 ## Optional parameters (props)
 
@@ -22,4 +21,4 @@ None
 
 | Name   |   Type    | Description |
 | ------ | :-------: | ----------: |
-| bucket | s3.Bucket |             |
+| webAppBucket | s3.Bucket | bucket A  |

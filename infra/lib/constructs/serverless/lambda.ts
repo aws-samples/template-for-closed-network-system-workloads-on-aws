@@ -17,7 +17,6 @@ export class DefaultLambda extends Construct {
     scope: Construct,
     id: string,
     props: {
-      region: string;
       resourceId: string;
       entry: string;
       vpc: aws_ec2.IVpc;
@@ -90,7 +89,7 @@ export class DefaultLambda extends Construct {
       environment: {
         SECRET_NAME: props.auroraSecretName,
         HOST: props.rdsProxyEndpoint,
-        REGION: props.region
+        REGION: props.vpc.env.region
       },
       bundling: {
         forceDockerBundling: false,

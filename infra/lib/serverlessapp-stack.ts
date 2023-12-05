@@ -53,7 +53,6 @@ export class ServerlessappStack extends Stack {
         maxAzs: 2,
       });
       serverlessBase = new ServerlessAppBase(this, `WebappBase`, {
-        region:this.region,
         vpc: vpc,
         privateLinkVpc: privateLinkVpc.vpc,
         domainName: props.domainName,
@@ -68,7 +67,6 @@ export class ServerlessappStack extends Stack {
       });
     } else {
       serverlessBase = new ServerlessAppBase(this, `WebappBase`, {
-        region:this.region,
         vpc: vpc,
         domainName: props.domainName,
         certificateArn: props.certificateArn,
@@ -149,7 +147,6 @@ export class ServerlessappStack extends Stack {
     }
 
     new DBinitLambda(this, 'DBInitLambdaConstruct', {
-      region:this.region,
       vpc: vpc,
       sgForLambda: serverlessBase.sgForLambda,
       auroraSecretName: props.auroraSecretName,
