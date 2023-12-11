@@ -8,7 +8,7 @@ import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 
-export const RecordList: React.FC<{ records: Record[] }> = ({ records }) => {
+export const RecordList: React.FC<{ record: Record }> = ({ record }) => {
   return (
     <Table>
       <TableHead>
@@ -26,19 +26,15 @@ export const RecordList: React.FC<{ records: Record[] }> = ({ records }) => {
         </TableRow>
       </TableHead>
       <TableBody>
-        {records.map((row: Record) => {
-          return (
-            <TableRow>
-              <TableCell>{row.id} </TableCell>
-              <TableCell>{row.name} </TableCell>
-              <TableCell>{row.job0001_flag ? '成功' : '失敗'} </TableCell>
-              <TableCell>{row.job0002_flag ? '成功' : '失敗'} </TableCell>
-              <TableCell>{row.job0003_flag ? '成功' : '失敗'} </TableCell>
-              <TableCell>{row.job0004_flag ? '成功' : '失敗'} </TableCell>
-              <TableCell>{row.job0005_flag ? '成功' : '失敗'} </TableCell>
-            </TableRow>
-          );
-        })}
+        <TableRow>
+          <TableCell>{record.id} </TableCell>
+          <TableCell>{record.name} </TableCell>
+          <TableCell>{record.job0001_flag ? '成功' : '失敗'} </TableCell>
+          <TableCell>{record.job0002_flag ? '成功' : '失敗'} </TableCell>
+          <TableCell>{record.job0003_flag ? '成功' : '失敗'} </TableCell>
+          <TableCell>{record.job0004_flag ? '成功' : '失敗'} </TableCell>
+          <TableCell>{record.job0005_flag ? '成功' : '失敗'} </TableCell>
+        </TableRow>
       </TableBody>
     </Table>
   );

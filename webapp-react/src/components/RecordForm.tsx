@@ -9,9 +9,9 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 
 export const RecordForm: React.FC<{
-  records: Record[];
+  record: Record;
   setFlagHandler: Function;
-}> = ({ records, setFlagHandler }) => {
+}> = ({ record, setFlagHandler }) => {
   return (
     <Table>
       <TableHead>
@@ -29,9 +29,7 @@ export const RecordForm: React.FC<{
         </TableRow>
       </TableHead>
       <TableBody>
-        {records.map((row: Record) => {
-          return <RecordFormRow record={row} setFlagHandler={setFlagHandler}></RecordFormRow>;
-        })}
+        <RecordFormRow record={record} setFlagHandler={setFlagHandler}></RecordFormRow>
       </TableBody>
     </Table>
   );
