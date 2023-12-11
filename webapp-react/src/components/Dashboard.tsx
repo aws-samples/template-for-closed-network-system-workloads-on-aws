@@ -9,21 +9,19 @@ import Button from '@mui/material/Button';
 const resource = 'sample/';
 
 export const Dashboard: React.FC = () => {
-  const [sampleRecords, setSampleRecords] = useState<Record[]>([]);
+  const [sampleRecords, setSampleRecords] = useState<Record>({} as Record);
   const [formState, setFormState] = useState<boolean>(false);
 
   const setJobFlag = (id: number, jobFlagKey: string, newFlagValue: boolean) => {
-    setSampleRecords((prevRecords) =>
-      prevRecords.map((record) =>
-        record.id === id ? { ...record, [jobFlagKey]: newFlagValue } : record,
-      ),
+    setSampleRecords((prevRecord) =>
+      prevRecord.id === id ? { ...prevRecord, [jobFlagKey]: newFlagValue } : prevRecord,
     );
   };
 
   useEffect(() => {
     (async () => {
-      const res = await get('sample/');
-      setSampleRecords(res.data as Record[]);
+      const res = await get(resource);
+      setSampleRecords(res.data as Record);
     })();
   }, []);
   return (
@@ -41,7 +39,7 @@ export const Dashboard: React.FC = () => {
           >
             更新
           </Button>
-          <RecordForm records={sampleRecords} setFlagHandler={setJobFlag} />
+          <RecordForm record={sampleRecords} setFlagHandler={setJobFlag} />
         </>
       ) : (
         <>
@@ -53,7 +51,7 @@ export const Dashboard: React.FC = () => {
           >
             変更する
           </Button>
-          <RecordList records={sampleRecords} />
+          <RecordList record={sampleRecords} />
         </>
       )}
     </React.Fragment>
