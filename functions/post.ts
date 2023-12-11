@@ -11,9 +11,9 @@ export const handler = async (
   if (!event.body) {
     const response = {
       statusCode: 400,
-      body: JSON.stringify("Body parameter is null"),
+      body: JSON.stringify("Body is null"),
     };
-    logger.error("Body parameter is null");
+    logger.error("Body is null");
     return response;
   }
   const body = JSON.parse(event.body);
@@ -38,16 +38,14 @@ export const handler = async (
   ) {
     const response = {
       statusCode: 400,
-      body: JSON.stringify("Some query-string are undefined"),
+      body: JSON.stringify("Some parameters are undefined"),
     };
-    logger.error(
-      "Error in queryStringParameters : Some query-strings are undefined"
-    );
+    logger.error("Some parameters are undefined");
     return response;
   }
   // check their types and formats
   if (Number.isNaN(parseInt(id))) {
-    logger.error("Error in queryStringParameters : id is not a number");
+    logger.error("id is not a number");
     return { statusCode: 400, body: JSON.stringify("id is not a number") };
   }
   if (
@@ -57,9 +55,7 @@ export const handler = async (
     isBoolean(job0004_flag) ||
     isBoolean(job0005_flag)
   ) {
-    logger.error(
-      "Error in queryStringParameters : Any flag parameters are not Boolean"
-    );
+    logger.error("Any flag parameters are not Boolean");
     return {
       statusCode: 400,
       body: JSON.stringify("Any flag parameters are not Boolean"),
