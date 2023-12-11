@@ -13,7 +13,7 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { EncryptionKey } from '../kms/key';
 
-export class CodePipeline extends Construct {
+export class CodePipelineWebappJava extends Construct {
   constructor(
     scope: Construct,
     id: string,

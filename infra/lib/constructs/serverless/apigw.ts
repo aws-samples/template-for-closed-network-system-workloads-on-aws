@@ -1,6 +1,7 @@
 import { aws_apigateway, aws_ec2, aws_iam, aws_logs } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { NagSuppressions } from 'cdk-nag';
+
 // private ApiGw with vpc endpoint
 export class ApiGw extends Construct {
   public readonly vpcEndpointSecurityGroup: aws_ec2.SecurityGroup;
@@ -110,8 +111,8 @@ export class ApiGw extends Construct {
         },
       });
     };
-    // NagSuppressions
 
+    // NagSuppressions
     NagSuppressions.addResourceSuppressions(
       this.vpcEndpointSecurityGroup,
       [

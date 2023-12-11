@@ -1,19 +1,17 @@
-import React, {Component} from 'react';
+import React, { Component } from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import Dashboard from './components/Dashboard';
 import reportWebVitals from './reportWebVitals';
 
-const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
-);
+const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 
 class App extends Component {
   render() {
     return (
-        <React.StrictMode>
-          <Dashboard/>
-        </React.StrictMode> 
+      <React.StrictMode>
+        <Dashboard />
+      </React.StrictMode>
     );
   }
 }

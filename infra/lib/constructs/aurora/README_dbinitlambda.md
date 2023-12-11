@@ -9,7 +9,6 @@
 - RDS
 - RDS proxy
 
-
 ## Required parameters (props)
 
 - `vpc <aws_ec2.IVpc>` : Define the vpc including RDS
@@ -19,8 +18,11 @@
 - `auroraSecretEncryptionKeyArn <string>` : KMS Key Arn which encrypt secret including RDS information
 - `rdsProxyEndpoint <string>` : Endpoint url of RDS proxy endpoint
 - `rdsProxyArn <string>` : ARN of RDS proxy endpoint
-     
+
 ## Optional parameters (props)
+
 None
+
 ## Properties
+
 None

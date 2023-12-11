@@ -4,7 +4,7 @@ import { NagSuppressions } from 'cdk-nag';
 import { DefaultLambda } from '../serverless/lambda';
 import * as path from 'path';
 
-export class DBinitLambda extends Construct {
+export class DbInitLambda extends Construct {
   constructor(
     scope: Construct,
     id: string,
