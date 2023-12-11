@@ -3,7 +3,7 @@ import { Bastion } from './constructs/ec2/bastion';
 import { Construct } from 'constructs';
 import { EcsAppBase } from './constructs/ecs/ecs-app-base';
 import { EcsAppService } from './constructs/ecs/ecs-app-service';
-import { CodePipeline } from './constructs/codepipeline/codepipeline-webapp-java';
+import { CodePipelineWebappJava } from './constructs/codepipeline/codepipeline-webapp-java';
 import { Network } from './constructs/network/network';
 
 interface WebappStackProps extends StackProps {
@@ -79,7 +79,7 @@ export class WebappStack extends Stack {
     });
 
     // Create Deploy Pipeline
-    new CodePipeline(this, `WebappCodePipeline`, {
+    new CodePipelineWebappJava(this, `WebappCodePipeline`, {
       codeCommitRepository: webappSourceRepository,
       ecrRepository: webappContainerRepository,
       ecsService: ecsAppService.ecsService,

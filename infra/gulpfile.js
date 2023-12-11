@@ -28,7 +28,14 @@ let certificateArn = '';
 
 /* cdk diff */
 exports.diff = series(setStage, diffBase, buildBaseEnv, diffWebapp, buildWebappEnv, diffBatch);
-exports.diffServerless = series(setStage, diffBase, buildBaseEnv, diffServerlessWebapp, buildWebappEnv, diffBatch);
+exports.diffServerless = series(
+  setStage,
+  diffBase,
+  buildBaseEnv,
+  diffServerlessWebapp,
+  buildWebappEnv,
+  diffBatch
+);
 /* cdk synth */
 exports.synth = series(
   setStage,
@@ -82,7 +89,10 @@ exports.deployBatch = series(setStage, bootstrapBatch, buildBaseEnv, buildBatch,
 
 /* cdk destroy */
 exports.destroy = series(setStage, series(destroyBatch, destroyWebapp, destroyBase));
-exports.destroyServerless = series(setStage, series(destroyBatch, destroyServerlessWebapp, destroyBase));
+exports.destroyServerless = series(
+  setStage,
+  series(destroyBatch, destroyServerlessWebapp, destroyBase)
+);
 exports.destroyWebapp = series(setStage, destroyWebapp);
 exports.destroyServerlessWebapp = series(setStage, destroyServerlessWebapp);
 exports.destroyBatch = series(setStage, destroyBatch);

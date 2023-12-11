@@ -19,13 +19,13 @@ Creates Lambda connecting RDS
 - `rdsProxyEndpoint <string>` : Endpoint url of RDS proxy endpoint
 - `rdsProxyArn <string>` : ARN of RDS proxy endpoint
 - `sgForLambda <aws_ec2.SecurityGroup>` : Security Group for Lambda
-     
 
 ## Optional parameters (props)
 
 None
 
 ## Properties
-| Name   |   Type    | Description |
-| ------ | :-------: | ----------: |
-|  lambda |  aws_lambda_nodejs.NodejsFunction | lambda Function  |
+
+| Name   |               Type               |     Description |
+| ------ | :------------------------------: | --------------: |
+| lambda | aws_lambda_nodejs.NodejsFunction | lambda Function |

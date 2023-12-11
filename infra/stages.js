@@ -17,10 +17,10 @@ exports.stages = {
     awsProfile: 'myProfile',
     alias: 'johndoe',
     deployEnv: 'dev',
-    notifyEmail: 'johndoe@xxxx.com',
+    notifyEmail: 'suzukyz+serverless@amazon.co.jp',
     enabledPrivateLink: false,
     windowsBastion: true,
-    linuxBastion: true,
+    linuxBastion: false,
     domainName: 'templateapp.local',
   },
 };

@@ -1,11 +1,12 @@
-# infra（サーバーレス）
+# サーバーレスアプリケーション版
 
 AWS 上にサーバーレスなサンプルアプリケーションやバッチシステムを動かす環境を構築する CDK のコードです。
+
 ## 概要
 
 アクセス数が少ない、またはほとんどアクセスしない時間帯があるようなアプリケーションを、ECS/Fargate を用いて常時稼働しておくと、利用量に対して多くの費用がかかります。また、コンテナイメージなどの運用コストもあります。
 
-そのような場合に、 Lambda を用いてサーバレスに構成することによって、費用や運用の手間を減らすことができます。
+そのような場合に、 Lambda を用いてサーバーレスに構成することによって、費用や運用の手間を減らすことができます。
 
 構成図は以下のとおりです。
 
@@ -68,6 +69,7 @@ $ npm run create-certificate -- --{alias}
 ### 4. Lambda 関数に必要なモジュールのインストール
 
 `functions`ディレクトリで次のコマンドを実行し、Lambda 関数に必要なモジュールをインストールしてください。
+
 ```bash
 $ npm install
 ```
@@ -240,11 +242,11 @@ Security Hub を有効にした場合、デフォルトで有効になる基準�
 ## 本番利用時の考慮点
 
 ## S3 のバケット名について
+
 通信を疎通させるために、S3 のバケット名をウェブサイトのドメイン名と一致させる必要があります。
 S3 のバケット名は全ての AWS アカウント間でユニークである必要があり、この制約により希望のドメイン名でウェブサイトをデプロイできない場合があります。
 
-ALB、S3、PrivateLinkによる内部HTTPS静的ウェブサイトのホスティングについては、詳しくは[こちらのブログ](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/)もご参照ください
-
+ALB、S3、PrivateLink による内部 HTTPS 静的ウェブサイトのホスティングについては、詳しくは[こちらのブログ](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/)もご参照ください
 
 ### EC2 へのパッチ適用について
 
