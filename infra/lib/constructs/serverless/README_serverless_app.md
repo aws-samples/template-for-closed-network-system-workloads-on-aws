@@ -1,4 +1,4 @@
-# ServerlessAppBase Construct
+# ServerlessApp Construct
 
 ## Purpose
 
@@ -11,6 +11,7 @@ Create Lambda functions , S3 bucket for static contents and ALB to access servic
 - VPC that includes private isolated subnet
 
 ## Required parameters (props)
+
 - `vpc <ec2.IVpc>`: Define the vpc including isolated subnets
 - `domainName <string>`: Domain for websites
 - `certificateArn <string>`: Certificate Arn for ALB
@@ -28,10 +29,9 @@ Create Lambda functions , S3 bucket for static contents and ALB to access servic
 
 ## Properties
 
-
-| Name        |                      Type                      |                                   Description |
-| ----------- | :--------------------------------------------: | --------------------------------------------: |
-| alb |  aws_elasticloadbalancingv2.ApplicationLoadBalancer | |
-| nlb | aws_elasticloadbalancingv2.NetworkLoadBalancer | |
-| webappS3bucket |  aws_s3.Bucket | s3 bucket for static contents |
-| sgForLambda | aws_ec2.SecurityGroup | Security group for Lambda which connects RDS |
+| Name           |                        Type                        |                                  Description |
+| -------------- | :------------------------------------------------: | -------------------------------------------: |
+| alb            | aws_elasticloadbalancingv2.ApplicationLoadBalancer |                                              |
+| nlb            |   aws_elasticloadbalancingv2.NetworkLoadBalancer   |                                              |
+| webappS3bucket |                   aws_s3.Bucket                    |                s3 bucket for static contents |
+| sgForLambda    |               aws_ec2.SecurityGroup                | Security group for Lambda which connects RDS |
