@@ -30,7 +30,6 @@ export const handler = async (
   if (
     !id ||
     !job0001_flag ||
-    !job0001_flag ||
     !job0002_flag ||
     !job0003_flag ||
     !job0004_flag ||
