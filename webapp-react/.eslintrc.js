@@ -11,6 +11,6 @@ module.exports = {
   },
   plugins: ['@typescript-eslint'],
   rules: {
-    "@typescript-eslint/no-loss-of-precision": "off",
+    '@typescript-eslint/no-loss-of-precision': 'off',
   },
 };

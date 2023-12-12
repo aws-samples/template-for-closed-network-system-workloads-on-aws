@@ -19,7 +19,8 @@ import { ApiGw } from './apigw';
 import { DefaultLambda } from './lambda';
 import { NagSuppressions } from 'cdk-nag';
 import * as path from 'path';
-export class ServerlessAppBase extends Construct {
+
+export class ServerlessApp extends Construct {
   public readonly alb: aws_elasticloadbalancingv2.ApplicationLoadBalancer;
   public readonly nlb: aws_elasticloadbalancingv2.NetworkLoadBalancer;
   public readonly webappS3bucket: aws_s3.Bucket;
@@ -87,16 +88,12 @@ export class ServerlessAppBase extends Construct {
       aws_elasticloadbalancingv2.ListenerCertificate.fromArn(props.certificateArn),
     ]);
 
-    new aws_elasticloadbalancingv2.ApplicationTargetGroup(
-      this,
-      'HttpsTarget',
-      {
-        targetType: aws_elasticloadbalancingv2.TargetType.IP,
-        port: 8080,
-        vpc: props.vpc,
-        healthCheck: { path: '/', port: '8080' },
-      }
-    );
+    new aws_elasticloadbalancingv2.ApplicationTargetGroup(this, 'HttpsTarget', {
+      targetType: aws_elasticloadbalancingv2.TargetType.IP,
+      port: 8080,
+      vpc: props.vpc,
+      healthCheck: { path: '/', port: '8080' },
+    });
 
     const s3InterfaceEndpoint = props.vpc.addInterfaceEndpoint('S3InterfaceEndpoint', {
       service: aws_ec2.InterfaceVpcEndpointAwsService.S3,
@@ -192,7 +189,7 @@ export class ServerlessAppBase extends Construct {
     this.sgForLambda = apiGw.sgForLambda;
     // add resource
     const sampleResource = apiGw.addResource('sample');
-    const methodResponses : aws_apigateway.MethodResponse[] =  [
+    const methodResponses: aws_apigateway.MethodResponse[] = [
       {
         statusCode: '200',
         responseParameters: {
@@ -212,7 +209,7 @@ export class ServerlessAppBase extends Construct {
         },
       },
     ];
-    const integrationResponses : aws_apigateway.IntegrationResponse[] = [
+    const integrationResponses: aws_apigateway.IntegrationResponse[] = [
       {
         statusCode: '200',
         responseParameters: {

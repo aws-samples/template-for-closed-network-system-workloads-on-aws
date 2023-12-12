@@ -1,11 +1,11 @@
 import { aws_codecommit, aws_ec2, StackProps, Stack } from 'aws-cdk-lib';
 import { Bastion } from './constructs/ec2/bastion';
 import { Construct } from 'constructs';
-import { ServerlessAppBase } from './constructs/serverless/serverless-app-base';
-import { CodePipelineServerless } from './constructs/codepipeline/codepipline-webapp-react';
+import { ServerlessApp } from './constructs/serverless/serverless-app';
+import { CodePipelineWebappReact } from './constructs/codepipeline/codepipeline-webapp-react';
 import { Network } from './constructs/network/network';
 import { NagSuppressions } from 'cdk-nag';
-import { DBinitLambda } from './constructs/aurora/dbinitlambda';
+import { DbInitLambda } from './constructs/aurora/dbinitlambda';
 
 interface ServerlessappStackProps extends StackProps {
   auroraSecretName: string;
@@ -52,7 +52,7 @@ export class ServerlessappStack extends Stack {
         isolatedSubnet: true,
         maxAzs: 2,
       });
-      serverlessBase = new ServerlessAppBase(this, `WebappBase`, {
+      serverlessBase = new ServerlessApp(this, `WebappBase`, {
         vpc: vpc,
         privateLinkVpc: privateLinkVpc.vpc,
         domainName: props.domainName,
@@ -66,7 +66,7 @@ export class ServerlessappStack extends Stack {
         rdsProxyArn: props.rdsProxyArn,
       });
     } else {
-      serverlessBase = new ServerlessAppBase(this, `WebappBase`, {
+      serverlessBase = new ServerlessApp(this, `WebappBase`, {
         vpc: vpc,
         domainName: props.domainName,
         certificateArn: props.certificateArn,
@@ -81,7 +81,7 @@ export class ServerlessappStack extends Stack {
     }
 
     // Create Deploy Pipeline
-    new CodePipelineServerless(this, `WebappCodePipeline`, {
+    new CodePipelineWebappReact(this, `WebappCodePipeline`, {
       codeCommitRepository: webappSourceRepository,
       s3bucket: serverlessBase.webappS3bucket,
     });
@@ -146,7 +146,7 @@ export class ServerlessappStack extends Stack {
       }
     }
 
-    new DBinitLambda(this, 'DBInitLambdaConstruct', {
+    new DbInitLambda(this, 'DBInitLambdaConstruct', {
       vpc: vpc,
       sgForLambda: serverlessBase.sgForLambda,
       auroraSecretName: props.auroraSecretName,
@@ -159,7 +159,7 @@ export class ServerlessappStack extends Stack {
     // [CHANGE HERE] Nag suppressions with path : you need to change here for deployment...
     NagSuppressions.addResourceSuppressionsByPath(
       this,
-      '/RayohopeDevTemplateappWebapp/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource',
+      `/${id}/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource`,
       [
         {
           id: 'AwsSolutions-IAM4',
@@ -172,7 +172,7 @@ export class ServerlessappStack extends Stack {
     );
     NagSuppressions.addResourceSuppressionsByPath(
       this,
-      '/RayohopeDevTemplateappWebapp/AWS679f53fac002430cb0da5b7982bd2287/Resource',
+      `/${id}/AWS679f53fac002430cb0da5b7982bd2287/Resource`,
       [
         {
           id: 'AwsSolutions-L1',

@@ -89,7 +89,7 @@ export class DefaultLambda extends Construct {
       environment: {
         SECRET_NAME: props.auroraSecretName,
         HOST: props.rdsProxyEndpoint,
-        REGION: props.vpc.env.region
+        REGION: props.vpc.env.region,
       },
       bundling: {
         forceDockerBundling: false,

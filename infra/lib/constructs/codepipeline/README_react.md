@@ -1,4 +1,4 @@
-# CodePipelineServerless Construct
+# CodePipelineWebappReact Construct
 
 ## Purpose
 

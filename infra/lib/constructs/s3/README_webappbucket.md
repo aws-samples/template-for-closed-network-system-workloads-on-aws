@@ -11,6 +11,7 @@ B bucket is to store the logs that something access to A bucket.
 None
 
 ## Required parameters (props)
+
 - `bucketName` <string>: bucket name of A bucket
 
 ## Optional parameters (props)
@@ -19,6 +20,6 @@ None
 
 ## Properties
 
-| Name   |   Type    | Description |
-| ------ | :-------: | ----------: |
-| webAppBucket | s3.Bucket | bucket A  |
+| Name         |   Type    | Description |
+| ------------ | :-------: | ----------: |
+| webAppBucket | s3.Bucket |    bucket A |
