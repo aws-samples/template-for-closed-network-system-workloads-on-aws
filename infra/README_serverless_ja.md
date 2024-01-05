@@ -164,81 +164,6 @@ $ npm run diff-serverless -- --{alias}
 $ npm run list-serverless -- --{alias}
 ```
 
-## AWS Step Functions で実装するジョブ管理基盤
-
-ジョブ管理基盤は、「① ワークフローが作成できること」「② 再実行が可能なこと」「③ 失敗時に通知が出せること」といった機能が求められます。
-① のワークフローについては、Step Functions で実現可能ですが、② や ③ は実装が必要になります。
-本サンプルでは、この ②、③ の実装例をご提供します。
-
-今回実装したサンプルは、Step Functions のステートマシンが親子関係になっており、親側がメインのワークフロー、子側で ② と ③ を実現しています。
-ステートマシンにおけるワークフローの作成方法については、[公式のドキュメント](https://d1.awsstatic.com/webinars/jp/pdf/services/20201111_BlackBelt_AWS%20CodeStar_AWS_CodePipeline.pdf?page=52)をご参照ください。
-
-ここでは、実装している ②、③ について解説します。
-以下の図は、親のステートマシンから呼び出される、子のステートマシンを示しています。
-
-![Job](../docs/images/job.png)
-
-子のステートマシンでは、ある一つのジョブスクリプトが実行されますが、以下の流れに沿って実行されます。
-
-1. ジョブスクリプトの当日の実行状態を確認する
-2. ジョブが成功しているか判定する
-   1. 成功していれば、ジョブはスキップされます
-3. 成功以外であれば、ジョブスクリプトを実行する
-4. ジョブスクリプトの結果が成功なら、実行状態を"SUCCEEDED"として登録し、このステートマシンを終了する
-5. ジョブスクリプトの結果が失敗なら、実行状態を"FAILED"として登録する
-6. 続けて、失敗したことをメールで通知する
-7. ステートマシンとして失敗したことを設定し、終了する
-
-状態の確認や状態の登録時に、DynamoDB にアクセスし、ジョブの実行状態が、実行日付とジョブの ID をキーとして、参照・登録されます。
-このような実行状態の管理を行うことで、② のジョブの再実行を可能にしています。
-
-③ のジョブの失敗通知は、Step Functions が SNS の API を実行することで、失敗したジョブ ID を連携し、購読されているメールアドレスに通知が送信されます。
-
-## CDK の静的解析
-
-本プロジェクトの CDK のコードは、[cdk-nag](https://github.com/cdklabs/cdk-nag/blob/main/README.md)を利用して静的解析を実施しています。
-提供されているルールに沿った実装ができているか確認することで、致命的なセキュリティリスクを予防します。
-
-例外化しているルールは、ソースコードの下部にまとめて記載しています。
-必要に応じて例外化の追加・削除を実施ください。
-
-具体的な使い方については、[AWS Cloud Development Kit と cdk-nag でアプリケーションのセキュリティとコンプライアンスを管理する](https://aws.amazon.com/jp/blogs/news/manage-application-security-and-compliance-with-the-aws-cloud-development-kit-and-cdk-nag/)、にて解説していますので、ご参照ください。
-
-## Security Hub のチェック結果
-
-Security Hub を有効にした場合、デフォルトで有効になる基準は以下の 2 つです。
-
-- [AWS Foundational Security Best Practices (FSBP) standard](https://docs.aws.amazon.com/ja_jp/securityhub/latest/userguide/fsbp-standard.html)
-- [Center for Internet Security (CIS) AWS Foundations Benchmark v1.2.0](https://docs.aws.amazon.com/ja_jp/securityhub/latest/userguide/cis-aws-foundations-benchmark.html)
-
-これらのチェックが行われると、ベンチマークレポートで重要度が CRITICAL あるいは HIGH のレベルでレポートされる検出項目があります。
-これらに対しては、別途対応が必要になります。
-
-### ルートユーザへの MFA の適用
-
-#### 検出項目
-
-- [[CIS.1.13] Ensure MFA is enabled for the "root" account](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-cis-controls.html#securityhub-cis-controls-1.13)
-- [[CIS.1.14] Ensure hardware MFA is enabled for the "root" account](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-cis-controls.html#securityhub-cis-controls-1.14)
-- [[IAM.6] Hardware MFA should be enabled for the root user](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards-fsbp-controls.html#fsbp-iam-6)
-
-#### 修復方法
-
-- ルートユーザで AWS にログインし、以下のドキュメントに沿って MFA を有効化してください。
-  - [AWS アカウント のルートユーザー (コンソール) 用にハードウェア TOTP トークンを有効にします](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_enable_physical.html#enable-hw-mfa-for-root)
-
-### CodeBuild の特権モードの無効化
-
-#### 検出項目
-
-- [[CodeBuild.5] CodeBuild project environments should not have privileged mode enabled](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards-fsbp-controls.html#fsbp-codebuild-5)
-
-#### 修復方法
-
-- CodeBuild では、Docker イメージをビルドする必要がある場合を除き、特権モードは無効化してください。本テンプレートでは、Docker イメージのビルドを行っているため、有効化していますが、実際に利用される場合は、ご自身の環境に合った設定にご変更ください。
-  - テンプレートだけの対応であれば、[CodePipeline のコンストラクト内の特権モードの設定](lib/constructs/codepipeline/codepipeline-webapp-java.ts#L65)を`false`に変更してください。
-  - ご参考：[interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
-
 ## 本番利用時の考慮点
 
 ## S3 のバケット名について
@@ -248,20 +173,4 @@ S3 のバケット名は全ての AWS アカウント間でユニークである
 
 ALB、S3、PrivateLink による内部 HTTPS 静的ウェブサイトのホスティングについては、詳しくは[こちらのブログ](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/)もご参照ください
 
-### EC2 へのパッチ適用について
 
-運用管理のため EC2 インスタンスを利用する場合、パッチを当てる方法についてもご検討ください。
-Session Manager を経由して手動でパッチを当てることも可能ですが、自動でパッチを当てるには、Patch Manager が有用です。
-詳しくは、[AWS Systems Manager Patch Manager](https://docs.aws.amazon.com/ja_jp/systems-manager/latest/userguide/systems-manager-patch.html)をご参照ください。
-
-また、パッチ適用といった変更管理における考え方に限らず、AWS では長年培った経験をもとにベストプラクティスをフレームワークとしてまとめた、[AWS Well-Architected Framework](https://docs.aws.amazon.com/ja_jp/wellarchitected/latest/framework/welcome.html)を公開しています。ぜひご参照ください。
-
-### コンテナイメージのタグについて
-
-本サンプルでは、バッチのコンテナイメージのタグに latest が付与されています。
-コミットハッシュを利用したバージョンニングを実施することで、コミットハッシュを利用したバージョニングが可能です。
-
-### HTTPS の証明書について
-
-本サンプルでは、自己署名付き証明書を利用して HTTPS を用いた通信を行なっています。
-自己署名付き証明書のため、あくまで検証用としてご利用ください。
