@@ -6,11 +6,16 @@ AWS 上にサーバーレスなサンプルアプリケーションやバッチ�
 
 アクセス数が少ない、またはほとんどアクセスしない時間帯があるようなアプリケーションを、ECS/Fargate を用いて常時稼働しておくと、利用量に対して多くの費用がかかります。また、コンテナイメージなどの運用コストもあります。
 
-そのような場合に、 Lambda を用いてサーバーレスに構成することによって、費用や運用の手間を減らすことができます。
+そのような場合に、ウェブサイト部分を S3 や Lambda を用いてサーバーレスに構成することによって、費用や運用の手間を減らすことができます。
 
-構成図は以下のとおりです。
+ALB、S3、PrivateLink による内部 HTTPS 静的ウェブサイトのホスティングについては、詳しくは[こちらのブログ](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/)もご参照ください
+
+構成図は以下のとおりです。（赤枠で囲ったところがコンテナ版との差分です）
 
 ![構成図](../docs/images/template_architecture_serverless_ja.png)
+
+Private Link を用いた場合、以下の通りになります。
+![構成図](../docs/images/template_architecture_serverless_privatelink_ja.png)
 
 ### 1. AWS CLI の設定
 
@@ -166,11 +171,17 @@ $ npm run list-serverless -- --{alias}
 
 ## 本番利用時の考慮点
 
-## S3 のバケット名について
+### S3 のバケット名について
 
 通信を疎通させるために、S3 のバケット名をウェブサイトのドメイン名と一致させる必要があります。
 S3 のバケット名は全ての AWS アカウント間でユニークである必要があり、この制約により希望のドメイン名でウェブサイトをデプロイできない場合があります。
 
-ALB、S3、PrivateLink による内部 HTTPS 静的ウェブサイトのホスティングについては、詳しくは[こちらのブログ](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/)もご参照ください
+### コンテナ版からの移行手順
+コンテナ版を使っていて、サーバーレスへの移行を考えているときは、大まかには次のような手順を踏む必要があります。
+
+- 静的な部分と動的な処理を分離する
+- 静的な部分を生成するコードを webapp-react フォルダに記述し、 ビルドする手順を buildspec.yaml に記述する
+- 動的な部分については、 Lambda 関数を追加するコードを infra/lib/constructs/serverless/serverless-app.ts ファイルに記述する
+  - Lambda 関数自体のコードは、 functions フォルダ以下に入れる
 
 
