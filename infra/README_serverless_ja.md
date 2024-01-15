@@ -8,7 +8,7 @@ AWS 上にサーバーレスなサンプルアプリケーションやバッチ�
 
 そのような場合に、ウェブサイト部分を S3 や Lambda を用いてサーバーレスで構成することによって、費用や運用の手間を減らすことができます。
 
-ALB、S3、PrivateLink による内部 HTTPS 静的ウェブサイトのホスティングについては、詳しくは[こちらのブログ](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/)もご参照ください
+閉域網におけるALB、S3、PrivateLink による内部 HTTPS 静的Webサイトのホスティングは、[こちらのブログ](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/)に記載されており、このブログをもとにCDK化したものが、サーバーレス版の本ソースコード群の一部となります。本ソースコードをご利用いただくことで、煩雑なInternal ALBの設定などを自動化することができます。
 
 構成図は以下のとおりです。（赤枠で囲ったところがコンテナ版との差分です）
 
