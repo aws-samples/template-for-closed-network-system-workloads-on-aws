@@ -1,12 +1,30 @@
 # webapp-react
 
-## 概要
+## Overview
 
-本アプリケーションは、サーバーレスな infra 上で React アプリケーションの動作確認を行うためのサンプルアプリケーションになります。
-また、アプリケーション内で DB を操作することができ、バッチ処理で失敗させるレコードを選択することで、バッチ処理の動作確認を行うことができます。
+This application is a sample application for checking the operation of React applications on serverless infra.
+Also, you can operate the DB within the application, and you can check the operation of batch processing by selecting records that will fail in batch processing.
 
-## スクリーンショット
+## screenshot
 
-次の画像のような画面が表示されたら起動しています。
+The following image will be displayed.
 
-![参照画面](./docs/images/screenshot.png)
+![Screenshot](./docs/images/screenshot.png)
+
+## Run on local
+
+### Execute
+
+You can check what the application looks like by running the following command and going to localhost:3000. (To check data operation, deployment on AWS is required.)
+
+```sh
+npm start
+```
+
+## build
+
+When the following command is executed, a file generated into `build` folder.
+
+```sh
+npm run build
+```
