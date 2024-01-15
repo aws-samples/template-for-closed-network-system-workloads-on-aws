@@ -6,7 +6,7 @@ AWS 上にサーバーレスなサンプルアプリケーションやバッチ�
 
 アクセス数が少ない、またはほとんどアクセスしない時間帯があるようなアプリケーションを、ECS/Fargate を用いて常時稼働しておくと、実際の利用料に対し、費用がかかります。また、コンテナイメージなどの運用コストもあります。
 
-そのような場合に、ウェブサイト部分を S3 や Lambda を用いてサーバーレスに構成することによって、費用や運用の手間を減らすことができます。
+そのような場合に、ウェブサイト部分を S3 や Lambda を用いてサーバーレスで構成することによって、費用や運用の手間を減らすことができます。
 
 ALB、S3、PrivateLink による内部 HTTPS 静的ウェブサイトのホスティングについては、詳しくは[こちらのブログ](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/)もご参照ください
 
@@ -179,9 +179,16 @@ S3 のバケット名は全ての AWS アカウント間でユニークである
 ### コンテナ版からの移行手順
 コンテナ版を使っていて、サーバーレスへの移行を考えているときは、大まかには次のような手順を踏む必要があります。
 
-- 静的な部分と動的な処理を分離する
-- 静的な部分を生成するコードを webapp-react フォルダに記述し、 ビルドする手順を buildspec.yaml に記述する
-- 動的な部分については、 Lambda 関数を追加するコードを infra/lib/constructs/serverless/serverless-app.ts ファイルに記述する
-  - Lambda 関数自体のコードは、 functions フォルダ以下に入れる
-
+- GitHubからサーバーレス版のソースコードを含んだ、最新のソースコードを取得する
+- `npm run destroy-webapp` コマンドを利用し、デプロイ済みのWebapp Stackを削除する
+- 証明書の作成は完了しているため、本READMEの1. CDKに従い、デプロイを実施する
+- 既存のWebapp用のCodeCommitリポジトリは、Javaアプリケーションコードがデプロイされているため、webapp-javaのディレクトリ内のgit関連ファイルを残したまま、ソースコードだけを削除し、webapp-reactのソースコードをwebapp-javaディレクトリにコピーする。
+- 続いて、webapp-javaのディレクトリ名をwebapp-reactに変更する
+- 以下のコマンドを実行し、reactのソースコードをpushする
+```
+$ cd webapp-react
+$ git add .
+$ git commit -m "Initial commit"
+$ git push --set-upstream origin main
+```
 
