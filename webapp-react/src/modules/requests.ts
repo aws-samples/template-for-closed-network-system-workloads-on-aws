@@ -1,12 +1,12 @@
-import React, { useState, useEffect,Dispatch,SetStateAction } from "react";
 import axios from 'axios';
-import { Record } from '../types/types';
+import { Record } from '../types/record';
 
-export const get =  async (resource:string) => {
-    const response = await axios.get(process.env.REACT_APP_ENDPOINT_URL+resource);
-    return response.data as Record[];
+const API_ENDPOINT = process.env.REACT_APP_ENDPOINT_URL;
+
+export const get = async (resource: string, params?: { [key: string]: any }) => {
+  return await axios.get(`${API_ENDPOINT}${resource}`, { params: params });
 };
 
-export const post = async (resource:string,row:Record) => {
-    return axios.post(process.env.REACT_APP_ENDPOINT_URL+resource,null,{params:row})
+export const post = async (resource: string, data: any) => {
+  return axios.post(`${API_ENDPOINT}${resource}`, data);
 };

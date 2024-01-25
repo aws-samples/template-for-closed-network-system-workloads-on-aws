@@ -6,13 +6,13 @@ import {
   aws_iam,
   aws_kms,
   aws_logs,
-  aws_s3
+  aws_s3,
 } from 'aws-cdk-lib';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { EncryptionKey } from '../kms/key';
 
-export class CodePipelineServerless extends Construct {
+export class CodePipelineWebappReact extends Construct {
   constructor(
     scope: Construct,
     id: string,
@@ -61,7 +61,7 @@ export class CodePipelineServerless extends Construct {
       environment: {
         privileged: true,
         buildImage: aws_codebuild.LinuxBuildImage.AMAZON_LINUX_2_4,
-      }
+      },
     });
 
     const buildOutput = new aws_codepipeline.Artifact();
@@ -78,7 +78,7 @@ export class CodePipelineServerless extends Construct {
 
     // Deploy stage
     const deployAction = new aws_codepipeline_actions.S3DeployAction({
-      actionName: 'DeployBuildFiletoS3',
+      actionName: 'DeployBuildFileToS3',
       input: buildOutput,
       bucket: props.s3bucket,
     });

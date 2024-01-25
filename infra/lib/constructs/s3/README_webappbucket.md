@@ -1,4 +1,4 @@
-# Bucket Construct
+# WebAppBucket Construct
 
 ## Purpose
 
@@ -12,7 +12,7 @@ None
 
 ## Required parameters (props)
 
-None
+- `bucketName` <string>: bucket name of A bucket
 
 ## Optional parameters (props)
 
@@ -20,6 +20,6 @@ None
 
 ## Properties
 
-| Name   |   Type    | Description |
-| ------ | :-------: | ----------: |
-| bucket | s3.Bucket |             |
+| Name         |   Type    | Description |
+| ------------ | :-------: | ----------: |
+| webAppBucket | s3.Bucket |    bucket A |

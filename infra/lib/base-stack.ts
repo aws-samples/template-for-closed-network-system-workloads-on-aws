@@ -9,7 +9,7 @@ import { Ecr } from './constructs/ecr/ecr';
 
 export class BaseStack extends Stack {
   public readonly vpc: aws_ec2.Vpc;
-  constructor(scope: Construct, id: string,props?: StackProps,) {
+  constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
     // Create networking resources
@@ -51,7 +51,7 @@ export class BaseStack extends Stack {
     });
     new CfnOutput(this, 'AuroraEdition', {
       exportName: 'AuroraEdition',
-      value: 'postgresql'
+      value: 'postgresql',
     });
   }
 }

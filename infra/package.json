@@ -12,6 +12,7 @@
     "cdk": "cdk",
     "gulp": "gulp --color",
     "diff": "gulp diff",
+    "diff-serverless": "gulp diffServerless",
     "synth": "gulp synth",
     "synth-serverless": "gulp synthServerless",
     "synth-base": "gulp synthBase",
@@ -60,11 +61,9 @@
     "utf-8-validate": "^5.0.10"
   },
   "dependencies": {
-    "@aws-cdk/aws-appsync-alpha": "^2.26.0-alpha.0",
-    "@aws-cdk/aws-glue-alpha": "^2.27.0-alpha.0",
     "@types/aws-lambda": "^8.10.98",
-    "aws-cdk": "^2.93.0",
-    "aws-cdk-lib": "^2.65.0",
+    "aws-cdk": "^2.114.1",
+    "aws-cdk-lib": "^2.114.1",
     "cdk-nag": "^2.21.17",
     "chalk": "^4.1.2",
     "constructs": "^10.0.0",

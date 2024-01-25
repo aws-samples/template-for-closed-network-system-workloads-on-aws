@@ -1,6 +1,7 @@
 # infra
 
 [View this page in English](./README.md)
+[サーバーレスのサンプルアプリケーションを構築する場合はこちら](./README_serverless_ja.md)
 
 AWS 上にサンプルアプリケーションやバッチシステムを動かす環境を構築する CDK のコードです。
 

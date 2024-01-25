@@ -59,14 +59,14 @@ export class BatchStack extends Stack {
               'aws:SourceAccount': this.account,
             },
             ArnLike: {
-              'aws:SrouceArn': `arn:aws:logs:${this.region}:${this.account}:*`,
+              'aws:SourceArn': `arn:aws:logs:${this.region}:${this.account}:*`,
             },
           },
         }),
       ],
     });
 
-    // Create DynamoDB to store job invokation history
+    // Create DynamoDB to store job invocation history
     // PK: Job ID, SK: date, status, message
     const table = new aws_dynamodb.Table(this, 'BatchDynamodb', {
       partitionKey: {
@@ -280,7 +280,7 @@ export class BatchStack extends Stack {
         {
           id: 'AwsSolutions-IAM5',
           reason:
-            "Need to store the result files in this bucket from batch scripts, and we don't know task ID until tasks are ivoked",
+            "Need to store the result files in this bucket from batch scripts, and we don't know task ID until tasks are invoked",
           appliesTo: [
             {
               regex: '/^Resource::(.*)/(.*)/g',

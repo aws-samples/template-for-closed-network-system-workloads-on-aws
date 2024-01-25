@@ -24,7 +24,7 @@ export class Aurora extends Construct {
 
     // Check whether isolated subnets which you chose or not
     if (isEmpty(props.vpc.isolatedSubnets)) {
-      throw new Error('You should speficy the isolated subnets in subnets');
+      throw new Error('You should specify the isolated subnets in subnets');
     }
 
     const secretName = 'AuroraSecret';
@@ -83,7 +83,7 @@ export class Aurora extends Construct {
           vpc: props.vpc,
           iamAuth: true,
           secrets: [this.aurora.secret],
-          securityGroups:this.aurora.connections.securityGroups
+          securityGroups: this.aurora.connections.securityGroups,
         });
 
         this.proxy.grantConnect(this.proxyRole);
@@ -120,7 +120,7 @@ export class Aurora extends Construct {
 
       new CfnOutput(this, 'AuroraSecretEncryptionKeyArn', {
         exportName: 'AuroraSecretEncryptionKeyArn',
-        value: this.aurora.secret.encryptionKey!.keyArn,
+        value: this.aurora.secret.encryptionKey ? this.aurora.secret.encryptionKey.keyArn : '',
       });
 
       if (props.enabledProxy) {

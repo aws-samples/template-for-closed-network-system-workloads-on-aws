@@ -10,6 +10,9 @@ In local government systems that require a high level security and network restr
 We will adopt REPLATFORM, one of the 6Rs, which is AWS's migration strategy, and aims to migrate from an existing on-premise environment to computing and managed DB using containers. REPLATFORM has advantages such as improving performance and reducing costs. The template uses several AWS managed services that will help us to reduce cost and operational workload.
 (Ref：[Migrating to AWS Best Practices and Strategies](https://pages.awscloud.com/rs/112-TZM-766/images/Migrating-to-AWS_Best-Practices-and-Strategies_eBook.pdf)
 
+And we added serverless application version of infra that uses AWS Lambda and React application instead of container.
+Please see here you want to know how to deploy serverless application version.
+
 ## Scope
 
 ### What the template provides

@@ -1,20 +1,20 @@
 import { aws_codecommit, aws_ec2, StackProps, Stack } from 'aws-cdk-lib';
 import { Bastion } from './constructs/ec2/bastion';
 import { Construct } from 'constructs';
-import { ServerlessAppBase } from './constructs/serverless/serverless-app-base';
-import { CodePipelineServerless } from './constructs/codepipeline/codepipline-serverless';
+import { ServerlessApp } from './constructs/serverless/serverless-app';
+import { CodePipelineWebappReact } from './constructs/codepipeline/codepipeline-webapp-react';
 import { Network } from './constructs/network/network';
 import { NagSuppressions } from 'cdk-nag';
-import { DBinitLambda } from './constructs/aurora/dbinitlambda';
+import { DbInitLambda } from './constructs/aurora/dbinitlambda';
 
 interface ServerlessappStackProps extends StackProps {
   auroraSecretName: string;
   auroraSecretArn: string;
   auroraSecurityGroupId: string;
   auroraSecretEncryptionKeyArn: string;
-  auroraEdition:string;
-  rdsProxyEndpoint:string;
-  rdsProxyArn:string;
+  auroraEdition: string;
+  rdsProxyEndpoint: string;
+  rdsProxyArn: string;
   containerRepositoryName: string;
   enabledPrivateLink: boolean;
   testVpcCidr: string;
@@ -45,14 +45,14 @@ export class ServerlessappStack extends Stack {
 
     let serverlessBase;
     if (props.enabledPrivateLink) {
-      const privateLinkVpc = new Network(this, `PrivatelinkNetwork`, {
+      const privateLinkVpc = new Network(this, `PrivateLinkNetwork`, {
         cidr: '10.0.0.0/16',
         cidrMask: 24,
         publicSubnet: false,
         isolatedSubnet: true,
         maxAzs: 2,
       });
-      serverlessBase = new ServerlessAppBase(this, `WebappBase`, {
+      serverlessBase = new ServerlessApp(this, `WebappBase`, {
         vpc: vpc,
         privateLinkVpc: privateLinkVpc.vpc,
         domainName: props.domainName,
@@ -61,12 +61,12 @@ export class ServerlessappStack extends Stack {
         auroraSecretArn: props.auroraSecretArn,
         auroraSecurityGroupId: props.auroraSecurityGroupId,
         auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-        auroraEdition:props.auroraEdition,
-        rdsProxyEndpoint:props.rdsProxyEndpoint,
-        rdsProxyArn:props.rdsProxyArn
+        auroraEdition: props.auroraEdition,
+        rdsProxyEndpoint: props.rdsProxyEndpoint,
+        rdsProxyArn: props.rdsProxyArn,
       });
     } else {
-      serverlessBase = new ServerlessAppBase(this, `WebappBase`, {
+      serverlessBase = new ServerlessApp(this, `WebappBase`, {
         vpc: vpc,
         domainName: props.domainName,
         certificateArn: props.certificateArn,
@@ -74,16 +74,16 @@ export class ServerlessappStack extends Stack {
         auroraSecretArn: props.auroraSecretArn,
         auroraSecurityGroupId: props.auroraSecurityGroupId,
         auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-        auroraEdition:props.auroraEdition,
-        rdsProxyEndpoint:props.rdsProxyEndpoint,
-        rdsProxyArn:props.rdsProxyArn
+        auroraEdition: props.auroraEdition,
+        rdsProxyEndpoint: props.rdsProxyEndpoint,
+        rdsProxyArn: props.rdsProxyArn,
       });
     }
 
     // Create Deploy Pipeline
-    new CodePipelineServerless(this, `WebappCodePipeline`, {
+    new CodePipelineWebappReact(this, `WebappCodePipeline`, {
       codeCommitRepository: webappSourceRepository,
-      s3bucket: serverlessBase.webapps3bucket,
+      s3bucket: serverlessBase.webappS3bucket,
     });
 
     if (props.windowsBastion || props.linuxBastion) {
@@ -121,7 +121,10 @@ export class ServerlessappStack extends Stack {
           aws_ec2.Port.tcp(443)
         );
 
-        serverlessBase.alb.connections.allowFrom(windowsBastion.bastionInstance, aws_ec2.Port.tcp(443));
+        serverlessBase.alb.connections.allowFrom(
+          windowsBastion.bastionInstance,
+          aws_ec2.Port.tcp(443)
+        );
       }
 
       if (props.linuxBastion) {
@@ -136,53 +139,44 @@ export class ServerlessappStack extends Stack {
           aws_ec2.Port.tcp(443)
         );
 
-        serverlessBase.alb.connections.allowFrom(linuxBastion.bastionInstance, aws_ec2.Port.tcp(443));
+        serverlessBase.alb.connections.allowFrom(
+          linuxBastion.bastionInstance,
+          aws_ec2.Port.tcp(443)
+        );
       }
     }
 
-    new DBinitLambda(this,'DBInitLambdaConstruct',{
+    new DbInitLambda(this, 'DBInitLambdaConstruct', {
       vpc: vpc,
-      sgForLambda:serverlessBase.sgForLambda,
+      sgForLambda: serverlessBase.sgForLambda,
       auroraSecretName: props.auroraSecretName,
       auroraSecretArn: props.auroraSecretArn,
       auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-      rdsProxyEndpoint:props.rdsProxyEndpoint,
-      rdsProxyArn:props.rdsProxyArn
-    })
-      const provider = new custom_resources.Provider(
-        this, 'DBInitProvider',{
-          onEventHandler:initFunc.lambda,
-        }
-    )
-  
-    new CustomResource(
-        this, 'DBInitResource',{
-         serviceToken:provider.serviceToken,
-         properties:{
-            time:Date.now().toString()
-         }
-        }
-    )
+      rdsProxyEndpoint: props.rdsProxyEndpoint,
+      rdsProxyArn: props.rdsProxyArn,
+    });
 
     // [CHANGE HERE] Nag suppressions with path : you need to change here for deployment...
     NagSuppressions.addResourceSuppressionsByPath(
       this,
-      "/RayohopeDevTemplateappWebapp/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource",
+      `/${id}/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource`,
       [
         {
-          id: "AwsSolutions-IAM4",
-          reason: "CDK managed resource",
-          appliesTo: ["Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"],
+          id: 'AwsSolutions-IAM4',
+          reason: 'CDK managed resource',
+          appliesTo: [
+            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
+          ],
         },
       ]
     );
     NagSuppressions.addResourceSuppressionsByPath(
       this,
-      "/RayohopeDevTemplateappWebapp/AWS679f53fac002430cb0da5b7982bd2287/Resource",
+      `/${id}/AWS679f53fac002430cb0da5b7982bd2287/Resource`,
       [
         {
-          id: "AwsSolutions-L1",
-          reason: "CDK managed resource",
+          id: 'AwsSolutions-L1',
+          reason: 'CDK managed resource',
         },
       ]
     );
