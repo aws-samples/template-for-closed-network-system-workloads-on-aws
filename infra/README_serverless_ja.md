@@ -4,11 +4,11 @@ AWS 上にサーバーレスなサンプルアプリケーションやバッチ�
 
 ## 概要
 
-アクセス数が少ない、またはほとんどアクセスしない時間帯があるようなアプリケーションを、ECS/Fargate を用いて常時稼働しておくと、利用量に対して多くの費用がかかります。また、コンテナイメージなどの運用コストもあります。
+アクセス数が少ない、またはほとんどアクセスしない時間帯があるようなアプリケーションを、ECS/Fargate を用いて常時稼働しておくと、実際の利用量に対し、費用がかかります。また、コンテナイメージなどの運用コストもあります。
 
-そのような場合に、ウェブサイト部分を S3 や Lambda を用いてサーバーレスに構成することによって、費用や運用の手間を減らすことができます。
+そのような場合に、ウェブサイト部分を S3 や Lambda を用いてサーバーレスで構成することによって、費用や運用の手間を減らすことができます。
 
-ALB、S3、PrivateLink による内部 HTTPS 静的ウェブサイトのホスティングについては、詳しくは[こちらのブログ](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/)もご参照ください
+閉域網における ALB、S3、PrivateLink による内部 HTTPS 静的 Web サイトのホスティングは、[こちらのブログ](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/)に記載されており、このブログをもとに CDK 化したものが、サーバーレス版の本ソースコード群の一部となります。本ソースコードをご利用いただくことで、煩雑な Internal ALB の設定などを自動化することができます。
 
 構成図は以下のとおりです。（赤枠で囲ったところがコンテナ版との差分です）
 
@@ -177,11 +177,19 @@ $ npm run list-serverless -- --{alias}
 S3 のバケット名は全ての AWS アカウント間でユニークである必要があり、この制約により希望のドメイン名でウェブサイトをデプロイできない場合があります。
 
 ### コンテナ版からの移行手順
+
 コンテナ版を使っていて、サーバーレスへの移行を考えているときは、大まかには次のような手順を踏む必要があります。
 
-- 静的な部分と動的な処理を分離する
-- 静的な部分を生成するコードを webapp-react フォルダに記述し、 ビルドする手順を buildspec.yaml に記述する
-- 動的な部分については、 Lambda 関数を追加するコードを infra/lib/constructs/serverless/serverless-app.ts ファイルに記述する
-  - Lambda 関数自体のコードは、 functions フォルダ以下に入れる
+- GitHub からサーバーレス版のソースコードを含んだ、最新のソースコードを取得する
+- `npm run destroy-webapp` コマンドを利用し、デプロイ済みの Webapp Stack を削除する
+- 証明書の作成は完了しているため、本 README の 1. CDK に従い、デプロイを実施する
+- 既存の Webapp 用の CodeCommit リポジトリは、Java アプリケーションコードがデプロイされているため、webapp-java のディレクトリ内の git 関連ファイルを残したまま、ソースコードだけを削除し、webapp-react のソースコードを webapp-java ディレクトリにコピーする。
+- 続いて、webapp-java のディレクトリ名を webapp-react に変更する
+- 以下のコマンドを実行し、react のソースコードを push する
 
-
+```
+$ cd webapp-react
+$ git add .
+$ git commit -m "Initial commit"
+$ git push --set-upstream origin main
+```
