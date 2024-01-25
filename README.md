@@ -23,6 +23,12 @@ Please see here you want to know how to deploy serverless application version.
   - A sample Dockerfile to turn that sample application into a container image
   - For sample applications, see [`Webapp-java/readme.md`](./webapp-java/README.md)
 
+- Serverless application environment for running React application hosted on Amazon S3 and REST API on API Gateway and AWS Lambda.(\*)
+
+  - A sample application using React
+  - For sample react application, see [`Webapp-react/readme.md`](./webapp-react/README.md).
+  - Sample REST APIs code is in `functions/`
+
 - CI/CD environment for continuous application development
 
   - Pipeline for building and deploying the above sample applications using CodePipeline, CodeCommit, and CodeBuild
@@ -96,6 +102,7 @@ This is the architecture diagram that is slightly modified by using private link
 ## How to Deploy
 
 Please see the following document: [infra/README.md](./infra/README.md)
+If you want to deploy serverless application version, please see the following document: [infra/README_serverless.md](./infra/README_serverless.md)
 
 ## Security
 
