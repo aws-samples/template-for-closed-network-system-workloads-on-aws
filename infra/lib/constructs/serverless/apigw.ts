@@ -1,6 +1,7 @@
 import { aws_apigateway, aws_ec2, aws_iam, aws_logs } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { NagSuppressions } from 'cdk-nag';
+import { EncryptionKey } from '../kms/key';
 
 // private ApiGw with vpc endpoint
 export class ApiGw extends Construct {
@@ -56,7 +57,10 @@ export class ApiGw extends Construct {
     }
     // API Gateway LogGroup
     const restApiLogAccessLogGroup = new aws_logs.LogGroup(this, 'RestApiLogAccessLogGroup', {
-      retention: 365,
+      retention: aws_logs.RetentionDays.THREE_MONTHS,
+      encryptionKey: new EncryptionKey(this, 'RestApiLogAccessLogGroupEncryptionKey', {
+        servicePrincipals: [new aws_iam.ServicePrincipal('logs.amazonaws.com')],
+      }).encryptionKey,
     });
 
     // API Gateway

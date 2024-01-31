@@ -68,7 +68,6 @@ export class ServerlessApp extends Construct {
       vpc: props.vpc,
       internetFacing: false,
       securityGroup: sgForAlb,
-      loadBalancerName: 'alb',
       vpcSubnets: props.vpc.selectSubnets({
         subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED,
       }),
