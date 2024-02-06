@@ -1,23 +1,24 @@
 import {
   aws_lambda_nodejs,
+  aws_kms,
   aws_lambda,
   aws_ec2,
   aws_iam,
+  aws_secretsmanager,
   Duration,
   Fn,
-  aws_kms,
-  aws_secretsmanager,
+  Stack,
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { NagSuppressions } from 'cdk-nag';
 
 export class DefaultLambda extends Construct {
   public readonly lambda: aws_lambda_nodejs.NodejsFunction;
+
   constructor(
     scope: Construct,
     id: string,
     props: {
-      resourceId: string;
       entry: string;
       vpc: aws_ec2.IVpc;
       auroraSecretName: string;
@@ -29,6 +30,7 @@ export class DefaultLambda extends Construct {
     }
   ) {
     super(scope, id);
+
     const lambdaFunctionRole = new aws_iam.Role(this, 'lambdaFunctionRole', {
       assumedBy: new aws_iam.ServicePrincipal('lambda.amazonaws.com'),
       path: '/service-role/',
@@ -36,14 +38,14 @@ export class DefaultLambda extends Construct {
     lambdaFunctionRole.addManagedPolicy(
       aws_iam.ManagedPolicy.fromManagedPolicyArn(
         this,
-        'awslambdabasicexectionrole',
+        'awsLambdaBasicExectionRole',
         'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
       )
     );
     lambdaFunctionRole.addManagedPolicy(
       aws_iam.ManagedPolicy.fromManagedPolicyArn(
         this,
-        'awslambdavpcexectionrole',
+        'awsLambdaVpcExectionRole',
         'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
       )
     );
@@ -61,14 +63,16 @@ export class DefaultLambda extends Construct {
         resources: [props.auroraSecretEncryptionKeyArn],
       })
     );
-    const lastOfArn = Fn.select(6, Fn.split(':', props.rdsProxyArn)); //(String(props.rdsProxyArn)).split(":")[6];
+    const lastOfArn = Fn.select(6, Fn.split(':', props.rdsProxyArn));
     const key = aws_kms.Key.fromKeyArn(this, 'ImportedKey', props.auroraSecretEncryptionKeyArn);
     const secret = aws_secretsmanager.Secret.fromSecretAttributes(this, 'ImportedSecret', {
       secretCompleteArn: props.auroraSecretArn,
       encryptionKey: key,
     });
     const user = secret.secretValueFromJson('username').unsafeUnwrap().toString();
-    const proxyUser = `arn:aws:rds-db:ap-northeast-1:${props.vpc.env.account}:dbuser:${lastOfArn}/${user}`;
+    const proxyUser = `arn:aws:rds-db:${Stack.of(this).region}:${
+      Stack.of(this).account
+    }:dbuser:${lastOfArn}/${user}`;
     lambdaFunctionRole.addToPolicy(
       new aws_iam.PolicyStatement({
         effect: aws_iam.Effect.ALLOW,
@@ -76,11 +80,11 @@ export class DefaultLambda extends Construct {
         resources: [proxyUser],
       })
     );
-    this.lambda = new aws_lambda_nodejs.NodejsFunction(this, props.resourceId, {
+    this.lambda = new aws_lambda_nodejs.NodejsFunction(this, `${id}Lambda`, {
       vpc: props.vpc,
       vpcSubnets: props.vpc.selectSubnets({ subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED }),
       securityGroups: [props.sgForLambda],
-      runtime: aws_lambda.Runtime.NODEJS_18_X,
+      runtime: aws_lambda.Runtime.NODEJS_20_X,
       entry: props.entry,
       architecture: aws_lambda.Architecture.ARM_64,
       memorySize: 256,
@@ -89,7 +93,7 @@ export class DefaultLambda extends Construct {
       environment: {
         SECRET_NAME: props.auroraSecretName,
         HOST: props.rdsProxyEndpoint,
-        REGION: props.vpc.env.region,
+        REGION: Stack.of(this).region,
       },
       bundling: {
         forceDockerBundling: false,

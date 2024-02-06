@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import { isEmpty } from 'lodash';
 import { EncryptionKey } from '../kms/key';
 import { ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { last } from 'lodash';
 
 export class Aurora extends Construct {
   public readonly aurora: aws_rds.DatabaseCluster | aws_rds.ServerlessCluster;
@@ -131,6 +132,14 @@ export class Aurora extends Construct {
         new CfnOutput(this, 'RDSProxyArn', {
           exportName: 'RdsProxyArn',
           value: this.proxy.dbProxyArn,
+        });
+        new CfnOutput(this, 'RDSProxyIdentifier', {
+          exportName: 'RdsProxyIdentifier',
+          value: last(this.proxy.dbProxyArn.split(':')) ?? '',
+        });
+        new CfnOutput(this, 'RDSProxyName', {
+          exportName: 'RdsProxyName',
+          value: this.proxy.dbProxyName,
         });
       }
     }

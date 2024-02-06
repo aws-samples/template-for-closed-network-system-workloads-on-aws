@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { Record } from '../types/record';
 
 const API_ENDPOINT = process.env.REACT_APP_ENDPOINT_URL;
 

@@ -8,20 +8,13 @@ export class ApiGw extends Construct {
   public readonly vpcEndpointSecurityGroup: aws_ec2.SecurityGroup;
   public readonly privateApiVpcEndpoint: aws_ec2.InterfaceVpcEndpoint;
   public readonly privateApi: aws_apigateway.LambdaRestApi;
-  public readonly sgForLambda: aws_ec2.SecurityGroup;
+
   public addResource: (resourceName: string) => aws_apigateway.Resource;
   constructor(
     scope: Construct,
     id: string,
     props: {
       vpc: aws_ec2.IVpc;
-      auroraSecretName: string;
-      auroraSecretArn: string;
-      auroraSecurityGroupId: string;
-      auroraSecretEncryptionKeyArn: string;
-      auroraEdition: string;
-      rdsProxyEndpoint: string;
-      rdsProxyArn: string;
     }
   ) {
     super(scope, id);
@@ -40,21 +33,6 @@ export class ApiGw extends Construct {
       open: false,
     });
 
-    //Aurora and ApiGw  SG Settings
-    const sgForAurora = aws_ec2.SecurityGroup.fromSecurityGroupId(
-      this,
-      'AuroraSecurityGroup',
-      props.auroraSecurityGroupId
-    );
-    this.sgForLambda = new aws_ec2.SecurityGroup(this, 'ApiGwSecurityGroup', {
-      vpc: props.vpc,
-      allowAllOutbound: true,
-    });
-    if (props.auroraEdition == 'mysql') {
-      sgForAurora.addIngressRule(this.sgForLambda, aws_ec2.Port.tcp(3306));
-    } else {
-      sgForAurora.addIngressRule(this.sgForLambda, aws_ec2.Port.tcp(5432));
-    }
     // API Gateway LogGroup
     const restApiLogAccessLogGroup = new aws_logs.LogGroup(this, 'RestApiLogAccessLogGroup', {
       retention: aws_logs.RetentionDays.THREE_MONTHS,

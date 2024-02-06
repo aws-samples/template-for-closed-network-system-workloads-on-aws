@@ -43,6 +43,22 @@ export class ServerlessappStack extends Stack {
       props.sourceRepositoryName
     );
 
+    // Security Group for Lambda
+    const sgForAurora = aws_ec2.SecurityGroup.fromSecurityGroupId(
+      this,
+      'AuroraSecurityGroup',
+      props.auroraSecurityGroupId
+    );
+    const sgForLambda = new aws_ec2.SecurityGroup(this, 'ApiGwSecurityGroup', {
+      vpc: vpc,
+      allowAllOutbound: true,
+    });
+    if (props.auroraEdition == 'mysql') {
+      sgForAurora.addIngressRule(sgForLambda, aws_ec2.Port.tcp(3306));
+    } else {
+      sgForAurora.addIngressRule(sgForLambda, aws_ec2.Port.tcp(5432));
+    }
+
     let serverlessApp;
     if (props.enabledPrivateLink) {
       const privateLinkVpc = new Network(this, `PrivateLinkNetwork`, {
@@ -61,9 +77,9 @@ export class ServerlessappStack extends Stack {
         auroraSecretArn: props.auroraSecretArn,
         auroraSecurityGroupId: props.auroraSecurityGroupId,
         auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-        auroraEdition: props.auroraEdition,
         rdsProxyEndpoint: props.rdsProxyEndpoint,
         rdsProxyArn: props.rdsProxyArn,
+        sgForLambda: sgForLambda,
       });
     } else {
       serverlessApp = new ServerlessApp(this, `ServerlessApp`, {
@@ -74,9 +90,9 @@ export class ServerlessappStack extends Stack {
         auroraSecretArn: props.auroraSecretArn,
         auroraSecurityGroupId: props.auroraSecurityGroupId,
         auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-        auroraEdition: props.auroraEdition,
         rdsProxyEndpoint: props.rdsProxyEndpoint,
         rdsProxyArn: props.rdsProxyArn,
+        sgForLambda: sgForLambda,
       });
     }
 
@@ -148,7 +164,7 @@ export class ServerlessappStack extends Stack {
 
     new DbInitLambda(this, 'DBInitLambdaConstruct', {
       vpc: vpc,
-      sgForLambda: serverlessApp.sgForLambda,
+      sgForLambda: sgForLambda,
       auroraSecretName: props.auroraSecretName,
       auroraSecretArn: props.auroraSecretArn,
       auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
