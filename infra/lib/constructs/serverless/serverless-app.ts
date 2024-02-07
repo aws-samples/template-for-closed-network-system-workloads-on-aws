@@ -93,6 +93,11 @@ export class ServerlessApp extends Construct {
       healthCheck: { path: '/', port: '8080' },
     });
 
+    const sgForS3VpcEndpoint = new aws_ec2.SecurityGroup(this, 'SgForS3VpcEndpoint', {
+      vpc: props.vpc,
+    });
+    sgForS3VpcEndpoint.addIngressRule(sgForAlb, aws_ec2.Port.tcp(80));
+
     const s3InterfaceEndpoint = props.vpc.addInterfaceEndpoint('S3InterfaceEndpoint', {
       service: aws_ec2.InterfaceVpcEndpointAwsService.S3,
       subnets: { subnets: props.vpc.isolatedSubnets },
@@ -164,11 +169,7 @@ export class ServerlessApp extends Construct {
     s3Buckets.webAppBucket.addToResourcePolicy(
       new aws_iam.PolicyStatement({
         actions: ['s3:GetObject'],
-        principals: [
-          new aws_iam.AnyPrincipal(),
-          // new aws_iam.ServicePrincipal('ec2.amazonaws.com'),
-          // new aws_iam.ServicePrincipal('elasticloadbalancing.amazonaws.com'),
-        ],
+        principals: [new aws_iam.AnyPrincipal()],
         effect: aws_iam.Effect.ALLOW,
         resources: [s3Buckets.webAppBucket.bucketArn, s3Buckets.webAppBucket.bucketArn + '/*'],
         conditions: {
@@ -368,7 +369,7 @@ export class ServerlessApp extends Construct {
       );
 
       // Create VPC endpoint
-      const sgForVpcEndpoint = new aws_ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
+      const sgForTestVpcEndpoint = new aws_ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
         vpc: props.privateLinkVpc,
       });
 
@@ -376,7 +377,7 @@ export class ServerlessApp extends Construct {
       const privateLink = props.privateLinkVpc.addInterfaceEndpoint('TestVpcEndpoint', {
         service: new aws_ec2.InterfaceVpcEndpointService(endpointService.vpcEndpointServiceName),
         subnets: { subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED },
-        securityGroups: [sgForVpcEndpoint],
+        securityGroups: [sgForTestVpcEndpoint],
       });
 
       // Create Private Hosted Zone for private link domain name

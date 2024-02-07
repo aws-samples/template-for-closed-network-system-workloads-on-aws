@@ -100,6 +100,7 @@ export class DefaultLambda extends Construct {
         define: {},
         minify: true,
       },
+      tracing: aws_lambda.Tracing.ACTIVE,
     });
     //Suppressions
     NagSuppressions.addResourceSuppressions(

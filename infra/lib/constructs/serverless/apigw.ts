@@ -49,6 +49,7 @@ export class ApiGw extends Construct {
         loggingLevel: aws_apigateway.MethodLoggingLevel.INFO,
         accessLogDestination: new aws_apigateway.LogGroupLogDestination(restApiLogAccessLogGroup),
         accessLogFormat: aws_apigateway.AccessLogFormat.clf(),
+        tracingEnabled: true,
       },
       endpointConfiguration: {
         types: [aws_apigateway.EndpointType.PRIVATE],
