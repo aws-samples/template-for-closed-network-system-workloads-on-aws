@@ -56,10 +56,7 @@ export class Bastion extends Construct {
           statements: [
             new PolicyStatement({
               actions: ['s3:GetObject'],
-              resources: [
-                `arn:aws:s3:::amazonlinux.${Stack.of(this).region}.amazonaws.com/*`,
-                `arn:aws:s3:::amazonlinux-2-repos-${Stack.of(this).region}/*`,
-              ],
+              resources: [`arn:aws:s3:::al2023-repos-${Stack.of(this).region}-de612dc2/*`],
             }),
           ],
         })
@@ -73,7 +70,7 @@ export class Bastion extends Construct {
         : InstanceType.of(InstanceClass.T2, InstanceSize.SMALL), // default is t2-small
       machineImage:
         props.os === 'Linux'
-          ? MachineImage.latestAmazonLinux()
+          ? MachineImage.latestAmazonLinux2023()
           : MachineImage.latestWindows(WindowsVersion.WINDOWS_SERVER_2022_JAPANESE_FULL_BASE),
       vpcSubnets: {
         subnetType: SubnetType.PRIVATE_ISOLATED,
