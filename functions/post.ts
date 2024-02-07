@@ -17,23 +17,23 @@ export const handler = async (
     return response;
   }
   const body = JSON.parse(event.body);
-  const [
+  const {
     id,
     job0001_flag,
     job0002_flag,
     job0003_flag,
     job0004_flag,
     job0005_flag,
-  ] = body;
+  } = body;
 
   // check if there is data
   if (
     !id ||
-    !job0001_flag ||
-    !job0002_flag ||
-    !job0003_flag ||
-    !job0004_flag ||
-    !job0005_flag
+    job0001_flag == undefined ||
+    job0002_flag == undefined ||
+    job0003_flag == undefined ||
+    job0004_flag == undefined ||
+    job0005_flag == undefined
   ) {
     const response = {
       statusCode: 400,
@@ -48,11 +48,11 @@ export const handler = async (
     return { statusCode: 400, body: JSON.stringify("id is not a number") };
   }
   if (
-    isBoolean(job0001_flag) ||
-    isBoolean(job0002_flag) ||
-    isBoolean(job0003_flag) ||
-    isBoolean(job0004_flag) ||
-    isBoolean(job0005_flag)
+    !isBoolean(job0001_flag) ||
+    !isBoolean(job0002_flag) ||
+    !isBoolean(job0003_flag) ||
+    !isBoolean(job0004_flag) ||
+    !isBoolean(job0005_flag)
   ) {
     logger.error("Any flag parameters are not Boolean");
     return {

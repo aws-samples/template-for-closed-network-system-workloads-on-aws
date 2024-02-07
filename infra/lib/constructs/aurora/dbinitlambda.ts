@@ -20,8 +20,7 @@ export class DbInitLambda extends Construct {
   ) {
     super(scope, id);
 
-    const initFunc = new DefaultLambda(this, 'DbInitLambdaConstruct', {
-      resourceId: 'DbInitLambda',
+    const initLambda = new DefaultLambda(this, 'dbInitLambda', {
       entry: path.join(__dirname, '../../../../functions/init.ts'),
       vpc: props.vpc,
       auroraSecretName: props.auroraSecretName,
@@ -31,8 +30,9 @@ export class DbInitLambda extends Construct {
       rdsProxyArn: props.rdsProxyArn,
       sgForLambda: props.sgForLambda,
     });
+
     const provider = new custom_resources.Provider(this, 'DBInitProvider', {
-      onEventHandler: initFunc.lambda,
+      onEventHandler: initLambda.lambda,
     });
 
     new CustomResource(this, 'DBInitResource', {

@@ -52,22 +52,34 @@ export class Aurora extends Construct {
         },
         credentials: this.databaseCredentials,
         removalPolicy: RemovalPolicy.DESTROY, // For development env only
-        deletionProtection: true, // In production, we have to set true.
+        deletionProtection: false, // In production, we have to set true.
       });
     } else {
       this.aurora = new aws_rds.DatabaseCluster(this, `Cluster`, {
         engine: props.auroraEdition,
         iamAuthentication: true,
-        instanceProps: {
-          vpc: props.vpc,
-          vpcSubnets: {
-            subnets: props.vpc.isolatedSubnets,
-          },
+        vpc: props.vpc,
+        vpcSubnets: {
+          subnets: props.vpc.isolatedSubnets,
         },
+        writer: aws_rds.ClusterInstance.provisioned('Writer', {
+          instanceType: aws_ec2.InstanceType.of(
+            aws_ec2.InstanceClass.T3,
+            aws_ec2.InstanceSize.MEDIUM
+          ),
+        }),
+        readers: [
+          aws_rds.ClusterInstance.provisioned('Reader', {
+            instanceType: aws_ec2.InstanceType.of(
+              aws_ec2.InstanceClass.T3,
+              aws_ec2.InstanceSize.MEDIUM
+            ),
+          }),
+        ],
         storageEncrypted: true,
         credentials: this.databaseCredentials,
         removalPolicy: RemovalPolicy.DESTROY, // For development env only
-        deletionProtection: true, // In production, we have to set true.
+        deletionProtection: false, // In production, we have to set true.
         parameters: {
           'rds.force_ssl': '1',
         },

@@ -31,7 +31,7 @@ export class ServerlessappStack extends Stack {
     super(scope, id, props);
 
     // Import vpc
-    const vpc = aws_ec2.Vpc.fromLookup(this, 'WebappBaseVpc', {
+    const vpc = aws_ec2.Vpc.fromLookup(this, 'ServerlessAppVpc', {
       isDefault: false,
       vpcId: props.vpcId,
     });
@@ -39,11 +39,27 @@ export class ServerlessappStack extends Stack {
     // Import repository
     const webappSourceRepository = aws_codecommit.Repository.fromRepositoryName(
       this,
-      'WebappSourceRepository',
+      'WebappReactSourceRepository',
       props.sourceRepositoryName
     );
 
-    let serverlessBase;
+    // Security Group for Lambda
+    const sgForAurora = aws_ec2.SecurityGroup.fromSecurityGroupId(
+      this,
+      'AuroraSecurityGroup',
+      props.auroraSecurityGroupId
+    );
+    const sgForLambda = new aws_ec2.SecurityGroup(this, 'ApiGwSecurityGroup', {
+      vpc: vpc,
+      allowAllOutbound: true,
+    });
+    if (props.auroraEdition == 'mysql') {
+      sgForAurora.addIngressRule(sgForLambda, aws_ec2.Port.tcp(3306));
+    } else {
+      sgForAurora.addIngressRule(sgForLambda, aws_ec2.Port.tcp(5432));
+    }
+
+    let serverlessApp;
     if (props.enabledPrivateLink) {
       const privateLinkVpc = new Network(this, `PrivateLinkNetwork`, {
         cidr: '10.0.0.0/16',
@@ -52,7 +68,7 @@ export class ServerlessappStack extends Stack {
         isolatedSubnet: true,
         maxAzs: 2,
       });
-      serverlessBase = new ServerlessApp(this, `WebappBase`, {
+      serverlessApp = new ServerlessApp(this, `ServerlessApp`, {
         vpc: vpc,
         privateLinkVpc: privateLinkVpc.vpc,
         domainName: props.domainName,
@@ -61,12 +77,12 @@ export class ServerlessappStack extends Stack {
         auroraSecretArn: props.auroraSecretArn,
         auroraSecurityGroupId: props.auroraSecurityGroupId,
         auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-        auroraEdition: props.auroraEdition,
         rdsProxyEndpoint: props.rdsProxyEndpoint,
         rdsProxyArn: props.rdsProxyArn,
+        sgForLambda: sgForLambda,
       });
     } else {
-      serverlessBase = new ServerlessApp(this, `WebappBase`, {
+      serverlessApp = new ServerlessApp(this, `ServerlessApp`, {
         vpc: vpc,
         domainName: props.domainName,
         certificateArn: props.certificateArn,
@@ -74,16 +90,16 @@ export class ServerlessappStack extends Stack {
         auroraSecretArn: props.auroraSecretArn,
         auroraSecurityGroupId: props.auroraSecurityGroupId,
         auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-        auroraEdition: props.auroraEdition,
         rdsProxyEndpoint: props.rdsProxyEndpoint,
         rdsProxyArn: props.rdsProxyArn,
+        sgForLambda: sgForLambda,
       });
     }
 
     // Create Deploy Pipeline
-    new CodePipelineWebappReact(this, `WebappCodePipeline`, {
+    new CodePipelineWebappReact(this, `WebappReactCodePipeline`, {
       codeCommitRepository: webappSourceRepository,
-      s3bucket: serverlessBase.webappS3bucket,
+      s3bucket: serverlessApp.webappS3bucket,
     });
 
     if (props.windowsBastion || props.linuxBastion) {
@@ -121,7 +137,7 @@ export class ServerlessappStack extends Stack {
           aws_ec2.Port.tcp(443)
         );
 
-        serverlessBase.alb.connections.allowFrom(
+        serverlessApp.alb.connections.allowFrom(
           windowsBastion.bastionInstance,
           aws_ec2.Port.tcp(443)
         );
@@ -139,7 +155,7 @@ export class ServerlessappStack extends Stack {
           aws_ec2.Port.tcp(443)
         );
 
-        serverlessBase.alb.connections.allowFrom(
+        serverlessApp.alb.connections.allowFrom(
           linuxBastion.bastionInstance,
           aws_ec2.Port.tcp(443)
         );
@@ -148,7 +164,7 @@ export class ServerlessappStack extends Stack {
 
     new DbInitLambda(this, 'DBInitLambdaConstruct', {
       vpc: vpc,
-      sgForLambda: serverlessBase.sgForLambda,
+      sgForLambda: sgForLambda,
       auroraSecretName: props.auroraSecretName,
       auroraSecretArn: props.auroraSecretArn,
       auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,

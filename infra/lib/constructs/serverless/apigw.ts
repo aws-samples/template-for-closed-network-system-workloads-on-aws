@@ -1,26 +1,20 @@
 import { aws_apigateway, aws_ec2, aws_iam, aws_logs } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { NagSuppressions } from 'cdk-nag';
+import { EncryptionKey } from '../kms/key';
 
 // private ApiGw with vpc endpoint
 export class ApiGw extends Construct {
   public readonly vpcEndpointSecurityGroup: aws_ec2.SecurityGroup;
   public readonly privateApiVpcEndpoint: aws_ec2.InterfaceVpcEndpoint;
   public readonly privateApi: aws_apigateway.LambdaRestApi;
-  public readonly sgForLambda: aws_ec2.SecurityGroup;
+
   public addResource: (resourceName: string) => aws_apigateway.Resource;
   constructor(
     scope: Construct,
     id: string,
     props: {
       vpc: aws_ec2.IVpc;
-      auroraSecretName: string;
-      auroraSecretArn: string;
-      auroraSecurityGroupId: string;
-      auroraSecretEncryptionKeyArn: string;
-      auroraEdition: string;
-      rdsProxyEndpoint: string;
-      rdsProxyArn: string;
     }
   ) {
     super(scope, id);
@@ -39,24 +33,12 @@ export class ApiGw extends Construct {
       open: false,
     });
 
-    //Aurora and ApiGw  SG Settings
-    const sgForAurora = aws_ec2.SecurityGroup.fromSecurityGroupId(
-      this,
-      'AuroraSecurityGroup',
-      props.auroraSecurityGroupId
-    );
-    this.sgForLambda = new aws_ec2.SecurityGroup(this, 'ApiGwSecurityGroup', {
-      vpc: props.vpc,
-      allowAllOutbound: true,
-    });
-    if (props.auroraEdition == 'mysql') {
-      sgForAurora.addIngressRule(this.sgForLambda, aws_ec2.Port.tcp(3306));
-    } else {
-      sgForAurora.addIngressRule(this.sgForLambda, aws_ec2.Port.tcp(5432));
-    }
     // API Gateway LogGroup
     const restApiLogAccessLogGroup = new aws_logs.LogGroup(this, 'RestApiLogAccessLogGroup', {
-      retention: 365,
+      retention: aws_logs.RetentionDays.THREE_MONTHS,
+      encryptionKey: new EncryptionKey(this, 'RestApiLogAccessLogGroupEncryptionKey', {
+        servicePrincipals: [new aws_iam.ServicePrincipal('logs.amazonaws.com')],
+      }).encryptionKey,
     });
 
     // API Gateway
@@ -67,6 +49,7 @@ export class ApiGw extends Construct {
         loggingLevel: aws_apigateway.MethodLoggingLevel.INFO,
         accessLogDestination: new aws_apigateway.LogGroupLogDestination(restApiLogAccessLogGroup),
         accessLogFormat: aws_apigateway.AccessLogFormat.clf(),
+        tracingEnabled: true,
       },
       endpointConfiguration: {
         types: [aws_apigateway.EndpointType.PRIVATE],

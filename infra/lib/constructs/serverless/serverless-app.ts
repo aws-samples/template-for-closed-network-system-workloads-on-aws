@@ -24,7 +24,6 @@ export class ServerlessApp extends Construct {
   public readonly alb: aws_elasticloadbalancingv2.ApplicationLoadBalancer;
   public readonly nlb: aws_elasticloadbalancingv2.NetworkLoadBalancer;
   public readonly webappS3bucket: aws_s3.Bucket;
-  public readonly sgForLambda: aws_ec2.SecurityGroup;
   constructor(
     scope: Construct,
     id: string,
@@ -37,9 +36,9 @@ export class ServerlessApp extends Construct {
       auroraSecretArn: string;
       auroraSecurityGroupId: string;
       auroraSecretEncryptionKeyArn: string;
-      auroraEdition: string;
       rdsProxyEndpoint: string;
       rdsProxyArn: string;
+      sgForLambda: aws_ec2.SecurityGroup;
     }
   ) {
     super(scope, id);
@@ -68,7 +67,6 @@ export class ServerlessApp extends Construct {
       vpc: props.vpc,
       internetFacing: false,
       securityGroup: sgForAlb,
-      loadBalancerName: 'alb',
       vpcSubnets: props.vpc.selectSubnets({
         subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED,
       }),
@@ -94,6 +92,11 @@ export class ServerlessApp extends Construct {
       vpc: props.vpc,
       healthCheck: { path: '/', port: '8080' },
     });
+
+    const sgForS3VpcEndpoint = new aws_ec2.SecurityGroup(this, 'SgForS3VpcEndpoint', {
+      vpc: props.vpc,
+    });
+    sgForS3VpcEndpoint.addIngressRule(sgForAlb, aws_ec2.Port.tcp(80));
 
     const s3InterfaceEndpoint = props.vpc.addInterfaceEndpoint('S3InterfaceEndpoint', {
       service: aws_ec2.InterfaceVpcEndpointAwsService.S3,
@@ -136,6 +139,7 @@ export class ServerlessApp extends Construct {
       bucketName: `app.${props.domainName}`,
     });
     this.webappS3bucket = s3Buckets.webAppBucket;
+
     // create ALB Target Group (for s3)
     const vpcEndpointTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(
       this,
@@ -165,7 +169,7 @@ export class ServerlessApp extends Construct {
     s3Buckets.webAppBucket.addToResourcePolicy(
       new aws_iam.PolicyStatement({
         actions: ['s3:GetObject'],
-        principals: [new aws_iam.ArnPrincipal('*')],
+        principals: [new aws_iam.AnyPrincipal()],
         effect: aws_iam.Effect.ALLOW,
         resources: [s3Buckets.webAppBucket.bucketArn, s3Buckets.webAppBucket.bucketArn + '/*'],
         conditions: {
@@ -178,15 +182,8 @@ export class ServerlessApp extends Construct {
     // ApiGw
     const apiGw = new ApiGw(this, `WebappApiGw`, {
       vpc: props.vpc,
-      auroraSecretName: props.auroraSecretName,
-      auroraSecurityGroupId: props.auroraSecurityGroupId,
-      auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-      auroraEdition: props.auroraEdition,
-      auroraSecretArn: props.auroraSecretArn,
-      rdsProxyEndpoint: props.rdsProxyEndpoint,
-      rdsProxyArn: props.rdsProxyArn,
     });
-    this.sgForLambda = apiGw.sgForLambda;
+
     // add resource
     const sampleResource = apiGw.addResource('sample');
     const methodResponses: aws_apigateway.MethodResponse[] = [
@@ -237,23 +234,20 @@ export class ServerlessApp extends Construct {
       vpc: props.vpc,
       auroraSecretName: props.auroraSecretName,
       auroraSecretArn: props.auroraSecretArn,
-      auroraSecurityGroupId: props.auroraSecurityGroupId,
       auroraSecretEncryptionKeyArn: props.auroraSecretEncryptionKeyArn,
-      auroraEdition: props.auroraEdition,
       rdsProxyEndpoint: props.rdsProxyEndpoint,
       rdsProxyArn: props.rdsProxyArn,
-      sgForLambda: this.sgForLambda,
+      sgForLambda: props.sgForLambda,
     };
-    const getLambda = new DefaultLambda(this, 'sampleGetLambdaFunction', {
-      resourceId: 'GetLambda',
+    const getLambda = new DefaultLambda(this, 'sampleGet', {
       entry: path.join(__dirname, '../../../../functions/get.ts'),
       ...lambdaProps,
     });
-    const postLambda = new DefaultLambda(this, 'samplePostLambdaFunction', {
-      resourceId: 'PostLambda',
+    const postLambda = new DefaultLambda(this, 'samplePost', {
       entry: path.join(__dirname, '../../../../functions/post.ts'),
       ...lambdaProps,
     });
+
     sampleResource.addMethod(
       'GET',
       new aws_apigateway.LambdaIntegration(getLambda.lambda, {
@@ -375,7 +369,7 @@ export class ServerlessApp extends Construct {
       );
 
       // Create VPC endpoint
-      const sgForVpcEndpoint = new aws_ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
+      const sgForTestVpcEndpoint = new aws_ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
         vpc: props.privateLinkVpc,
       });
 
@@ -383,7 +377,7 @@ export class ServerlessApp extends Construct {
       const privateLink = props.privateLinkVpc.addInterfaceEndpoint('TestVpcEndpoint', {
         service: new aws_ec2.InterfaceVpcEndpointService(endpointService.vpcEndpointServiceName),
         subnets: { subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED },
-        securityGroups: [sgForVpcEndpoint],
+        securityGroups: [sgForTestVpcEndpoint],
       });
 
       // Create Private Hosted Zone for private link domain name

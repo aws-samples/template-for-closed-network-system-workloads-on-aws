@@ -19,7 +19,8 @@ export const handler = async (
     );
     const response = {
       statusCode: 200,
-      body: JSON.stringify(res.rows),
+      body:
+        res.rows.length > 0 ? JSON.stringify(res.rows[0]) : JSON.stringify(""),
     };
     return response;
   } catch (e) {
