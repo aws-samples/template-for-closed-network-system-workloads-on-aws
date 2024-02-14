@@ -141,6 +141,8 @@ export class ServerlessApp extends Construct {
     this.webappS3bucket = s3Buckets.webAppBucket;
 
     // create ALB Target Group (for s3)
+    // ALB health checks Host headers will not contain a domain name, so S3 will return a non-200 HTTP response code. Add “307,405” to the health check success codes. Select “Next”.
+    // See here : https://aws.amazon.com/jp/blogs/networking-and-content-delivery/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/
     const vpcEndpointTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(
       this,
       'VpcEndpointTargetGroup',
@@ -303,6 +305,8 @@ export class ServerlessApp extends Construct {
       }
     );
     // create ALB Target Group (for ApiGw)
+    // For health check http code, add 403
+    // See here : https://repost.aws/ja/knowledge-center/invoke-private-api-gateway
     const apiGwTargetGroup = new aws_elasticloadbalancingv2.ApplicationTargetGroup(
       this,
       'ApiGwTarget',
@@ -312,7 +316,7 @@ export class ServerlessApp extends Construct {
         port: 443,
         protocol: aws_elasticloadbalancingv2.ApplicationProtocol.HTTPS,
         healthCheck: {
-          healthyHttpCodes: '200-202,400-404',
+          healthyHttpCodes: '200,403',
         },
       }
     );
