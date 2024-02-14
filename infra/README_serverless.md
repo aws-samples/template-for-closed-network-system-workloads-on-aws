@@ -8,16 +8,16 @@ If the number of accesses is low or there is a time period where there is almost
 
 In such cases, reduce costs and operational troubles by using serverless by S3 and Lambda.
 
-Hosting an internal HTTPS static website using ALB, S3, and PrivateLink in a closed network is described in [this blog](https://aws.amazon.com/jp/blogs/news/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/).
+Hosting an internal HTTPS static website using ALB, S3, and PrivateLink in a closed network is described in [this blog](https://aws.amazon.com/jp/blogs/networking-and-content-delivery/hosting-internal-https-static-websites-with-alb-s3-and-privatelink/).
 This template includes architecture of this blog.
 By using this source code, you can automate complicated Internal ALB settings, etc.
 
 The architecture diagram is as follows. (The area circled red is the difference from the container version)
 
-![architecture diagram](../docs/images/template_architecture_serverless_ja.png)
+![architecture diagram](../docs/images/template_architecture_serverless_en.png)
 
 When using Private Link, it looks like this:
-![architecture diagram](../docs/images/template_architecture_serverless_privatelink_ja.png)
+![architecture diagram](../docs/images/template_architecture_serverless_privatelink_en.png)
 
 ## Preparation
 ### 1. Configuring the AWS CLI
@@ -201,8 +201,3 @@ $ git add.
 $ git commit -m "Initial commit"
 $ git push --set-upstream origin main
 ```
-
-Characters Remaining: 2928
-Translation History
-Source Text
-	
