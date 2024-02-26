@@ -40,7 +40,7 @@ const webappStack = new WebappStack(app, `${id}Webapp`, {
     qualifier,
   }),
   description:
-    'WebappStack will provision ecs cluster for webapp, load balancers, bastions, and CI/CD pipeline (uksb-1tupboc54).',
+    'WebappStack will provision ecs cluster for webapp, load balancers, bastions, and CI/CD pipeline (uksb-1tupboc54) (tag:webapp-container).',
   auroraSecretName,
   auroraSecurityGroupId,
   auroraSecretEncryptionKeyArn,

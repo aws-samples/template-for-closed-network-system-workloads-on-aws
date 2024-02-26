@@ -40,7 +40,7 @@ new BatchStack(app, `${id}Batch`, {
     qualifier,
   }),
   description:
-    'BatchStack will provision stepfunctions statemachine and ecs cluster for batch (uksb-1tupboc54).',
+    'BatchStack will provision stepfunctions statemachine and ecs cluster for batch (uksb-1tupboc54) (tag:batch).',
   notifyEmail,
   repositoryName,
   vpcId: appVpcId,

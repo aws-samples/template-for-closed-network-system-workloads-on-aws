@@ -29,7 +29,7 @@ const base = new BaseStack(app, `${id}Base`, {
     qualifier,
   }),
   description:
-    'BaseStack will provision static resourcse, like a database, repository, and vpc (uksb-1tupboc54).',
+    'BaseStack will provision static resourcse, like a database, repository, and vpc (uksb-1tupboc54) (tag:base).',
 });
 
 // cdk-nag suppressions
