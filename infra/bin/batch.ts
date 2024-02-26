@@ -39,6 +39,8 @@ new BatchStack(app, `${id}Batch`, {
   synthesizer: new DefaultStackSynthesizer({
     qualifier,
   }),
+  description:
+    'BatchStack will provision stepfunctions statemachine and ecs cluster for batch (uksb-1tupboc54) (tag:batch).',
   notifyEmail,
   repositoryName,
   vpcId: appVpcId,
