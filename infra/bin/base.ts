@@ -28,6 +28,8 @@ const base = new BaseStack(app, `${id}Base`, {
   synthesizer: new DefaultStackSynthesizer({
     qualifier,
   }),
+  description:
+    'BaseStack will provision static resourcse, like a database, repository, and vpc (uksb-1tupboc54).',
 });
 
 // cdk-nag suppressions
