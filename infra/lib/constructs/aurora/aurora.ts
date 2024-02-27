@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import { isEmpty } from 'lodash';
 import { EncryptionKey } from '../kms/key';
 import { ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { NagSuppressions } from 'cdk-nag';
 
 export class Aurora extends Construct {
   public readonly aurora: aws_rds.DatabaseCluster | aws_rds.ServerlessCluster;
@@ -146,5 +147,15 @@ export class Aurora extends Construct {
         });
       }
     }
+    NagSuppressions.addResourceSuppressions(
+      this.aurora,
+      [
+        {
+          id: 'AwsSolutions-RDS10',
+          reason: 'for Development purpose only',
+        },
+      ],
+      true
+    );
   }
 }
