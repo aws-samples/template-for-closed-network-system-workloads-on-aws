@@ -417,39 +417,39 @@ export class ServerlessApp extends Construct {
         zone: privateHostedZone,
       });
 
-      // Create the API domain
-      const apiDomain = new aws_apigateway.DomainName(this, 'apiDomain', {
-        domainName: `app.${props.domainName}`,
-        certificate: aws_certificatemanager.Certificate.fromCertificateArn(
-          this,
-          'certificate',
-          props.certificateArn
-        ),
-        endpointType: aws_apigateway.EndpointType.REGIONAL, // API domains can only be created for Regional endpoints, but it will work with the Private endpoint anyway
-        securityPolicy: aws_apigateway.SecurityPolicy.TLS_1_2,
-      });
-      new aws_apigateway.BasePathMapping(this, 'ApiGwPathMapping', {
-        basePath: 'apigw',
-        domainName: apiDomain,
-        restApi: apiGw.privateApi,
-      });
-      httpsListener.addAction('apis', {
-        action: aws_elasticloadbalancingv2.ListenerAction.forward([apiGwTargetGroup]),
-        conditions: [aws_elasticloadbalancingv2.ListenerCondition.pathPatterns([`/apigw/*`])],
-        priority: 1,
-      });
-      httpsListener.addAction('Fixed', {
-        priority: 5,
-        conditions: [aws_elasticloadbalancingv2.ListenerCondition.pathPatterns(['/'])],
-        action: aws_elasticloadbalancingv2.ListenerAction.redirect({
-          protocol: aws_elasticloadbalancingv2.Protocol.HTTPS,
-          host: '#{host}',
-          path: '/index.html',
-          query: '#{query}',
-        }),
-      });
     }
-    NagSuppressions.addResourceSuppressions(
+    // Create the API domain
+    const apiDomain = new aws_apigateway.DomainName(this, 'apiDomain', {
+      domainName: `app.${props.domainName}`,
+      certificate: aws_certificatemanager.Certificate.fromCertificateArn(
+        this,
+        'certificate',
+        props.certificateArn
+      ),
+      endpointType: aws_apigateway.EndpointType.REGIONAL, // API domains can only be created for Regional endpoints, but it will work with the Private endpoint anyway
+      securityPolicy: aws_apigateway.SecurityPolicy.TLS_1_2,
+    });
+    new aws_apigateway.BasePathMapping(this, 'ApiGwPathMapping', {
+      basePath: 'apigw',
+      domainName: apiDomain,
+      restApi: apiGw.privateApi,
+    });
+    httpsListener.addAction('apis', {
+      action: aws_elasticloadbalancingv2.ListenerAction.forward([apiGwTargetGroup]),
+      conditions: [aws_elasticloadbalancingv2.ListenerCondition.pathPatterns([`/apigw/*`])],
+      priority: 1,
+    });
+    httpsListener.addAction('Fixed', {
+      priority: 5,
+      conditions: [aws_elasticloadbalancingv2.ListenerCondition.pathPatterns(['/'])],
+      action: aws_elasticloadbalancingv2.ListenerAction.redirect({
+        protocol: aws_elasticloadbalancingv2.Protocol.HTTPS,
+        host: '#{host}',
+        path: '/index.html',
+        query: '#{query}',
+      }),
+    });
+  NagSuppressions.addResourceSuppressions(
       apiGw.privateApi,
       [
         {
