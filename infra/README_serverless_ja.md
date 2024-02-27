@@ -156,7 +156,7 @@ Web アプリ向けの CI/CD は BlackBelt で紹介されている[構成例(Pa
 Bastion にアクセスする Keypair は [デプロイ - 1. CDK](#1-cdk) で取得したものを利用し、Fleet Manager 経由でアクセスします。
 Fleet Manager を利用した RDP 接続の方法は、[リモートデスクトップを使用してマネージドノードへ接続する](https://docs.aws.amazon.com/ja_jp/systems-manager/latest/userguide/fleet-rdp.html#fleet-rdp-connect-to-node)を参照ください。
 
-Bastion への RDP 接続ができたら、ブラウザを起動し、`stages.js`の`domainName`で指定したドメインを入力し、アプリケーションにアクセスしてください。
+Bastion への RDP 接続ができたら、ブラウザを起動し、`stages.js`の`domainName` で `app.{domainName}` を入力し、アプリケーションにアクセスしてください。
 
 次のような画面が表示されたら成功です。
 
@@ -194,15 +194,16 @@ S3 のバケット名は全ての AWS アカウント間でユニークである
 コンテナ版を使っていて、サーバーレスへの移行を考えているときは、大まかには次のような手順を踏む必要があります。
 
 - GitHub からサーバーレス版のソースコードを含んだ、最新のソースコードを取得する
-- `npm run destroy-webapp` コマンドを利用し、デプロイ済みの Webapp Stack を削除する
-- 証明書の作成は完了しているため、本 README の 1. CDK に従い、デプロイを実施する
+- `npm run destroy-webapp -- --{alias}` コマンドを利用し、デプロイ済みの Webapp Stack を削除する
+- 証明書の作成は完了しているため、`functions`ディレクトリでLambda 関数に必要なモジュールをインストールしてから、本 README の 1. CDK に従い、デプロイを実施する
 - 既存の Webapp 用の CodeCommit リポジトリは、Java アプリケーションコードがデプロイされているため、webapp-java のディレクトリ内の git 関連ファイルを残したまま、ソースコードだけを削除し、webapp-react のソースコードを webapp-java ディレクトリにコピーする。
 - 続いて、webapp-java のディレクトリ名を webapp-react に変更する
+- `.env` のドメインを `stages.js` のものと一致させる
 - 以下のコマンドを実行し、react のソースコードを push する
 
 ```
 $ cd webapp-react
 $ git add .
 $ git commit -m "Initial commit"
-$ git push --set-upstream origin main
+$ git push
 ```

@@ -56,14 +56,14 @@ export class WebappStack extends Stack {
       ecsBase = new EcsAppBase(this, `WebappBase`, {
         vpc: vpc,
         privateLinkVpc: privateLinkVpc.vpc,
-        domainName: 'templateapp.local',
+        domainName: props.domainName,
         certificateArn: props.certificateArn,
       });
     } else {
       // Create ECS
       ecsBase = new EcsAppBase(this, `WebappBase`, {
         vpc: vpc,
-        domainName: 'templateapp.local',
+        domainName: props.domainName,
         certificateArn: props.certificateArn,
       });
     }

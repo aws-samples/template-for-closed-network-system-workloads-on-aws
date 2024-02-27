@@ -148,7 +148,7 @@ When you want to check web application, you can access the app through the Basti
 To access to the Bastion server via Fleet Manager Remote Desktop, you use the keypair that you've gotten in section [1. CDK].
 If you want to know about how to access the Bastion server via Fleet Manager Remote Desktop, please see [Connect to a managed node using Remote Desktop](https://docs.aws.amazon.com/systems-manager/latest/userguide/fleet-rdp.html#fleet-rdp-connect-to-node).
 
-If you can access to Bastion server, open your browser and enter the domain specified by `domainName` in `stages.js` to access the web application.
+If you can access to Bastion server, open your browser and enter the domain specified by `app.{domainName}` in `stages.js` to access the web application.
 
 If the following screen is displayed, it is successful.
 
@@ -189,15 +189,16 @@ S3 bucket names must be unique across all AWS accounts, and this limitation may 
 If you are using the container version and are thinking about moving to serverless, you need to follow the following steps.
 
 - Get the latest source code from GitHub, including the serverless version
-- `npm run destroy-webapp` command to delete the deployed Webapp stack
-- The certificate has been created, so Implement the deployment according to the　”1. CDK”
+- `npm run destroy-webapp -- --{alias}` command to delete the deployed Webapp stack
+- The certificate has been created, so Implement the deployment according to the　”1. CDK” after `npm install` in function folder
 - Since Java application code has been deployed in the existing CodeCommit repository for webapps, delete only the source code while leaving git related files in the webapp-java directory, and copy the webapp-react source code to the webapp-java directory.
 - Next, rename the webapp-java directory to webapp-react
+- change `.env` by domain name in `stages.js`
 - Run the following command to push the react source code
 
 ```
 $ cd webapp-react
 $ git add.
 $ git commit -m "Initial commit"
-$ git push --set-upstream origin main
+$ git push
 ```
