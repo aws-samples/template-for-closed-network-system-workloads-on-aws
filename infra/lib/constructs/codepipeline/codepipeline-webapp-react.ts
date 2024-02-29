@@ -3,25 +3,22 @@ import {
   aws_codecommit,
   aws_codepipeline,
   aws_codepipeline_actions,
-  aws_ecr,
-  aws_ecs,
   aws_iam,
   aws_kms,
   aws_logs,
+  aws_s3,
 } from 'aws-cdk-lib';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { EncryptionKey } from '../kms/key';
 
-export class CodePipeline extends Construct {
+export class CodePipelineWebappReact extends Construct {
   constructor(
     scope: Construct,
     id: string,
     props: {
       codeCommitRepository: aws_codecommit.IRepository;
-      ecrRepository: aws_ecr.IRepository;
-      ecsService: aws_ecs.FargateService;
-      containerName: string;
+      s3bucket: aws_s3.Bucket;
     }
   ) {
     super(scope, id);
@@ -65,22 +62,11 @@ export class CodePipeline extends Construct {
         privileged: true,
         buildImage: aws_codebuild.LinuxBuildImage.AMAZON_LINUX_2_4,
       },
-      environmentVariables: {
-        REPOSITORY_URI: {
-          type: aws_codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          value: props.ecrRepository.repositoryUri,
-        },
-        ECS_APP_CONTAINER: {
-          type: aws_codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          value: props.containerName,
-        },
-      },
     });
-    props.ecrRepository.grantPullPush(buildActionProject);
 
     const buildOutput = new aws_codepipeline.Artifact();
     const buildAction = new aws_codepipeline_actions.CodeBuildAction({
-      actionName: 'BuildDockerImageOnCodeBuild',
+      actionName: 'BuildReactOnCodeBuild',
       project: buildActionProject,
       input: sourceOutput,
       outputs: [buildOutput],
@@ -91,10 +77,10 @@ export class CodePipeline extends Construct {
     });
 
     // Deploy stage
-    const deployAction = new aws_codepipeline_actions.EcsDeployAction({
-      actionName: 'DeployNewImageToECS',
-      service: props.ecsService,
+    const deployAction = new aws_codepipeline_actions.S3DeployAction({
+      actionName: 'DeployBuildFileToS3',
       input: buildOutput,
+      bucket: props.s3bucket,
     });
 
     pipeline.addStage({

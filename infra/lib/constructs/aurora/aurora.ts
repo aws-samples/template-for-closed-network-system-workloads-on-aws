@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import { isEmpty } from 'lodash';
 import { EncryptionKey } from '../kms/key';
 import { ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { NagSuppressions } from 'cdk-nag';
 
 export class Aurora extends Construct {
   public readonly aurora: aws_rds.DatabaseCluster | aws_rds.ServerlessCluster;
@@ -24,7 +25,7 @@ export class Aurora extends Construct {
 
     // Check whether isolated subnets which you chose or not
     if (isEmpty(props.vpc.isolatedSubnets)) {
-      throw new Error('You should speficy the isolated subnets in subnets');
+      throw new Error('You should specify the isolated subnets in subnets');
     }
 
     const secretName = 'AuroraSecret';
@@ -52,22 +53,34 @@ export class Aurora extends Construct {
         },
         credentials: this.databaseCredentials,
         removalPolicy: RemovalPolicy.DESTROY, // For development env only
-        deletionProtection: true, // In production, we have to set true.
+        deletionProtection: false, // In production, we have to set true.
       });
     } else {
       this.aurora = new aws_rds.DatabaseCluster(this, `Cluster`, {
         engine: props.auroraEdition,
         iamAuthentication: true,
-        instanceProps: {
-          vpc: props.vpc,
-          vpcSubnets: {
-            subnets: props.vpc.isolatedSubnets,
-          },
+        vpc: props.vpc,
+        vpcSubnets: {
+          subnets: props.vpc.isolatedSubnets,
         },
+        writer: aws_rds.ClusterInstance.provisioned('Writer', {
+          instanceType: aws_ec2.InstanceType.of(
+            aws_ec2.InstanceClass.T3,
+            aws_ec2.InstanceSize.MEDIUM
+          ),
+        }),
+        readers: [
+          aws_rds.ClusterInstance.provisioned('Reader', {
+            instanceType: aws_ec2.InstanceType.of(
+              aws_ec2.InstanceClass.T3,
+              aws_ec2.InstanceSize.MEDIUM
+            ),
+          }),
+        ],
         storageEncrypted: true,
         credentials: this.databaseCredentials,
         removalPolicy: RemovalPolicy.DESTROY, // For development env only
-        deletionProtection: true, // In production, we have to set true.
+        deletionProtection: false, // In production, we have to set true.
         parameters: {
           'rds.force_ssl': '1',
         },
@@ -83,6 +96,7 @@ export class Aurora extends Construct {
           vpc: props.vpc,
           iamAuth: true,
           secrets: [this.aurora.secret],
+          securityGroups: this.aurora.connections.securityGroups,
         });
 
         this.proxy.grantConnect(this.proxyRole);
@@ -96,6 +110,10 @@ export class Aurora extends Construct {
       new CfnOutput(this, 'SecretName', {
         exportName: 'SecretName',
         value: this.aurora.secret.secretName,
+      });
+      new CfnOutput(this, 'SecretArn', {
+        exportName: 'SecretArn',
+        value: this.aurora.secret.secretArn,
       });
 
       new CfnOutput(this, 'AuroraClusterIdentifier', {
@@ -115,7 +133,7 @@ export class Aurora extends Construct {
 
       new CfnOutput(this, 'AuroraSecretEncryptionKeyArn', {
         exportName: 'AuroraSecretEncryptionKeyArn',
-        value: this.aurora.secret.encryptionKey!.keyArn,
+        value: this.aurora.secret.encryptionKey ? this.aurora.secret.encryptionKey.keyArn : '',
       });
 
       if (props.enabledProxy) {
@@ -123,7 +141,21 @@ export class Aurora extends Construct {
           exportName: 'RdsProxyEndpoint',
           value: this.proxy.endpoint,
         });
+        new CfnOutput(this, 'RDSProxyArn', {
+          exportName: 'RdsProxyArn',
+          value: this.proxy.dbProxyArn,
+        });
       }
     }
+    NagSuppressions.addResourceSuppressions(
+      this.aurora,
+      [
+        {
+          id: 'AwsSolutions-RDS10',
+          reason: 'for Development purpose only',
+        },
+      ],
+      true
+    );
   }
 }

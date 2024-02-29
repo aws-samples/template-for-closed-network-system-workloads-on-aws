@@ -10,6 +10,9 @@ In local government systems that require a high level security and network restr
 We will adopt REPLATFORM, one of the 6Rs, which is AWS's migration strategy, and aims to migrate from an existing on-premise environment to computing and managed DB using containers. REPLATFORM has advantages such as improving performance and reducing costs. The template uses several AWS managed services that will help us to reduce cost and operational workload.
 (Ref：[Migrating to AWS Best Practices and Strategies](https://pages.awscloud.com/rs/112-TZM-766/images/Migrating-to-AWS_Best-Practices-and-Strategies_eBook.pdf)
 
+And we added serverless application version of infra that uses AWS Lambda and React application instead of container.
+Please see here you want to know how to deploy serverless application version.
+
 ## Scope
 
 ### What the template provides
@@ -19,6 +22,12 @@ We will adopt REPLATFORM, one of the 6Rs, which is AWS's migration strategy, and
   - In addition to this, a sample application using Spring Boot
   - A sample Dockerfile to turn that sample application into a container image
   - For sample applications, see [`Webapp-java/readme.md`](./webapp-java/README.md)
+
+- Serverless application environment for running React application hosted on Amazon S3 and REST API on API Gateway and AWS Lambda.(\*)
+
+  - A sample application using React
+  - For sample react application, see [`Webapp-react/readme.md`](./webapp-react/README.md).
+  - Sample REST APIs code is in `functions/`
 
 - CI/CD environment for continuous application development
 
@@ -94,6 +103,7 @@ This is the architecture diagram that is slightly modified by using private link
 ## How to Deploy
 
 Please see the following document: [infra/README.md](./infra/README.md)
+If you want to deploy serverless application version, please see the following document: [infra/README_serverless.md](./infra/README_serverless.md)
 
 ## Security
 

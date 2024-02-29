@@ -221,7 +221,7 @@ export class EcsJob extends Construct {
     ]);
   }
 
-  // member functiosn
+  // member functions
   private ecsJob(
     id: string,
     jobId: string,
@@ -246,7 +246,7 @@ export class EcsJob extends Construct {
       },
       integrationPattern: aws_stepfunctions.IntegrationPattern.RUN_JOB,
       taskDefinition: taskDefinition,
-      taskTimeout: aws_stepfunctions.Timeout.duration(Duration.minutes(5)), // FIXME: It's tempolary setting.
+      taskTimeout: aws_stepfunctions.Timeout.duration(Duration.minutes(5)), // FIXME: It's temporary setting.
       resultPath: '$.submitResult',
     });
   }

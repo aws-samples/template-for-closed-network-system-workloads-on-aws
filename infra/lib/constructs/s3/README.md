@@ -1,4 +1,4 @@
-# EncryptionKey Construct
+# Bucket Construct
 
 ## Purpose
 

@@ -28,7 +28,14 @@ let certificateArn = '';
 
 /* cdk diff */
 exports.diff = series(setStage, diffBase, buildBaseEnv, diffWebapp, buildWebappEnv, diffBatch);
-
+exports.diffServerless = series(
+  setStage,
+  diffBase,
+  buildBaseEnv,
+  diffServerlessWebapp,
+  buildWebappEnv,
+  diffBatch
+);
 /* cdk synth */
 exports.synth = series(
   setStage,
@@ -36,18 +43,31 @@ exports.synth = series(
   series(synthWebapp, buildWebappEnv),
   series(synthBatch)
 );
+exports.synthSeverless = series(
+  setStage,
+  series(synthBase, buildBaseEnv),
+  series(synthServerlessWebapp, buildWebappEnv),
+  series(synthBatch)
+);
 exports.synthBase = series(setStage, synthBase);
 exports.synthWebapp = series(setStage, buildBaseEnv, synthWebapp);
+exports.synthServerlessWebapp = series(setStage, buildBaseEnv, synthServerlessWebapp);
 exports.synthBatch = series(setStage, buildBaseEnv, synthBatch);
 
 /* cdk list */
 exports.list = series(setStage, listBase, listWebapp, listBatch);
-
+exports.listServerless = series(setStage, listBase, listServerlessWebapp, listBatch);
 /* cdk deploy */
 exports.deploy = series(
   setStage,
   series(setup, bootstrapBase, deployBase, buildBaseEnv),
   series(bootstrapWebApp, getCertificateArn, deployWebapp, buildWebappEnv),
+  series(bootstrapBatch, buildBatch, deployBatch)
+);
+exports.deployServerless = series(
+  setStage,
+  series(setup, bootstrapBase, deployBase, buildBaseEnv),
+  series(bootstrapServerlessWebApp, getCertificateArn, deployServerlessWebapp, buildWebappEnv),
   series(bootstrapBatch, buildBatch, deployBatch)
 );
 exports.deployBase = series(setStage, series(bootstrapBase, deployBase));
@@ -58,11 +78,23 @@ exports.deployWebapp = series(
   getCertificateArn,
   deployWebapp
 );
+exports.deployServerlessWebapp = series(
+  setStage,
+  bootstrapServerlessWebApp,
+  buildBaseEnv,
+  getCertificateArn,
+  deployServerlessWebapp
+);
 exports.deployBatch = series(setStage, bootstrapBatch, buildBaseEnv, buildBatch, deployBatch);
 
 /* cdk destroy */
 exports.destroy = series(setStage, series(destroyBatch, destroyWebapp, destroyBase));
+exports.destroyServerless = series(
+  setStage,
+  series(destroyBatch, destroyServerlessWebapp, destroyBase)
+);
 exports.destroyWebapp = series(setStage, destroyWebapp);
+exports.destroyServerlessWebapp = series(setStage, destroyServerlessWebapp);
 exports.destroyBatch = series(setStage, destroyBatch);
 exports.destroyBase = series(setStage, destroyBase);
 
@@ -107,6 +139,16 @@ function deployWebapp() {
     'cdk',
     [
       `deploy --all ${profile()} --app 'npx ts-node --prefer-ts-exts bin/webapp.ts' --toolkit-stack-name ${toolkit()} ${addContext()} --require-approval=never --outputs-file ./cdk-webapp-outputs.json`,
+    ],
+    paths.workingDir
+  );
+}
+
+function deployServerlessWebapp() {
+  return exec(
+    'cdk',
+    [
+      `deploy --all ${profile()} --app 'npx ts-node --prefer-ts-exts bin/serverless-webapp.ts' --toolkit-stack-name ${toolkit()} ${addContext()} --require-approval=never --outputs-file ./cdk-webapp-outputs.json`,
     ],
     paths.workingDir
   );
@@ -280,6 +322,18 @@ async function bootstrapWebApp(cb) {
   cb();
 }
 
+async function bootstrapServerlessWebApp(cb) {
+  const qualifier = `${stageName.slice(0, 5)}${deployStage.deployEnv.slice(0, 5)}`;
+  await exec(
+    'cdk',
+    [
+      `bootstrap ${profile()} --toolkit-stack-name ${toolkit()} ${addContext()} --qualifier ${qualifier} --app 'npx ts-node --prefer-ts-exts bin/serverless-webapp.ts'`,
+    ],
+    paths.workingDir
+  );
+  cb();
+}
+
 async function bootstrapBatch(cb) {
   const qualifier = `${stageName.slice(0, 5)}${deployStage.deployEnv.slice(0, 5)}`;
   await exec(
@@ -314,6 +368,17 @@ async function destroyWebapp(cb) {
   cb();
 }
 
+async function destroyServerlessWebapp(cb) {
+  await exec(
+    'cdk',
+    [
+      `destroy --all --app 'npx ts-node --prefer-ts-exts bin/serverless-webapp.ts' ${profile()} --toolkit-stack-name ${toolkit()} ${addContext()} --force`,
+    ],
+    paths.workingDir
+  );
+  cb();
+}
+
 async function destroyBase(cb) {
   await exec(
     'cdk',
@@ -341,6 +406,16 @@ async function diffWebapp(cb) {
     'cdk',
     [
       `diff --app 'npx ts-node --prefer-ts-exts bin/webapp.ts' ${profile()} --toolkit-stack-name ${toolkit()} ${addContext()}`,
+    ],
+    paths.workingDir
+  );
+  cb();
+}
+async function diffServerlessWebapp(cb) {
+  await exec(
+    'cdk',
+    [
+      `diff --app 'npx ts-node --prefer-ts-exts bin/serverless-webapp.ts' ${profile()} --toolkit-stack-name ${toolkit()} ${addContext()}`,
     ],
     paths.workingDir
   );
@@ -380,6 +455,17 @@ async function synthWebapp(cb) {
   cb();
 }
 
+async function synthServerlessWebapp(cb) {
+  await exec(
+    'cdk',
+    [
+      `synth --app 'npx ts-node bin/serverless-webapp.ts' --all ${profile()} --quiet --toolkit-stack-name ${toolkit()} ${addContext()}`,
+    ],
+    paths.workingDir
+  );
+  cb();
+}
+
 async function synthBatch(cb) {
   await exec(
     'cdk',
@@ -406,7 +492,17 @@ async function listWebapp(cb) {
   await exec(
     'cdk',
     [
-      `list --app 'npx ts-node bin/Webapp.ts' ${profile()} --toolkit-stack-name ${toolkit()} ${addContext()}`,
+      `list --app 'npx ts-node bin/webapp.ts' ${profile()} --toolkit-stack-name ${toolkit()} ${addContext()}`,
+    ],
+    paths.workingDir
+  );
+  cb();
+}
+async function listServerlessWebapp(cb) {
+  await exec(
+    'cdk',
+    [
+      `list --app 'npx ts-node bin/serverless-webapp.ts' ${profile()} --toolkit-stack-name ${toolkit()} ${addContext()}`,
     ],
     paths.workingDir
   );

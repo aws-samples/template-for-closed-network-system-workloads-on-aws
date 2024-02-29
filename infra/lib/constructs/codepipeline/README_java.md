@@ -1,4 +1,4 @@
-# CodePipeline Construct
+# CodePipelineWebappJava Construct
 
 ## Purpose
 
