@@ -15,10 +15,7 @@ cdk-*-outputs.json
 .env
 scoutsuite-report*
 
-# ssl certs
-ssl/*.key
-ssl/*.pem
-ssl/*.csr
-
-
+# infra
+!ssl/openssl_sign_inca.cnf
+ssl/*
 certificate_arn.json
