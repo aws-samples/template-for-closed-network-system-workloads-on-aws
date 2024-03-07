@@ -42,6 +42,7 @@ const webappStack = new ServerlessappStack(app, `${id}Webapp`, {
   synthesizer: new DefaultStackSynthesizer({
     qualifier,
   }),
+  description: 'ServerlessappStack will provision APIGW, Lambda function, bastions, and CI/CD pipeline (uksb-1tupboc54) (tag:webapp-serverless).',
   auroraSecretName,
   auroraSecretArn,
   auroraSecurityGroupId,
