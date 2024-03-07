@@ -25,7 +25,7 @@ export class BaseStack extends Stack {
     // Create Aurora
     new Aurora(this, 'Aurora', {
       enabledServerless: false,
-      enabledProxy: true, // If you want to use Lambda Proxy, This parameter is true. And If you want to use `serverless-webapp`, Please set `true`.
+      enabledProxy: false, // If you want to use Lambda Proxy, This parameter is true. And If you want to use `serverless-webapp`, Please set `true`.
       auroraEdition: DatabaseClusterEngine.auroraPostgres({
         version: AuroraPostgresEngineVersion.VER_12_9,
       }),
