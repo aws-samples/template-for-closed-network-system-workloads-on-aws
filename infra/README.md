@@ -131,6 +131,18 @@ The implementation of this CI/CD is based on the BlackBelt sample: [(Black Belt 
 
 If you want to replace it with your own web application or job script, replace the source code you push to CodeCommit with your own and modify the Dockerfile to suit your environment and application.
 
+### ３. Testing
+
+When you want to check web application, you can access the app through the Bastion server on EC2.
+To access to the Bastion server via Fleet Manager Remote Desktop, you use the keypair that you've gotten in section [1. CDK].
+If you want to know about how to access the Bastion server via Fleet Manager Remote Desktop, please see [Connect to a managed node using Remote Desktop](https://docs.aws.amazon.com/systems-manager/latest/userguide/fleet-rdp.html#fleet-rdp-connect-to-node).
+
+If you can access to Bastion server, open your browser and enter the domain specified by `domainName` in `stages.js` to access the web application.
+
+If the following screen is displayed, it is successful.
+
+![application screenshot](../webapp-java/docs/images/screenshot.png)
+
 ### 4. Delete environment
 
 If you want to delete the created environment, execute the following command:
@@ -232,7 +244,7 @@ These checks may show the detection of CRITICAL and HIGH severity by Security Hu
 - CodeBuild's priviledge mode should be disable except when docker image build is required.
 - In this template, priviledge mode is enable because pipeline build a docker image.
 - Please check your enviornment and requirements and fix this configuration.
-  - If you want to fix template's configuration, [please change the priviledge parameter of CodePipeline's construct](lib/constructs/codepipeline/codepipeline.ts#L65) to `false`
+  - If you want to fix template's configuration, [please change the priviledge parameter of CodePipeline's construct](lib/constructs/codepipeline/codepipeline-webapp-java.ts#L65) to `false`
   - Refer:[interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
 
 ## Path to production

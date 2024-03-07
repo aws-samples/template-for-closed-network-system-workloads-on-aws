@@ -3,7 +3,7 @@ import { Bastion } from './constructs/ec2/bastion';
 import { Construct } from 'constructs';
 import { EcsAppBase } from './constructs/ecs/ecs-app-base';
 import { EcsAppService } from './constructs/ecs/ecs-app-service';
-import { CodePipeline } from './constructs/codepipeline/codepipeline';
+import { CodePipelineWebappJava } from './constructs/codepipeline/codepipeline-webapp-java';
 import { Network } from './constructs/network/network';
 
 interface WebappStackProps extends StackProps {
@@ -45,7 +45,7 @@ export class WebappStack extends Stack {
 
     let ecsBase;
     if (props.enabledPrivateLink) {
-      const privateLinkVpc = new Network(this, `PrivatelinkNetwork`, {
+      const privateLinkVpc = new Network(this, `PrivateLinkNetwork`, {
         cidr: '10.0.0.0/16',
         cidrMask: 24,
         publicSubnet: false,
@@ -56,14 +56,14 @@ export class WebappStack extends Stack {
       ecsBase = new EcsAppBase(this, `WebappBase`, {
         vpc: vpc,
         privateLinkVpc: privateLinkVpc.vpc,
-        domainName: 'templateapp.local',
+        domainName: props.domainName,
         certificateArn: props.certificateArn,
       });
     } else {
       // Create ECS
       ecsBase = new EcsAppBase(this, `WebappBase`, {
         vpc: vpc,
-        domainName: 'templateapp.local',
+        domainName: props.domainName,
         certificateArn: props.certificateArn,
       });
     }
@@ -79,7 +79,7 @@ export class WebappStack extends Stack {
     });
 
     // Create Deploy Pipeline
-    new CodePipeline(this, `WebappCodePipeline`, {
+    new CodePipelineWebappJava(this, `WebappCodePipeline`, {
       codeCommitRepository: webappSourceRepository,
       ecrRepository: webappContainerRepository,
       ecsService: ecsAppService.ecsService,

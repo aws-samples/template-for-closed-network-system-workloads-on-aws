@@ -11,14 +11,21 @@ AWS のマイグレーション戦略である 6R の一つ、REPLATFORM を採�
 )
 REPLATFORM では、サーバの運用負荷の軽減などがメリットになります。本テンプレートでも、AWS のマネージドサービスを活用した形で運用コストの軽減を目指しました。
 
+また、Container の代わりに、AWS Lambda を利用して API を構築し、React アプリケーションを利用した、サーバーレスアプリケーション版を追加しました。
+デプロイ方法については、[こちら](./infra/README_serverless_ja.md)を参照ください。
+
 ## テンプレートのスコープ
 
 ### テンプレートで提供されるもの
 
-- Java アプリケーション(Spring boot)を Amazon ECS/Fargate 上で稼働させるためのコンテナ実行環境
+- Java アプリケーション(Spring boot)を Amazon ECS/Fargate 上で稼働させるためのコンテナ実行環境(\*)
   - これに加え、上記環境下で動作する Spring boot を利用したサンプルアプリケーション
   - そのサンプルアプリケーションをコンテナイメージにするためのサンプル Dockerfile
     - サンプルアプリケーションについては、[`webapp-java/README.md`](../webapp-java/README_ja.md)をご参照ください
+- 閉域網で SPA ＋ REST API を動かすための、Amazon S3、Amazon API Gateway、AWS Lambda を利用したサーバーレスな実行環境(\*)
+  - React のサンプルアプリケーション
+    - 詳しくは、[`Webapp-react/readme_ja.md`](./webapp-react/README_ja.md)を参照ください
+  - React サンプルアプリケーションから呼び出される REST API のサンプルコード
 - アプリケーションを継続開発するための CI/CD 環境
   - AWS CodePipeline や AWS CodeCommit, AWS CodeBuild を利用した、上記サンプルアプリケーションをビルド、デプロイするためのパイプライン
 - 簡易なジョブフローが実行できる、AWS Step Functions、Amazon ECS/Fargate を組み合わせたジョブ実行基盤
@@ -28,6 +35,8 @@ REPLATFORM では、サーバの運用負荷の軽減などがメリットにな
 - アプリケーションの動作確認や RDB を管理するためのメンテナンス環境
   - SystemsManager と EC2 を組み合わせたアプリケーションのテストや DB の管理を実施できる環境
   - リモートデスクトップ接続（Windows Server Instance）と コンソール接続（Amazon Linux Instance）を提供
+
+\* コンテナ実行環境とサーバーレスな実行環境は、どちらか選んでデプロイしていただく手順をそれぞれの README に記載しています。
 
 ### テンプレートで提供されないもの
 
@@ -83,7 +92,8 @@ Private Link を利用する場合には、[“共有型”AWS DirectConnect で
 
 ## テンプレートのデプロイ方法
 
-[infra/README.md](./infra/README_ja.md)を参照ください
+[infra/README.md](./infra/README_ja.md)を参照ください。
+サーバーレスアプリケーション版を利用したい方は、[infra/README_serverless_ja.md](./infra/README_serverless_ja.md)を参照ください。
 
 ## Security
 

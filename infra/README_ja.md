@@ -1,6 +1,7 @@
 # infra
 
 [View this page in English](./README.md)
+[サーバーレスのサンプルアプリケーションを構築する場合はこちら](./README_serverless_ja.md)
 
 AWS 上にサンプルアプリケーションやバッチシステムを動かす環境を構築する CDK のコードです。
 
@@ -122,11 +123,24 @@ $ git push --set-upstream origin develop
 
 パイプラインの状況を確認したい場合は、マネジメントコンソールより AWS CodePipeline へアクセスしてください。
 
-#### CI/CD パイプライン
+#### CI/CD パイプラインについて
 
 Web アプリ向けの CI/CD は BlackBelt で紹介されている[構成例(Page 52)](https://d1.awsstatic.com/webinars/jp/pdf/services/20201111_BlackBelt_AWS%20CodeStar_AWS_CodePipeline.pdf)を元に実装しています。
 
 ご自身の Web アプリケーションに差し替えたい場合は、CodeCommit にプッシュするソースコードをご自身のものに差し替え、ご自身の環境やアプリケーションに合わせ、Dockerfile を修正してください。
+
+### ３. 動作確認
+
+デプロイした Web アプリの動作を確認したい場合、Bastion として構築した Windows が起動している EC2 上でブラウザを起動し、アプリケーションにアクセスします。
+
+Bastion にアクセスする Keypair は[デプロイ - 1. CDK](#1-cdk)で取得したものを利用し、Fleet Manager 経由でアクセスします。
+Fleet Manager を利用した RDP 接続の方法は、[リモートデスクトップを使用してマネージドノードへ接続する](https://docs.aws.amazon.com/ja_jp/systems-manager/latest/userguide/fleet-rdp.html#fleet-rdp-connect-to-node)を参照ください。
+
+Bastion への RDP 接続ができたら、ブラウザを起動し、`stages.js`の`domainName`で指定したドメインを入力し、アプリケーションにアクセスしてください。
+
+次のような画面が表示されたら成功です。
+
+![アプリケーション動作画面](../webapp-java/docs/images/screenshot.png)
 
 ### 4. 作成した環境の削除
 
@@ -220,7 +234,7 @@ Security Hub を有効にした場合、デフォルトで有効になる基準�
 #### 修復方法
 
 - CodeBuild では、Docker イメージをビルドする必要がある場合を除き、特権モードは無効化してください。本テンプレートでは、Docker イメージのビルドを行っているため、有効化していますが、実際に利用される場合は、ご自身の環境に合った設定にご変更ください。
-  - テンプレートだけの対応であれば、[CodePipeline のコンストラクト内の特権モードの設定](lib/constructs/codepipeline/codepipeline.ts#L65)を`false`に変更してください。
+  - テンプレートだけの対応であれば、[CodePipeline のコンストラクト内の特権モードの設定](lib/constructs/codepipeline/codepipeline-webapp-java.ts#L65)を`false`に変更してください。
   - ご参考：[interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
 
 ## 本番利用時の考慮点

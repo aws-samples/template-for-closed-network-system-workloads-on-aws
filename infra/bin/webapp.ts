@@ -33,9 +33,8 @@ const sourceRepositoryName = cdk.Fn.importValue('WebappSourceRepositoryName');
 const qualifier = `${stageAlias.slice(0, 5)}${deployEnv.slice(0, 5)}`;
 
 const id = `${capitalize(stageAlias)}${capitalize(deployEnv)}${capitalize(appName)}`;
-
 const webappStack = new WebappStack(app, `${id}Webapp`, {
-  env,
+  env: env,
   synthesizer: new DefaultStackSynthesizer({
     qualifier,
   }),
@@ -54,7 +53,6 @@ const webappStack = new WebappStack(app, `${id}Webapp`, {
   domainName,
   certificateArn,
 });
-
 // cdk-nag suppressions
 NagSuppressions.addStackSuppressions(webappStack, [
   {

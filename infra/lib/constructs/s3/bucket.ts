@@ -13,6 +13,7 @@ export class Bucket extends Construct {
       encryption: aws_s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       autoDeleteObjects: true,
+      objectOwnership: aws_s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
     });
     this.bucket = new aws_s3.Bucket(this, `${id}Bucket`, {
       removalPolicy: RemovalPolicy.DESTROY,
@@ -21,6 +22,7 @@ export class Bucket extends Construct {
       enforceSSL: true,
       serverAccessLogsBucket: accessLogBucket,
       autoDeleteObjects: true,
+      objectOwnership: aws_s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
     });
 
     // cdk-nag suppressions
