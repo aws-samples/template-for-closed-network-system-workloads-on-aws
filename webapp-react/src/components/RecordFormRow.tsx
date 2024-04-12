@@ -12,31 +12,31 @@ export const RecordFormRow: React.FC<{
     <TableRow>
       <TableCell>{record.id} </TableCell>
       <TableCell>{record.name} </TableCell>
-      <TableCell>
+      <TableCell key={record.id}>
         <Checkbox
           checked={record.job0001_flag}
           onClick={() => setFlagHandler(record.id, 'job0001_flag', !record.job0001_flag)}
         />
       </TableCell>
-      <TableCell>
+      <TableCell key={record.id}>
         <Checkbox
           checked={record.job0002_flag}
           onClick={() => setFlagHandler(record.id, 'job0002_flag', !record.job0002_flag)}
         />
       </TableCell>
-      <TableCell>
+      <TableCell key={record.id}>
         <Checkbox
           checked={record.job0003_flag}
           onClick={() => setFlagHandler(record.id, 'job0003_flag', !record.job0003_flag)}
         />
       </TableCell>
-      <TableCell>
+      <TableCell key={record.id}>
         <Checkbox
           checked={record.job0004_flag}
           onClick={() => setFlagHandler(record.id, 'job0004_flag', !record.job0004_flag)}
         />
       </TableCell>
-      <TableCell>
+      <TableCell key={record.id}>
         <Checkbox
           checked={record.job0005_flag}
           onClick={() => setFlagHandler(record.id, 'job0005_flag', !record.job0005_flag)}

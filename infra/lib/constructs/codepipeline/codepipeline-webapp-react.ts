@@ -60,7 +60,7 @@ export class CodePipelineWebappReact extends Construct {
       },
       environment: {
         privileged: true,
-        buildImage: aws_codebuild.LinuxBuildImage.AMAZON_LINUX_2_4,
+        buildImage: aws_codebuild.LinuxBuildImage.AMAZON_LINUX_2_5,
       },
     });
 

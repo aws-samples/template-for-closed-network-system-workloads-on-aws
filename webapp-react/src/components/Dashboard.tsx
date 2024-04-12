@@ -8,7 +8,7 @@ import Button from '@mui/material/Button';
 
 const resource = 'sample/';
 
-export const Dashboard: React.FC = () => {
+export const Dashboard: React.FC<{mode:string;}> = ({mode}) => {
   const [sampleRecords, setSampleRecords] = useState<Record>({} as Record);
   const [formState, setFormState] = useState<boolean>(false);
 
@@ -28,33 +28,33 @@ export const Dashboard: React.FC = () => {
     <React.Fragment>
       <h1>Hello From S3 through CodePipeline ! </h1>
       <br />
-      {formState ? (
-        <>
-          <Button
-            variant="contained"
-            onClick={async () => {
-              await post(resource, sampleRecords);
-              setFormState(!formState);
-            }}
-          >
-            更新
-          </Button>
-          <RecordForm record={sampleRecords} setFlagHandler={setJobFlag} />
-        </>
-      ) : (
-        <>
-          <Button
-            variant="contained"
-            onClick={() => {
-              setFormState(!formState);
-            }}
-          >
-            変更する
-          </Button>
-          <RecordList record={sampleRecords} />
-        </>
-      )}
-    </React.Fragment>
+      {mode=="update" ? 
+        <React.Fragment>
+            <a href="/index.html">
+              <Button
+                variant="contained"
+                onClick={async () => {
+                  await post(resource, sampleRecords);
+                }}
+              >
+                更新
+              </Button>
+            </a>
+            <RecordForm record={sampleRecords} setFlagHandler={setJobFlag} />
+          </React.Fragment>
+        : 
+          <React.Fragment>
+            <a href="/update/index.html">
+              <Button
+                variant="contained"
+              >
+                変更する
+              </Button>
+            </a>
+            <RecordList record={sampleRecords} />
+          </React.Fragment>
+        }
+   </React.Fragment>
   );
 };
 
