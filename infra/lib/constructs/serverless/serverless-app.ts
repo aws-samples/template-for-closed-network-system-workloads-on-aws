@@ -441,11 +441,11 @@ export class ServerlessApp extends Construct {
     });
     httpsListener.addAction('Fixed', {
       priority: 5,
-      conditions: [aws_elasticloadbalancingv2.ListenerCondition.pathPatterns(['/'])],
+      conditions: [aws_elasticloadbalancingv2.ListenerCondition.pathPatterns(['*/'])],
       action: aws_elasticloadbalancingv2.ListenerAction.redirect({
         protocol: aws_elasticloadbalancingv2.Protocol.HTTPS,
         host: '#{host}',
-        path: '/index.html',
+        path: '/#{path}index.html',
         query: '#{query}',
       }),
     });

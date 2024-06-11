@@ -30,7 +30,7 @@ $ aws configure --profile {プロファイル名}
 IAM ユーザ作成時に表示される、アクセスキーとシークレットキー、デフォルトのリージョンが確認されます。
 詳しくは[aws configure を使用したクイック設定 - プロファイル](https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-profiles)をご参照ください。
 
-### 2. stages.js の書き換え
+### 2. stages.js, base-stack.ts の書き換え
 
 本テンプレートは、タスクランナーの[gulp](https://gulpjs.com/)を利用してデプロイを行います。
 gulp から参照される変数が`stages.js`で定義されているため、各自の環境に合わせて変更します。
@@ -59,7 +59,19 @@ alias: {
     domainName: '', // Private Hosted Zoneに登録されるドメイン名（このドメイン名がS3のバケット名になり、S3 のバケット名はユニークである必要があるため、必ず変更してください。）
 }
 ```
-
+また、サーバーレス構成の場合、RDS Proxy を活用する必要があるため、以下のように `infra/lib/base-stack.ts` を変更してください。
+```typescript
+// Create Aurora
+new Aurora(this, 'Aurora', {
+  enabledServerless: false,
+  enabledProxy: true, // If you want to use Lambda Proxy, This parameter is true. And If you want to use `serverless-webapp`, Please set `true`.
+  auroraEdition: DatabaseClusterEngine.auroraPostgres({
+    version: AuroraPostgresEngineVersion.VER_12_9,
+  }),
+  vpc: network.vpc,
+  dbUserName: 'postgres',
+});
+```
 ### 3. 自己署名付き証明書の作成
 
 HTTPS 通信を実装するために、今回は自己署名付き証明書を用います。
@@ -198,7 +210,7 @@ S3 のバケット名は全ての AWS アカウント間でユニークである
 - 証明書の作成は完了しているため、`functions`ディレクトリでLambda 関数に必要なモジュールをインストールしてから、本 README の 1. CDK に従い、デプロイを実施する
 - 既存の Webapp 用の CodeCommit リポジトリは、Java アプリケーションコードがデプロイされているため、webapp-java のディレクトリ内の git 関連ファイルを残したまま、ソースコードだけを削除し、webapp-react のソースコードを webapp-java ディレクトリにコピーする。
 - 続いて、webapp-java のディレクトリ名を webapp-react に変更する
-- `.env` のドメインを `stages.js` のものと一致させる
+- `src/.env` のドメインを `stages.js` のものと一致させる
 - 以下のコマンドを実行し、react のソースコードを push する
 
 ```
