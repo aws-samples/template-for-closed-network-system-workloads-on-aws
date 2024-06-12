@@ -10,7 +10,7 @@ import TableRow from '@mui/material/TableRow';
 
 export const RecordForm: React.FC<{
   record: Record;
-  setFlagHandler: Function;
+  setFlagHandler: (id: number, jobFlagKey: string, newFlagValue: boolean) => void;
 }> = ({ record, setFlagHandler }) => {
   return (
     <Table>
