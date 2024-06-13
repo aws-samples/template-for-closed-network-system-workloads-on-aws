@@ -6,7 +6,7 @@ import Checkbox from '@mui/material/Checkbox';
 
 export const RecordFormRow: React.FC<{
   record: Record;
-  setFlagHandler: Function;
+  setFlagHandler: (id: number, jobFlagKey: string, newFlagValue: boolean) => void;
 }> = ({ record, setFlagHandler }) => {
   return (
     <TableRow>
