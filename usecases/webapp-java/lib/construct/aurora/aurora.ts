@@ -35,14 +35,6 @@ export class Aurora extends Construct {
       }).encryptionKey,
     });
 
-    // Add VPC Endpoint to use SecretRotation
-    props.vpc.addInterfaceEndpoint('SecretsmanagerEndpoint', {
-      service: aws_ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
-      subnets: {
-        subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED,
-      },
-    });
-
     if (props.enabledServerless) {
       this.aurora = new aws_rds.ServerlessCluster(this, 'Serverless', {
         engine: props.auroraEdition,

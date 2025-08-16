@@ -1,7 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
 
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
-import { Aspects } from 'aws-cdk-lib';
+import { Aspects, aws_route53, aws_route53_targets } from 'aws-cdk-lib';
+import { SharedNetworkStack } from '../lib/shared-network-stack';
 import { NetworkStack } from '../lib/network-stack';
 import { StorageStack } from '../lib/storage-stack';
 import { WebappStack } from '../lib/webapp-stack';
@@ -10,6 +11,7 @@ import { BatchStack } from '../lib/batch-stack';
 import parameter from '../parameter';
 // Please do npm run create:certificate before cdk deploy
 import { CertificateArn } from '../config/certificate_arn.json'
+import { DomainStack } from '../lib/domain-stack';
 
 const env = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -22,21 +24,33 @@ const app = new cdk.App();
 Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true, reports: true }));
 
 const deployEnv = parameter.deployEnv;
-const accessViaPrivateLink = parameter.accessViaPrivateLink;
+const sharedVpcCidr = parameter.sharedVpcCidr;
+const appVpcCidr = parameter.appVpcCidr;
 const windowsBastion = parameter.windowsBastion;
 const linuxBastion = parameter.linuxBastion;
 const domainName = parameter.domainName;
 const certificateArn = CertificateArn;
 
-const networkStack = new NetworkStack(app, `${deployEnv}Network`, {
+const sharedNetworkStack = new SharedNetworkStack(app, `${deployEnv}SharedNetwork`, {
   env,
-  description: 'NetworkStack will provision vpc (uksb-1tupboc54) (tag:network).',
+  description: 'SharedNetworkStack will provision vpc and tgw (uksb-1tupboc54) (tag:shared-network).',
+  sharedVpcCidr,
+  destinationVpcCidrs: [appVpcCidr]
+})
+
+const appNetworkStack = new NetworkStack(app, `${deployEnv}AppNetwork`, {
+  env,
+  description: 'NetworkStack will provision vpc (uksb-1tupboc54) (tag:app-network).',
+  vpcCidr: appVpcCidr,
+  tgw: sharedNetworkStack.tgw,
+  sharedVpcCidr,
+  resolverInboundEndpointIps: sharedNetworkStack.endpointIps
 });
 
 const storageStack = new StorageStack(app, `${deployEnv}Storage`, {
   env,
   description: 'NetworkStack will provision vpc (uksb-1tupboc54) (tag:storage).',
-  vpc: networkStack.vpc
+  vpc: appNetworkStack.vpc
 })
 
 const webappStack = new WebappStack(app, `${deployEnv}Webapp`, {
@@ -46,14 +60,15 @@ const webappStack = new WebappStack(app, `${deployEnv}Webapp`, {
   dbCluster: storageStack.dbCluster,
   dbSecretName: storageStack.dbCluster.secret!.secretName,
   dbSecretEncryptionKeyArn: storageStack.dbEncryptionKeyArn,
-  vpc: networkStack.vpc,
-  accessViaPrivateLink,
+  vpc: appNetworkStack.vpc,
+  sharedVpc: sharedNetworkStack.network.vpc,
+  tgw: sharedNetworkStack.tgw,
   windowsBastion,
   linuxBastion,
   domainName,
   certificateArn,
 });
-
+ 
 const cicdStack = new CicdStack(app, `${deployEnv}CICD`, {
   env,
   description: 'CicdStack will provision CI/CD Pipeline (uksb-1tupboc54) (tag:cicd).',
@@ -66,10 +81,23 @@ new BatchStack(app, `${deployEnv}Batch`, {
   description: 'BatchStack will provision sfn workflow (uksb-1tupboc54) (tag:batch).',
   notifyEmail: parameter.notifyEmail,
   repositoryName: cicdStack.batchRepository.repositoryName,
-  vpc: networkStack.vpc,
+  vpc: appNetworkStack.vpc,
   dbSecretName: storageStack.dbCluster.secret!.secretName,
   dbSecurityGroupId: storageStack.dbCluster.connections.securityGroups[0].securityGroupId,
   dbSecretEncryptionKeyArn: storageStack.dbEncryptionKeyArn,
+})
+
+new DomainStack(app, `${deployEnv}Domain`, {
+  env,
+  description: 'DomainStack will provision Private Hosted Zone and ARecords of each workload (uksb-1tupboc54) (tag:domain).',
+  sharedVpc: sharedNetworkStack.network.vpc,
+  tgw: sharedNetworkStack.tgw,
+  domainName,
+  recordItems: [{
+    name: `app.${parameter.domainName}`,
+    target: aws_route53.RecordTarget.fromAlias(new aws_route53_targets.LoadBalancerTarget(webappStack.alb))
+  }],
+  resolverInboundEndpointIps: sharedNetworkStack.endpointIps
 })
 
 /**

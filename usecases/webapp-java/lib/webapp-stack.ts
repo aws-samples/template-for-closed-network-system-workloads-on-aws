@@ -1,4 +1,4 @@
-import { aws_ec2, aws_ecs, aws_iam, aws_rds, StackProps, Stack, aws_secretsmanager, aws_kms } from 'aws-cdk-lib';
+import { aws_ec2, aws_ecs, aws_iam, aws_rds, StackProps, Stack, aws_secretsmanager, aws_kms, aws_elasticloadbalancingv2 } from 'aws-cdk-lib';
 import { Bastion } from './construct/ec2/bastion';
 import { Construct } from 'constructs';
 import { EcsAppBase } from './construct/ecs/ecs-app-base';
@@ -8,8 +8,9 @@ interface WebappStackProps extends StackProps {
   dbCluster: aws_rds.DatabaseCluster | aws_rds.ServerlessCluster;
   dbSecretName: string;
   dbSecretEncryptionKeyArn: string;
-  accessViaPrivateLink: boolean;
   vpc: aws_ec2.Vpc;
+  sharedVpc: aws_ec2.Vpc;
+  tgw: aws_ec2.CfnTransitGateway;
   windowsBastion: boolean;
   linuxBastion: boolean;
   domainName: string;
@@ -19,6 +20,7 @@ interface WebappStackProps extends StackProps {
 export class WebappStack extends Stack {
   public readonly ecsService: aws_ecs.FargateService;
   public readonly containerName: string;
+  public readonly alb: aws_elasticloadbalancingv2.ApplicationLoadBalancer;
   constructor(scope: Construct, id: string, props: WebappStackProps) {
     super(scope, id, props);
 
@@ -29,8 +31,9 @@ export class WebappStack extends Stack {
       vpc: props.vpc,
       domainName: props.domainName,
       certificateArn: props.certificateArn,
-      accessViaPrivateLink: props.accessViaPrivateLink
     });
+    this.alb = ecsBase.alb;
+    ecsBase.albSg.addIngressRule(aws_ec2.Peer.ipv4(props.sharedVpc.vpcCidrBlock), aws_ec2.Port.HTTPS);
 
     const ecsAppService = new EcsAppService(this, `WebappService`, {
       cluster: ecsBase.cluster,
@@ -54,24 +57,6 @@ export class WebappStack extends Stack {
       const bastionSecurityGroup = new aws_ec2.SecurityGroup(this, 'BastionSecurityGroup', {
         vpc: props.vpc,
       });
-      props.vpc.addInterfaceEndpoint('BastionSsmVpcEndpoint', {
-        service: aws_ec2.InterfaceVpcEndpointAwsService.SSM,
-        subnets: { subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED },
-        securityGroups: [bastionSecurityGroup],
-      });
-
-      props.vpc.addInterfaceEndpoint('BastionSsmMessagesVpcEndpoint', {
-        service: aws_ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
-        subnets: { subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED },
-        securityGroups: [bastionSecurityGroup],
-      });
-
-      props.vpc.addInterfaceEndpoint('BastionEc2MessagesVpcEndpoint', {
-        service: aws_ec2.InterfaceVpcEndpointAwsService.EC2_MESSAGES,
-        subnets: { subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED },
-        securityGroups: [bastionSecurityGroup],
-      });
-      // S3's vpc endpoint for yum repo has already been attached in ecs-app-base construct
 
       if (props.windowsBastion) {
         const windowsBastion = new Bastion(this, `Windows`, {

@@ -1,6 +1,7 @@
 interface Parameter {
   deployEnv: string;
-  accessViaPrivateLink: boolean;
+  sharedVpcCidr: string;
+  appVpcCidr: string;
   windowsBastion: boolean;
   linuxBastion: boolean;
   domainName: string;
@@ -9,7 +10,8 @@ interface Parameter {
 
 const devParameter: Parameter = {
   deployEnv: "dev",
-  accessViaPrivateLink: false,
+  sharedVpcCidr: '10.0.0.0/16',
+  appVpcCidr: '10.1.0.0/16',
   windowsBastion: false,
   linuxBastion: false,
   domainName: "templateapp.local",

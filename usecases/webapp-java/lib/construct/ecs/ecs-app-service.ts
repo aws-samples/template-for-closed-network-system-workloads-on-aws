@@ -102,7 +102,7 @@ export class EcsAppService extends Construct {
         },
       ],
       vpcSubnets: props.cluster.vpc.selectSubnets({
-        subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED,
+        subnets: [...props.cluster.vpc.isolatedSubnets.filter(subnet => subnet.node.id.includes("workload"))],
       }),
       deploymentController: {
         type: aws_ecs.DeploymentControllerType.ECS,
