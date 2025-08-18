@@ -19,3 +19,5 @@ scoutsuite-report*
 !ssl/openssl_sign_inca.cnf
 ssl/*
 certificate_arn.json
+
+.tool-versions
