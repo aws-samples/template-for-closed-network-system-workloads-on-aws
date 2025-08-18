@@ -31,8 +31,6 @@ export class Bastion extends Construct {
     props: {
       os: 'Linux' | 'Windows';
       vpc: IVpc;
-      region: string;
-      auroraSecurityGroupId?: string;
       instanceType?: InstanceType;
     }
   ) {
@@ -73,7 +71,7 @@ export class Bastion extends Construct {
           ? MachineImage.latestAmazonLinux2023()
           : MachineImage.latestWindows(WindowsVersion.WINDOWS_SERVER_2022_JAPANESE_FULL_BASE),
       vpcSubnets: {
-        subnetType: SubnetType.PRIVATE_ISOLATED,
+        subnets: props.vpc.isolatedSubnets.filter(subnet => subnet.node.id.includes("workload")),
       },
       role: instanceRole,
       keyName: keyPair.keyName,
@@ -89,14 +87,6 @@ export class Bastion extends Construct {
     });
     this.bastionInstance = bastionInstance;
 
-    // Allow access to RDS
-    if (props.auroraSecurityGroupId) {
-      bastionInstance.connections.allowTo(
-        SecurityGroup.fromSecurityGroupId(this, 'AuroraSecurityGroup', props.auroraSecurityGroupId),
-        Port.tcp(5432)
-      );
-    }
-
     new CfnOutput(this, `${id}BastionInstanceId`, {
       value: bastionInstance.instanceId,
       exportName: `${id}BastionInstanceId`,
@@ -105,7 +95,7 @@ export class Bastion extends Construct {
     // Command to get SSH Key
     new CfnOutput(this, `GetSSHKeyFor${id}InstanceCommand`, {
       value: `aws ssm get-parameter --name /ec2/keypair/${keyPair.getAtt('KeyPairId')} --region ${
-        props.region
+        Stack.of(this).region
       } --with-decryption --query Parameter.Value --output text`,
     });
 

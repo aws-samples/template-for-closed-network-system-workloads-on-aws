@@ -36,7 +36,9 @@ const sharedNetworkStack = new SharedNetworkStack(app, `${deployEnv}SharedNetwor
   env,
   description: 'SharedNetworkStack will provision vpc and tgw (uksb-1tupboc54) (tag:shared-network).',
   sharedVpcCidr,
-  destinationVpcCidrs: [appVpcCidr]
+  destinationVpcCidrs: [appVpcCidr],
+  windowsBastion,
+  linuxBastion,
 })
 
 const appNetworkStack = new NetworkStack(app, `${deployEnv}AppNetwork`, {
@@ -53,6 +55,8 @@ const storageStack = new StorageStack(app, `${deployEnv}Storage`, {
   description: 'NetworkStack will provision vpc (uksb-1tupboc54) (tag:storage).',
   vpc: appNetworkStack.vpc
 })
+if(windowsBastion) storageStack.dbCluster.connections.allowDefaultPortFrom(cdk.aws_ec2.Peer.ipv4(`${sharedNetworkStack.windowsBastion.bastionInstance.instance.attrPrivateIp}/32`),"from BastionInstance");
+if(linuxBastion) storageStack.dbCluster.connections.allowDefaultPortFrom(cdk.aws_ec2.Peer.ipv4(`${sharedNetworkStack.linuxBastion.bastionInstance.instance.attrPrivateIp}/32`), "from BastionInstance");
 
 const webappStack = new WebappStack(app, `${deployEnv}Webapp`, {
   env,
@@ -64,8 +68,6 @@ const webappStack = new WebappStack(app, `${deployEnv}Webapp`, {
   vpc: appNetworkStack.vpc,
   sharedVpc: sharedNetworkStack.network.vpc,
   tgw: sharedNetworkStack.tgw,
-  windowsBastion,
-  linuxBastion,
   domainName,
   certificateArn,
 });
@@ -105,6 +107,13 @@ new DomainStack(app, `${deployEnv}Domain`, {
 /**
  * CDK NAG Suppressions
  */
+NagSuppressions.addStackSuppressions(sharedNetworkStack, [
+  {
+    id: 'AwsSolutions-IAM5',
+    reason: 'To use ManagedPolicy',
+  },
+]);
+
 NagSuppressions.addStackSuppressions(webappStack, [
   {
     id: 'AwsSolutions-IAM5',

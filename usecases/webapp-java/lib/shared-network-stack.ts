@@ -1,11 +1,14 @@
 import { StackProps, Stack, aws_ec2, aws_ram, aws_route53resolver } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Network } from './construct/network/network';
+import { Bastion } from './construct/ec2/bastion';
 
 interface SharedNetworkStackProps extends StackProps {
   sharedVpcCidr: string;
   destinationVpcCidrs: string[];
   destinationAccounts?: string[];
+  windowsBastion: boolean;
+  linuxBastion: boolean;
 }
 
 export class SharedNetworkStack extends Stack {
@@ -13,6 +16,8 @@ export class SharedNetworkStack extends Stack {
   public readonly tgw: aws_ec2.CfnTransitGateway;
   public readonly resolverInboundEndpoint: aws_route53resolver.CfnResolverEndpoint;
   public readonly endpointIps: string[];
+  public readonly windowsBastion: Bastion;
+  public readonly linuxBastion: Bastion;
 
   constructor(scope: Construct, id: string, props: SharedNetworkStackProps) {
     super(scope, id, props);
@@ -105,6 +110,10 @@ export class SharedNetworkStack extends Stack {
       securityGroups:[vpcEndpointSG]
     });
 
+    network.vpc.addGatewayEndpoint('BastionS3GatewayEndpoint', {
+      service: aws_ec2.GatewayVpcEndpointAwsService.S3,
+    })
+
     // Add routes via TGW
     props.destinationVpcCidrs.map(vpcCidr => {
       network.addRouteToTgwAttachementSubnets(tgw.attrId, vpcCidr);
@@ -137,5 +146,21 @@ export class SharedNetworkStack extends Stack {
     
     this.tgw = tgw;
     this.network = network;
+
+    // Bastion
+    if (props.windowsBastion) {
+      this.windowsBastion = new Bastion(this, `Windows`, {
+        os: 'Windows',
+        vpc: this.network.vpc,
+      });
+    }
+
+    if (props.linuxBastion) {
+      this.linuxBastion = new Bastion(this, `Linux`, {
+        os: 'Linux',
+        vpc: this.network.vpc,
+      });
+
+    }
   }
 }

@@ -1,5 +1,4 @@
 import { aws_ec2, aws_ecs, aws_iam, aws_rds, StackProps, Stack, aws_secretsmanager, aws_kms, aws_elasticloadbalancingv2 } from 'aws-cdk-lib';
-import { Bastion } from './construct/ec2/bastion';
 import { Construct } from 'constructs';
 import { EcsAppBase } from './construct/ecs/ecs-app-base';
 import { EcsAppService } from './construct/ecs/ecs-app-service';
@@ -11,8 +10,6 @@ interface WebappStackProps extends StackProps {
   vpc: aws_ec2.Vpc;
   sharedVpc: aws_ec2.Vpc;
   tgw: aws_ec2.CfnTransitGateway;
-  windowsBastion: boolean;
-  linuxBastion: boolean;
   domainName: string;
   certificateArn: string;
 }
@@ -24,7 +21,7 @@ export class WebappStack extends Stack {
   constructor(scope: Construct, id: string, props: WebappStackProps) {
     super(scope, id, props);
 
-    const auroraSG = props.dbCluster.connections.securityGroups[0];
+    const auroraSg = props.dbCluster.connections.securityGroups[0];
 
     // Create ECS
     const ecsBase = new EcsAppBase(this, `WebappBase`, {
@@ -51,50 +48,7 @@ export class WebappStack extends Stack {
     ecsAppService.ecsContainer.addSecret("DB_USERNAME", aws_ecs.Secret.fromSecretsManager(dbSecret, 'username'));
     ecsAppService.ecsContainer.addSecret("DB_PASSWORD", aws_ecs.Secret.fromSecretsManager(dbSecret, 'password'));
     dbSecretEncryptionKey.grantEncryptDecrypt(ecsAppService.executionRole);
-    ecsAppService.ecsService.connections.allowTo(auroraSG, aws_ec2.Port.tcp(5432));
+    ecsAppService.ecsService.connections.allowTo(auroraSg, aws_ec2.Port.tcp(5432));
 
-    if (props.windowsBastion || props.linuxBastion) {
-      const bastionSecurityGroup = new aws_ec2.SecurityGroup(this, 'BastionSecurityGroup', {
-        vpc: props.vpc,
-      });
-
-      if (props.windowsBastion) {
-        const windowsBastion = new Bastion(this, `Windows`, {
-          os: 'Windows',
-          vpc: props.vpc,
-          region: this.region,
-          auroraSecurityGroupId: auroraSG.securityGroupId,
-        });
-        bastionSecurityGroup.addIngressRule(
-          aws_ec2.Peer.ipv4(`${windowsBastion.bastionInstance.instancePrivateIp}/32`),
-          aws_ec2.Port.tcp(443)
-        );
-
-        ecsBase.alb.connections.allowFrom(windowsBastion.bastionInstance, aws_ec2.Port.tcp(443));
-        ecsAppService.ecsService.connections.allowFrom(
-          windowsBastion.bastionInstance,
-          aws_ec2.Port.tcp(8443)
-        );
-      }
-
-      if (props.linuxBastion) {
-        const linuxBastion = new Bastion(this, `Linux`, {
-          os: 'Linux',
-          vpc: props.vpc,
-          region: this.region,
-          auroraSecurityGroupId: auroraSG.securityGroupId,
-        });
-        bastionSecurityGroup.addIngressRule(
-          aws_ec2.Peer.ipv4(`${linuxBastion.bastionInstance.instancePrivateIp}/32`),
-          aws_ec2.Port.tcp(443)
-        );
-
-        ecsBase.alb.connections.allowFrom(linuxBastion.bastionInstance, aws_ec2.Port.tcp(443));
-        ecsAppService.ecsService.connections.allowFrom(
-          linuxBastion.bastionInstance,
-          aws_ec2.Port.tcp(8443)
-        );
-      }
-    }
   }
 }
