@@ -26,6 +26,7 @@ Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true, reports: true }));
 const deployEnv = parameter.deployEnv;
 const sharedVpcCidr = parameter.sharedVpcCidr;
 const appVpcCidr = parameter.appVpcCidr;
+const filePathOfSourceArtifact = parameter.filePathOfSourceArtifact;
 const windowsBastion = parameter.windowsBastion;
 const linuxBastion = parameter.linuxBastion;
 const domainName = parameter.domainName;
@@ -73,7 +74,8 @@ const cicdStack = new CicdStack(app, `${deployEnv}CICD`, {
   env,
   description: 'CicdStack will provision CI/CD Pipeline (uksb-1tupboc54) (tag:cicd).',
   ecsService: webappStack.ecsService,
-  containerName: webappStack.containerName
+  containerName: webappStack.containerName,
+  filePathOfSourceArtifact: filePathOfSourceArtifact
 })
 
 new BatchStack(app, `${deployEnv}Batch`, {

@@ -8,17 +8,19 @@ import {
   aws_iam,
   aws_kms,
   aws_logs,
+  Stack,
 } from 'aws-cdk-lib';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { EncryptionKey } from '../kms/key';
+import { Bucket } from '../s3/bucket';
 
 export class CodePipelineWebappJava extends Construct {
   constructor(
     scope: Construct,
     id: string,
     props: {
-      codeCommitRepository: aws_codecommit.IRepository;
+      bucketKey: string;
       ecrRepository: aws_ecr.IRepository;
       ecsService: aws_ecs.FargateService;
       containerName: string;
@@ -32,14 +34,15 @@ export class CodePipelineWebappJava extends Construct {
     });
 
     // Source stage
+    const sourceArtifactBucket = new Bucket(this, 'SourceArtifactBucket');
     const sourceOutput = new aws_codepipeline.Artifact('SourceArtifact');
-    const sourceAction = new aws_codepipeline_actions.CodeCommitSourceAction({
-      actionName: 'GetSourceCodeFromCodeCommit',
-      repository: props.codeCommitRepository,
-      branch: 'develop',
+    const sourceAction = new aws_codepipeline_actions.S3SourceAction({
+      bucket: sourceArtifactBucket.bucket,
+      bucketKey: props.bucketKey,
       output: sourceOutput,
-      trigger: aws_codepipeline_actions.CodeCommitTrigger.POLL,
-    });
+      trigger: aws_codepipeline_actions.S3Trigger.EVENTS,
+      actionName: 'GetSourceCodeFromS3Bucket',
+    })
 
     pipeline.addStage({
       stageName: 'Source',
