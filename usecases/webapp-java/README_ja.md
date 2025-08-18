@@ -3,7 +3,43 @@
 [View this page in English](./README.md)
 [サーバーレスのサンプルアプリケーションを構築する場合はこちら](./README_serverless_ja.md)
 
-AWS 上にサンプルアプリケーションやバッチシステムを動かす環境を構築する CDK のコードです。
+## 概要
+
+このプロジェクトは、AWS上にサンプルアプリケーションやバッチシステムを動かす環境を構築するためのCDKコードを提供します。
+
+### アーキテクチャ
+
+![アーキテクチャ図](./docs/images/architecture.drawio.png)
+
+このアーキテクチャは以下の主要コンポーネントで構成されています：
+
+1. **ネットワーク層**
+   - 共有VPC（SharedNetworkStack）：Transit Gateway接続用
+   - アプリケーションVPC（NetworkStack）：アプリケーション実行環境用
+
+2. **コンピューティング層**
+   - ECSクラスター（WebappStack）：Webアプリケーションの実行環境
+   - Bastionホスト：WindowsまたはLinuxインスタンスによる管理アクセス用
+
+3. **ストレージ層**
+   - Aurora PostgreSQL（StorageStack）：アプリケーションデータ保存用
+   - S3バケット：アーティファクト保存用
+
+4. **CI/CD**
+   - CodePipeline：S3をソースとしたCI/CDパイプライン
+   - CodeBuild：Dockerイメージのビルド
+   - ECR：コンテナイメージの保存
+
+5. **バッチ処理**
+   - Step Functions：ワークフロー管理
+   - ECS Tasks：バッチジョブの実行
+   - DynamoDB：ジョブ実行状態の管理
+   - SNS：失敗通知
+
+6. **ドメイン管理**
+   - Route 53 Private Hosted Zone：内部DNS管理
+
+このアーキテクチャにより、セキュアで可用性の高いアプリケーション実行環境を構築できます。
 
 ## 準備
 
@@ -20,56 +56,51 @@ $ aws configure --profile {プロファイル名}
 IAM ユーザ作成時に表示される、アクセスキーとシークレットキー、デフォルトのリージョンが確認されます。
 詳しくは[aws configure を使用したクイック設定 - プロファイル](https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-profiles)をご参照ください。
 
-### 2. stages.js の書き換え
+### 2. parameter.ts の設定
 
-本テンプレートは、タスクランナーの[gulp](https://gulpjs.com/)を利用してデプロイを行います。
-gulp から参照される変数が`stages.js`で定義されているため、各自の環境に合わせて変更します。
+本テンプレートは、TypeScriptで記述されたCDKを利用してデプロイを行います。
+デプロイに必要なパラメータが`parameter.ts`で定義されているため、各自の環境に合わせて変更します。
 
-```javascript
-default: {
-    appName,
-    awsProfile: 'myProfile',
-    alias: 'default',
-    deployEnv: 'dev',
-    notifyEmail: 'johndoe@johndoe.mail.com',
-    enabledPrivateLink: false,
-    windowsBastion: true,
-    linuxBastion: true,
-    domainName: 'templateapp.local',
-  },
-alias: {
-    appName: '',               // アプリの名前を入力します。 例: demoapp, など
-    awsProfile: '',            // 1で設定したProfile名を入力します。
-    alias: '',                 // 個々人で環境面が被るのを回避するため、ユーザ名などの識別子を入力してください。 例: ysuzuki, など
-    deployEnv: ''              // デプロイする環境の面を記載します。例: dev, stage, prod, など
-    notifyEmail: '',           // ジョブが失敗した際の通知先メールアドレス
-    enabledPrivateLink: false, // PrivateLinkを利用するかどうか。trueは利用し、falseは利用しない
-    windowsBastion: true,      // WindowsのBastionインスタンスを利用する場合はtrue、利用しない場合はfalse
-    linuxBastion: true,        // Amazon LinuxのBastionインスタンスを利用する場合はtrue、利用しない場合はfalse
-    domainName: 'templateapp.local', // Private Hosted Zoneに登録されるドメイン名
+```typescript
+const devParameter: Parameter = {
+  deployEnv: "dev",
+  sharedVpcCidr: '10.0.0.0/16',
+  appVpcCidr: '10.1.0.0/16',
+  filePathOfSourceArtifact: 'webapp-repository/refs/heads/main/repo.zip',
+  windowsBastion: false,
+  linuxBastion: false,
+  domainName: "templateapp.local",
+  notifyEmail: "johndoe+notify@example.com"
 }
 ```
+
+主な設定項目：
+- `deployEnv`: デプロイする環境の面を記載します（例: dev, stage, prod など）
+- `windowsBastion`: WindowsのBastionインスタンスを利用する場合はtrue、利用しない場合はfalse
+- `linuxBastion`: Amazon LinuxのBastionインスタンスを利用する場合はtrue、利用しない場合はfalse
+- `domainName`: Private Hosted Zoneに登録されるドメイン名
+- `notifyEmail`: ジョブが失敗した際の通知先メールアドレス
 
 ### 3. 自己署名付き証明書の作成
 
 HTTPS 通信を実装するために、今回は自己署名付き証明書を用います。
-`infra`ディレクトリで次のコマンドを実行し、Amazon Certificate Manager に証明書をインポートしてください。
+`usecases/webapp-java`ディレクトリで次のコマンドを実行し、Amazon Certificate Manager に証明書をインポートしてください。
 また、以下のコマンド実行前に、`OpenSSL`のインストールを実施してください。
 
 ```bash
 $ npm install
-$ npm run create-certificate -- --{alias}
+$ npm run create:certificate
 ```
 
 ## デプロイ
 
 ### 1. CDK
 
-`infra`ディレクトリで以下のコマンドを実行してください。
+`usecases/webapp-java`ディレクトリで以下のコマンドを実行してください。
 自動的に CDK が実行され、AWS の各リソースが生成されます。
 
 ```bash
-$ npm run deploy -- --{alias}
+$ npm run deploy
 ```
 
 デプロイ後、ターミナル上に以下に示すようなコマンドが出力されますので、コピーして実行してください。
@@ -78,56 +109,48 @@ $ npm run deploy -- --{alias}
 
 ```
 // regionがap-northeast-1のWindowsインスタンスの場合
-$ {alias}{stage}{appName}Webapp.WindowsGetSSHKeyForWindowsInstanceCommand = aws ssm get-parameter --name /ec2/keypair/key-XXXXXXXXXXXXXXXXX --region ap-northeast-1 --with-decryption --query Parameter.Value --output text
+$ devWebapp.WindowsGetSSHKeyForWindowsInstanceCommand = aws ssm get-parameter --name /ec2/keypair/key-XXXXXXXXXXXXXXXXX --region ap-northeast-1 --with-decryption --query Parameter.Value --output text
 
 // regionがap-northeast-1のAmazonLinuxインスタンスの場合
-$ {alias}{stage}{appName}Webapp.LinuxGetSSHKeyForLinuxInstanceCommand = aws ssm get-parameter --name /ec2/keypair/key-XXXXXXXXXXXXXXXXX --region ap-northeast-1 --with-decryption --query Parameter.Value --output text
+$ devWebapp.LinuxGetSSHKeyForLinuxInstanceCommand = aws ssm get-parameter --name /ec2/keypair/key-XXXXXXXXXXXXXXXXX --region ap-northeast-1 --with-decryption --query Parameter.Value --output text
 ```
 
 > NOTE:
 > 初回デプロイ時は、ターミナルの出力が多いため、Keypair を取得するためのコマンドが見えなくなってしまうことがあります。
 > その場合は、ブラウザから CloudFormation のコンソールを開き、Webapp スタックの出力タブからご確認ください。
-> ![How to get key pair command](../docs/images/keypair_command_ja.png)
+> ![How to get key pair command](./docs/images/keypair_command_ja.png)
 
-また、CDK のデプロイが完了すると、`stages.js` に登録したメールアドレス宛に、Amazon SNS よりサブスクリプションの確認メールが届きます。
+また、CDK のデプロイが完了すると、`parameter.ts` に登録したメールアドレス宛に、Amazon SNS よりサブスクリプションの確認メールが届きます。
 
 ジョブが失敗した通知を受けるために、届いたメールの内容に従い、サブスクリプションの Confirmation を実施してください。
 
 また、バッチジョブは平日 21 時に実行される設定になっています。このあと実施する、サンプル Web アプリのデプロイによって登録される初期データは、ジョブがすべて成功する設定になっているため、メールは送信されません。
-もし、失敗を確認したい場合は、`webapp-java/src/main/resources/data.sql`の 5 つある`true`のいずれかを`false`へ変更した上で、Web アプリのデプロイを行ってください。
+もし、失敗を確認したい場合は、`webapp/src/main/resources/data.sql`の 5 つある`true`のいずれかを`false`へ変更した上で、Web アプリのデプロイを行ってください。
 
 ### 2. サンプル Web アプリ
 
-CDK のデプロイが完了したことで、AWS CodeCommit に サンプル Web アプリ用のリポジトリが作成されています。
+CDK のデプロイが完了したことで、S3バケットにサンプル Web アプリ用のリポジトリが作成されています。
 
 > NOTE:
-> リポジトリの URL はデプロイをしたターミナルもしくは、CloudFormation のコンソールに表示されます。
-> CloudFormation のコンソールを参照する場合は、`baseStack`の`出力`タブを参照ください。
-> ![Repository Url](../docs/images/repository_url_ja.png)
+> S3バケットのパスはデプロイをしたターミナルもしくは、CloudFormation のコンソールに表示されます。
+> CloudFormation のコンソールを参照する場合は、`CICDスタック`の`出力`タブを参照ください。
+> ![Repository Url](./docs/images/repository_url_ja.png)
 
-以下の手順で、`webapp-java` ディレクトリのソースコードをプッシュすることで、サンプル Web アプリがパイプラインからデプロイされます。
+以下の手順で、`webapp` ディレクトリのソースコードをアップロードすることで、サンプル Web アプリがパイプラインからデプロイされます。
 
 ```bash
-$ cd ./webapp-java
-$ git init
-$ git remote add origin https://git-codecommit.{your region}.amazonaws.com/v1/repos/{your repository name}
-$ git add .
-$ git commit -m "Initial commit"
-$ git push --set-upstream origin main
-$ git checkout -b develop
-$ git push --set-upstream origin develop
+$ cd ./webapp
+$ zip -r repo.zip .
+$ aws s3 cp repo.zip s3://{バケット名}/webapp-repository/refs/heads/main/repo.zip
 ```
-
-> NOTE:
-> CodePipeline のトリガーは develop ブランチを監視しています。そのため、develop ブランチの作成が必要になります。
 
 パイプラインの状況を確認したい場合は、マネジメントコンソールより AWS CodePipeline へアクセスしてください。
 
 #### CI/CD パイプラインについて
 
-Web アプリ向けの CI/CD は BlackBelt で紹介されている[構成例(Page 52)](https://d1.awsstatic.com/webinars/jp/pdf/services/20201111_BlackBelt_AWS%20CodeStar_AWS_CodePipeline.pdf)を元に実装しています。
+Web アプリ向けの CI/CD は S3バケットをソースとして、CodeBuildでDockerイメージをビルドし、ECRにプッシュ、そしてECSにデプロイする流れになっています。
 
-ご自身の Web アプリケーションに差し替えたい場合は、CodeCommit にプッシュするソースコードをご自身のものに差し替え、ご自身の環境やアプリケーションに合わせ、Dockerfile を修正してください。
+ご自身の Web アプリケーションに差し替えたい場合は、S3バケットにアップロードするソースコードをご自身のものに差し替え、ご自身の環境やアプリケーションに合わせ、Dockerfile を修正してください。
 
 ### ３. 動作確認
 
@@ -136,11 +159,11 @@ Web アプリ向けの CI/CD は BlackBelt で紹介されている[構成例(Pa
 Bastion にアクセスする Keypair は[デプロイ - 1. CDK](#1-cdk)で取得したものを利用し、Fleet Manager 経由でアクセスします。
 Fleet Manager を利用した RDP 接続の方法は、[リモートデスクトップを使用してマネージドノードへ接続する](https://docs.aws.amazon.com/ja_jp/systems-manager/latest/userguide/fleet-rdp.html#fleet-rdp-connect-to-node)を参照ください。
 
-Bastion への RDP 接続ができたら、ブラウザを起動し、`stages.js`の`domainName`で指定したドメインを入力し、アプリケーションにアクセスしてください。
+Bastion への RDP 接続ができたら、ブラウザを起動し、`parameter.ts`の`domainName`で指定したドメインを入力し、アプリケーションにアクセスしてください。
 
 次のような画面が表示されたら成功です。
 
-![アプリケーション動作画面](../webapp-java/docs/images/screenshot.png)
+![アプリケーション動作画面](./docs/images/screenshot.png)
 
 ### 4. 作成した環境の削除
 
@@ -150,16 +173,16 @@ ECR など、状況によっては残ってしまうリソースもあるため�
 コマンドが失敗した場合は、エラーメッセージや CloudFormation のコンソールで内容をご確認の上、対応ください。
 
 ```
-$ npm run destroy -- --{alias}
+$ npm run destroy
 ```
 
 ### その他のコマンド
 
-CDK のコマンドである、`diff, list`は、gulp で実装済みのため、これらのコマンドも gulp 経由で実行可能です。
+CDK のコマンドである、`diff, list`は、npm scriptsで実装済みのため、これらのコマンドも実行可能です。
 
 ```
-$ npm run diff -- --{alias}
-$ npm run list -- --{alias}
+$ npm run diff
+$ npm run list
 ```
 
 ## AWS Step Functions で実装するジョブ管理基盤
@@ -169,12 +192,12 @@ $ npm run list -- --{alias}
 本サンプルでは、この ②、③ の実装例をご提供します。
 
 今回実装したサンプルは、Step Functions のステートマシンが親子関係になっており、親側がメインのワークフロー、子側で ② と ③ を実現しています。
-ステートマシンにおけるワークフローの作成方法については、[公式のドキュメント](https://d1.awsstatic.com/webinars/jp/pdf/services/20201111_BlackBelt_AWS%20CodeStar_AWS_CodePipeline.pdf?page=52)をご参照ください。
+ステートマシンにおけるワークフローの作成方法については、[公式のドキュメント](https://docs.aws.amazon.com/ja_jp/step-functions/latest/dg/welcome.html)をご参照ください。
 
 ここでは、実装している ②、③ について解説します。
 以下の図は、親のステートマシンから呼び出される、子のステートマシンを示しています。
 
-![Job](../docs/images/job.png)
+![Job](./docs/images/job.png)
 
 子のステートマシンでは、ある一つのジョブスクリプトが実行されますが、以下の流れに沿って実行されます。
 
@@ -234,7 +257,7 @@ Security Hub を有効にした場合、デフォルトで有効になる基準�
 #### 修復方法
 
 - CodeBuild では、Docker イメージをビルドする必要がある場合を除き、特権モードは無効化してください。本テンプレートでは、Docker イメージのビルドを行っているため、有効化していますが、実際に利用される場合は、ご自身の環境に合った設定にご変更ください。
-  - テンプレートだけの対応であれば、[CodePipeline のコンストラクト内の特権モードの設定](lib/constructs/codepipeline/codepipeline-webapp-java.ts#L65)を`false`に変更してください。
+  - テンプレートだけの対応であれば、[CodePipeline のコンストラクト内の特権モードの設定](lib/construct/codepipeline/codepipeline-webapp-java.ts#L65)を`false`に変更してください。
   - ご参考：[interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
 
 ## 本番利用時の考慮点
@@ -250,8 +273,8 @@ Session Manager を経由して手動でパッチを当てることも可能で�
 ### コンテナイメージのタグについて
 
 本サンプルでは、バッチのコンテナイメージのタグに latest が付与されています。
-Web アプリのコンテナイメージに対しては、CodeCommit へのコミットから始まるパイプラインによって、コミットハッシュを利用したバージョンニングを実施します。
-バッチでも同様のパイプラインを導入することで、コミットハッシュを利用したバージョニングが可能です。
+Web アプリのコンテナイメージに対しては、S3バケットへのアップロードから始まるパイプラインによって、ビルド時のタイムスタンプを利用したバージョンニングを実施します。
+バッチでも同様のパイプラインを導入することで、より厳格なバージョニングが可能です。
 
 ### HTTPS の証明書について
 
