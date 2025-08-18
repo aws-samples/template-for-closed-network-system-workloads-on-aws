@@ -5,7 +5,9 @@ import { NagSuppressions } from 'cdk-nag';
 
 export class Bucket extends Construct {
   public readonly bucket: aws_s3.Bucket;
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props: {
+    versioned: boolean;
+  }) {
     super(scope, id);
     const accessLogBucket = new aws_s3.Bucket(this, `${id}AccessLogBucket`, {
       removalPolicy: RemovalPolicy.DESTROY,
@@ -23,6 +25,7 @@ export class Bucket extends Construct {
       serverAccessLogsBucket: accessLogBucket,
       autoDeleteObjects: true,
       objectOwnership: aws_s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
+      versioned: props.versioned
     });
 
     // cdk-nag suppressions

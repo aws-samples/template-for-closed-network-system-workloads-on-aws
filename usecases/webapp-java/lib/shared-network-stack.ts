@@ -16,8 +16,7 @@ export class SharedNetworkStack extends Stack {
   public readonly tgw: aws_ec2.CfnTransitGateway;
   public readonly resolverInboundEndpoint: aws_route53resolver.CfnResolverEndpoint;
   public readonly endpointIps: string[];
-  public readonly windowsBastion: Bastion;
-  public readonly linuxBastion: Bastion;
+  public readonly bastionIps: string[];
 
   constructor(scope: Construct, id: string, props: SharedNetworkStackProps) {
     super(scope, id, props);
@@ -148,19 +147,21 @@ export class SharedNetworkStack extends Stack {
     this.network = network;
 
     // Bastion
+    this.bastionIps = [];
     if (props.windowsBastion) {
-      this.windowsBastion = new Bastion(this, `Windows`, {
+      const bastion = new Bastion(this, `Windows`, {
         os: 'Windows',
         vpc: this.network.vpc,
       });
+      this.bastionIps.push(bastion.bastionInstance.instance.attrPrivateIp);
     }
 
     if (props.linuxBastion) {
-      this.linuxBastion = new Bastion(this, `Linux`, {
+      const bastion = new Bastion(this, `Linux`, {
         os: 'Linux',
         vpc: this.network.vpc,
       });
-
+      this.bastionIps.push(bastion.bastionInstance.instance.attrPrivateIp);
     }
   }
 }

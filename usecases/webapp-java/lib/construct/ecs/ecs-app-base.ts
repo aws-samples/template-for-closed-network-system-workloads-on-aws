@@ -29,7 +29,7 @@ export class EcsAppBase extends Construct {
     this.cluster = new aws_ecs.Cluster(this, 'Cluster', {
       clusterName: `${id.split('-').slice(-1)[0]}Cluster`,
       vpc: props.vpc,
-      containerInsights: true,
+      containerInsightsV2: aws_ecs.ContainerInsights.ENABLED,
       enableFargateCapacityProviders: true,
     });
     this.cluster.applyRemovalPolicy(RemovalPolicy.DESTROY);
@@ -51,7 +51,7 @@ export class EcsAppBase extends Construct {
       }),
       dropInvalidHeaderFields: true,
     });
-    const albLogBucket = new Bucket(this, 'AlbLogBucket');
+    const albLogBucket = new Bucket(this, 'AlbLogBucket', {versioned: false});
 
     this.alb.logAccessLogs(albLogBucket.bucket, `${id}WebappAlbLog`);
 

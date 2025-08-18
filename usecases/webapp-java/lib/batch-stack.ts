@@ -72,10 +72,12 @@ export class BatchStack extends Stack {
       },
       encryption: aws_dynamodb.TableEncryption.AWS_MANAGED,
       billingMode: aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-      pointInTimeRecovery: true,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true
+      }
     });
 
-    const s3bucket = new Bucket(this, 'BatchResultBucket');
+    const s3bucket = new Bucket(this, 'BatchResultBucket', {versioned: false});
 
     // Create SNS to notify errors of batches
     const kmsForSns = new aws_kms.Key(this, 'SnsTopicKms', { enableKeyRotation: true });
@@ -100,7 +102,7 @@ export class BatchStack extends Stack {
     const cluster = new aws_ecs.Cluster(this, 'BatchCluster', {
       clusterName: 'BatchCluster',
       vpc: vpc,
-      containerInsights: true,
+      containerInsightsV2: aws_ecs.ContainerInsights.ENABLED,
       enableFargateCapacityProviders: true,
     });
 
@@ -214,10 +216,9 @@ export class BatchStack extends Stack {
       .next(job0005.job);
 
     const parentStateMachine = new aws_stepfunctions.StateMachine(this, 'ParentStateMachine', {
-      definition,
+      definitionBody: aws_stepfunctions.DefinitionBody.fromChainable(definition),
       logs: {
         destination: new aws_logs.LogGroup(this, 'ParentStateMachineLogGroup', {
-          logGroupName: '/aws/vendedlogs/states/parentstatemechine',
           encryptionKey: new EncryptionKey(this, 'ParentStateMachineLogGroupKey', {
             servicePrincipals: [new aws_iam.ServicePrincipal('logs.amazonaws.com')],
           }).encryptionKey,

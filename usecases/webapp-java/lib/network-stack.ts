@@ -28,7 +28,12 @@ export class NetworkStack extends Stack {
     const dhcpOptions = new aws_ec2.CfnDHCPOptions(this, 'DHCPOptions', {
       domainName: `${Stack.of(this).region}.compute.internal`,
       domainNameServers: props.resolverInboundEndpointIps 
-    })
+    });
+
+    // Gateway Endpoint is required in each VPCs.
+    network.vpc.addGatewayEndpoint('BastionS3GatewayEndpoint', {
+      service: aws_ec2.GatewayVpcEndpointAwsService.S3,
+    });
 
     new aws_ec2.CfnVPCDHCPOptionsAssociation(this, 'DHCPOptionsAssociation', {
       dhcpOptionsId: dhcpOptions.attrDhcpOptionsId,

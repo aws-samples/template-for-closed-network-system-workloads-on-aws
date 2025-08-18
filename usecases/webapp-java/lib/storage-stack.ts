@@ -5,6 +5,7 @@ import { Aurora } from './construct/aurora/aurora';
 
 interface StorageStackProps extends StackProps {
   vpc: aws_ec2.Vpc;
+  bastionIps: string[];
 }
 
 export class StorageStack extends Stack {
@@ -26,6 +27,12 @@ export class StorageStack extends Stack {
     });
     this.dbCluster = aurora.aurora;
     this.dbEncryptionKeyArn = aurora.databaseCredentials.encryptionKey!.keyArn;
+
+    if(props.bastionIps.length > 0) {
+      props.bastionIps.map(ip => 
+        this.dbCluster.connections.allowDefaultPortFrom(aws_ec2.Peer.ipv4(`${ip}/32`,))
+      )
+    }
 
     new CfnOutput(this, 'AuroraEdition', {
       exportName: 'AuroraEdition',

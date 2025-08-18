@@ -34,13 +34,13 @@ export class CodePipelineWebappJava extends Construct {
     });
 
     // Source stage
-    const sourceArtifactBucket = new Bucket(this, 'SourceArtifactBucket');
+    const sourceArtifactBucket = new Bucket(this, 'SourceArtifactBucket', {versioned: true});
     const sourceOutput = new aws_codepipeline.Artifact('SourceArtifact');
     const sourceAction = new aws_codepipeline_actions.S3SourceAction({
       bucket: sourceArtifactBucket.bucket,
       bucketKey: props.bucketKey,
       output: sourceOutput,
-      trigger: aws_codepipeline_actions.S3Trigger.EVENTS,
+      trigger: aws_codepipeline_actions.S3Trigger.POLL,
       actionName: 'GetSourceCodeFromS3Bucket',
     })
 

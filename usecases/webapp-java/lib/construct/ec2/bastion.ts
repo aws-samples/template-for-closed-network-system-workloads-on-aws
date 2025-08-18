@@ -1,14 +1,11 @@
 import {
-  CfnKeyPair,
   BlockDeviceVolume,
   Instance,
   InstanceClass,
   InstanceSize,
   InstanceType,
+  KeyPair,
   MachineImage,
-  Port,
-  SecurityGroup,
-  SubnetType,
   WindowsVersion,
   IVpc,
 } from 'aws-cdk-lib/aws-ec2';
@@ -37,9 +34,7 @@ export class Bastion extends Construct {
     super(scope, id);
 
     // keypair
-    const keyPair = new CfnKeyPair(this, `${id}InstanceKeypair`, {
-      keyName: `${id}-instance-keypair`,
-    });
+    const keyPair = new KeyPair(this, `${id}InstanceKeypair`);
 
     // Create EC2 instance to do testing for PrivateLink
     const instanceRole = new Role(this, `${id}instanceRole`, {
@@ -74,7 +69,7 @@ export class Bastion extends Construct {
         subnets: props.vpc.isolatedSubnets.filter(subnet => subnet.node.id.includes("workload")),
       },
       role: instanceRole,
-      keyName: keyPair.keyName,
+      keyPair: keyPair,
       blockDevices: [
         {
           deviceName: props.os === 'Linux' ? '/dev/xvda' : '/dev/sda1',
@@ -94,7 +89,7 @@ export class Bastion extends Construct {
 
     // Command to get SSH Key
     new CfnOutput(this, `GetSSHKeyFor${id}InstanceCommand`, {
-      value: `aws ssm get-parameter --name /ec2/keypair/${keyPair.getAtt('KeyPairId')} --region ${
+      value: `aws ssm get-parameter --name /ec2/keypair/${keyPair.keyPairId} --region ${
         Stack.of(this).region
       } --with-decryption --query Parameter.Value --output text`,
     });

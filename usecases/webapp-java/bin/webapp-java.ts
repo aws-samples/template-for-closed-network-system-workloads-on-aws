@@ -53,10 +53,9 @@ const appNetworkStack = new NetworkStack(app, `${deployEnv}AppNetwork`, {
 const storageStack = new StorageStack(app, `${deployEnv}Storage`, {
   env,
   description: 'NetworkStack will provision vpc (uksb-1tupboc54) (tag:storage).',
-  vpc: appNetworkStack.vpc
+  vpc: appNetworkStack.vpc,
+  bastionIps: sharedNetworkStack.bastionIps
 })
-if(windowsBastion) storageStack.dbCluster.connections.allowDefaultPortFrom(cdk.aws_ec2.Peer.ipv4(`${sharedNetworkStack.windowsBastion.bastionInstance.instance.attrPrivateIp}/32`),"from BastionInstance");
-if(linuxBastion) storageStack.dbCluster.connections.allowDefaultPortFrom(cdk.aws_ec2.Peer.ipv4(`${sharedNetworkStack.linuxBastion.bastionInstance.instance.attrPrivateIp}/32`), "from BastionInstance");
 
 const webappStack = new WebappStack(app, `${deployEnv}Webapp`, {
   env,
