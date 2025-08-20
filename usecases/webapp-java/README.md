@@ -1,8 +1,45 @@
-# Infra
+# infra
 
 [日本語で読む](./README_ja.md)
+[For serverless sample application, click here](./README_serverless.md)
 
-This is the CDK code to deploy application on a closed/private network built on AWS.
+## Overview
+
+This project provides CDK code to build an environment for running sample applications and batch systems on AWS.
+
+### Architecture
+
+![Architecture Diagram](./docs/images/architecture.drawio.png)
+
+This architecture consists of the following main components:
+
+1. **Network Layer**
+   - Shared VPC (SharedNetworkStack): For Transit Gateway connections
+   - Application VPC (NetworkStack): For application runtime environment
+
+2. **Computing Layer**
+   - ECS Cluster (WebappStack): Web application runtime environment
+   - Bastion host: Windows or Linux instances for management access
+
+3. **Storage Layer**
+   - Aurora PostgreSQL (StorageStack): For application data storage
+   - S3 buckets: For artifact storage
+
+4. **CI/CD**
+   - CodePipeline: CI/CD pipeline with S3 as source
+   - CodeBuild: For Docker image building
+   - ECR: For container image storage
+
+5. **Batch Processing**
+   - Step Functions: For workflow management
+   - ECS Tasks: For batch job execution
+   - DynamoDB: For job execution state management
+   - SNS: For failure notifications
+
+6. **Domain Management**
+   - Route 53 Private Hosted Zone: For internal DNS management
+
+This architecture enables you to build a secure and highly available application runtime environment.
 
 ## Preparation
 
@@ -19,206 +56,205 @@ Run and enter the required information in response to the prompts that appear.
 The access key, secret key, and default region that are displayed when an IAM user is created are checked.
 For more information, see [Quick Setup with aws configure - Profiles](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-profiles).
 
-### 2. Rewrite stages.js
+### 2. Configure parameter.ts
 
-This template is using Task Runner [gulp](https://gulpjs.com/) for deployment.
-The variables referred to from gulp are defined in `stages.js`, so they can be changed according to each environment.
+This template uses CDK written in TypeScript for deployment.
+The parameters required for deployment are defined in `parameter.ts`, so they can be changed according to each environment.
 
-```javascript
-default: {
-    appName,
-    awsProfile: 'myProfile',
-    alias: 'default',
-    deployEnv: 'dev',
-    notifyEmail: 'default-mail@default-mail.com',
-    enabledPrivateLink: false,
-    windowsBastion: true,
-    linuxBastion: true,
-    domainName: 'templateapp.local',
-},
-alias: {
-    appName: '',          // application's name ex: demoapp
-    awsProfile: '',       // aws profile that you configured in step 1
-    alias: '',            // identifier to deploy to same aws account by other teammates. ex: ysuzuki
-    deployEnv: ''         // deploy stage ex: dev, stage, prod
-    notifyEmail: '',      // This e-mail to send message when job was failed.
-    enabledPrivateLink: , // Whether using PrivateLink or not. true is using PrivateLink, and false is not.
-    windowsBastion: true, // Whether using Windows Bastion instance or not. true is using it, and false is not.
-    linuxBastion: true,   // Whether using Amazon Linux Bastion instance or not. true is using it, and false is not.
-    domainName: 'templateapp.local', // It will be registered to Private Hosted Zone.
+```typescript
+const devParameter: Parameter = {
+  deployEnv: "dev",
+  sharedVpcCidr: '10.0.0.0/16',
+  appVpcCidr: '10.1.0.0/16',
+  filePathOfSourceArtifact: 'webapp-repository/refs/heads/main/repo.zip',
+  windowsBastion: false,
+  linuxBastion: false,
+  domainName: "templateapp.local",
+  notifyEmail: "johndoe+notify@example.com"
 }
 ```
+
+Main configuration items:
+- `deployEnv`: Specify the environment to deploy (e.g., dev, stage, prod)
+- `windowsBastion`: Set to true if you want to use a Windows Bastion instance, false otherwise
+- `linuxBastion`: Set to true if you want to use an Amazon Linux Bastion instance, false otherwise
+- `domainName`: Domain name to be registered in the Private Hosted Zone
+- `notifyEmail`: Email address for notifications when jobs fail
 
 ### 3. Create self-signed certificate
 
 Self-signed certificate will be used in this sample to use HTTPS.
-Please run this command to import certificate to Amazon Certificate Manager in `infra` dir.
-Please install `OpenSSL` to your local environment befeore running these commands.
+Please run this command in the `usecases/webapp-java` directory to import certificate to Amazon Certificate Manager.
+Please install `OpenSSL` to your local environment before running these commands.
 
 ```bash
 $ npm install
-$ npm run create-certificate -- --{alias}
+$ npm run create:certificate
 ```
 
 ## How to deploy
 
 ### 1. CDK
 
-Run the following command to deploy in `infra` dir:
+Run the following command in the `usecases/webapp-java` directory:
 
 ```bash
-$ npm run deploy -- --{alias}
+$ npm run deploy
 ```
 
-After deployment, the comannds to get keypairs will be shown in same terminal.
-If you want to use ssh from your client or RDP connection via FleetManager, please get keypairs by commands like below.
-
-(Correct keypair ID will be included in fact.)
-
-1. The case of Windows instance in ap-northeast-1 region.
+After deployment, the commands to get keypairs will be shown in the same terminal.
+If you want to use SSH from your client or RDP connection via Fleet Manager, please get keypairs by running the displayed commands. (Please specify your AWS profile when running the commands)
 
 ```
-{alias}{stage}{appName}Webapp.WindowsGetSSHKeyForWindowsInstanceCommand = aws ssm get-parameter --name /ec2/keypair/key-XXXXXXXXXXXXXXXXX --region ap-northeast-1 --with-decryption --query Parameter.Value --output text
-```
+// For Windows instance in ap-northeast-1 region
+$ devWebapp.WindowsGetSSHKeyForWindowsInstanceCommand = aws ssm get-parameter --name /ec2/keypair/key-XXXXXXXXXXXXXXXXX --region ap-northeast-1 --with-decryption --query Parameter.Value --output text
 
-2. The case of Amazon Linux instance in ap-northeast-1 region.
-
-```
-{alias}{stage}{appName}Webapp.LinuxGetSSHKeyForLinuxInstanceCommand = aws ssm get-parameter --name /ec2/keypair/key-XXXXXXXXXXXXXXXXX --region ap-northeast-1 --with-decryption --query Parameter.Value --output text
+// For Amazon Linux instance in ap-northeast-1 region
+$ devWebapp.LinuxGetSSHKeyForLinuxInstanceCommand = aws ssm get-parameter --name /ec2/keypair/key-XXXXXXXXXXXXXXXXX --region ap-northeast-1 --with-decryption --query Parameter.Value --output text
 ```
 
 > NOTE:
-> If you deploy this template at first, there are many outputs in your terminal.
+> If you deploy this template for the first time, there are many outputs in your terminal.
 > So, you may not find these commands in your terminal.
 > In this case, please go to CloudFormation's console in your browser.
 > And open the `Output` tab of `Webapp stack`. You can see commands in your screen like below image.
-> ![How to get key pair command](../docs/images/keypair_command_en.png)
+> ![How to get key pair command](./docs/images/keypair_command_ja.png)
 
-And mail adderess you put in `stages.js` will receive email from Amazon SNS after CDK deployment.
-Please do confirmation of this email follow these steps in email to receive notification of job failed.
-And job will be start at 21:00 JST on weekdays. The initial data sets registered by deployment of sample web application is set so that all jobs succeed. So no notification is sent.
-If you want to confirm the failure notification, please change any of the `true` values of `webapp-java/src/main/resources/data.sql` to `false` and then deploy the web application.
+After CDK deployment, the email address you specified in `parameter.ts` will receive a subscription confirmation email from Amazon SNS.
 
-### 2. Deploy sample web application via pipeline
+Please confirm the subscription by following the instructions in the email to receive notifications when jobs fail.
 
-Your source code repository was created after deploying CDK.
+The batch job is scheduled to run at 9:00 PM on weekdays. The initial data registered by the sample web application deployment is configured to make all jobs succeed, so no notification will be sent.
+If you want to test the failure notification, change any of the five `true` values in `webapp/src/main/resources/data.sql` to `false` before deploying the web application.
+
+### 2. Deploy sample web application
+
+After deploying CDK, an S3 bucket for the sample web application repository is created.
 
 > NOTE:
-> Your source code repository URL will be shown in your console after deploying CDK or in CloudFormation Console of AWS Management Console like below.
-> ![Source Code URL](../docs/images/repository_url_en.png)
+> The S3 bucket path is displayed in the terminal after deployment or in the CloudFormation console.
+> If you're checking the CloudFormation console, refer to the `Output` tab of the `CICD stack`.
+> ![Repository Url](./docs/images/repository_url_ja.png)
 
-You can deploy sample web application via pipeline by following steps to push source code to your repository.
+Follow these steps to upload the source code from the `webapp` directory to deploy the sample web application through the pipeline.
+
+First, install git-remote-s3, which allows you to use an S3 bucket as a Git remote repository:
 
 ```bash
-$ cd ./webapp-java
-$ git init
-$ git remote add origin https://git-codecommit.{your region}.amazonaws.com/v1/repos/{your repository name}
-$ git add *
-$ git commit -m "Initial commit"
-$ git push --set-upstream origin main
-$ git checkout -b develop
-$ git push --set-upstream origin develop
+$ pip install git-remote-s3
 ```
 
-> NOTE:
-> When the develop branch was changed, this pipeline will be invoked. So, you have to create develop branch.
+Next, initialize the webapp directory as a Git repository and set the S3 bucket as a remote:
+If you want to use a specific AWS profile, you can specify `{profile}@`.
 
-If you want to confirm pipeline situation, please access AWS CodePipeline via management console.
+```bash
+$ cd ./webapp
+$ git init
+$ git add .
+$ git commit -m "Initial commit"
+# Using default profile
+$ git remote add origin s3+zip://{bucket-name}/webapp-repository
+# Using specific profile
+$ git remote add origin s3+zip://{profile}@{bucket-name}/webapp-repository
+```
+
+Finally, push to the main branch. This will upload the code as a zip file to the specified path in the S3 bucket and start the pipeline:
+
+```bash
+$ git push -u origin main
+```
+
+If you want to check the pipeline status, access AWS CodePipeline via the management console.
 
 #### CI/CD Pipeline
 
-The implementation of this CI/CD is based on the BlackBelt sample: [(Black Belt AWS - Page 52)](https://d1.awsstatic.com/webinars/jp/pdf/services/20201111_BlackBelt_AWS%20CodeStar_AWS_CodePipeline.pdf?page=52)
+The CI/CD for the web application uses an S3 bucket as the source, builds a Docker image with CodeBuild, pushes it to ECR, and then deploys it to ECS.
 
-If you want to replace it with your own web application or job script, replace the source code you push to CodeCommit with your own and modify the Dockerfile to suit your environment and application.
+If you want to replace it with your own web application, replace the source code uploaded to the S3 bucket with your own and modify the Dockerfile to suit your environment and application.
 
-### ３. Testing
+### 3. Testing
 
-When you want to check web application, you can access the app through the Bastion server on EC2.
-To access to the Bastion server via Fleet Manager Remote Desktop, you use the keypair that you've gotten in section [1. CDK].
-If you want to know about how to access the Bastion server via Fleet Manager Remote Desktop, please see [Connect to a managed node using Remote Desktop](https://docs.aws.amazon.com/systems-manager/latest/userguide/fleet-rdp.html#fleet-rdp-connect-to-node).
+When you want to check the web application, you can access it through the Bastion server on EC2.
 
-If you can access to Bastion server, open your browser and enter the domain specified by `domainName` in `stages.js` to access the web application.
+To access the Bastion server, use the keypair obtained in [Deploy - 1. CDK](#1-cdk) and connect via Fleet Manager.
+For information on how to connect to the Bastion server via Fleet Manager Remote Desktop, please see [Connect to a managed node using Remote Desktop](https://docs.aws.amazon.com/systems-manager/latest/userguide/fleet-rdp.html#fleet-rdp-connect-to-node).
 
-If the following screen is displayed, it is successful.
+Once connected to the Bastion server, open your browser and enter the domain specified by `domainName` in `parameter.ts` to access the web application.
 
-![application screenshot](../webapp-java/docs/images/screenshot.png)
+If the following screen is displayed, it is successful:
+
+![Application Screenshot](./docs/images/screenshot.png)
 
 ### 4. Delete environment
 
 If you want to delete the created environment, execute the following command:
 
 ```
-npm run destroy -- --{alias}
+$ npm run destroy
 ```
 
-Some resources that like a ECR may remain due to the status. So you may need to delete them manually.
-Ref：[(ecr): add option to auto delete images upon ECR repository removal #12618 ](https://github.com/aws/aws-cdk/issues/12618)
-If destroy command was failed, please check the error message or CloudFormation console to understand what happend and root cause of errors to solve them.
+Some resources like ECR may remain depending on the situation, requiring manual deletion.
+Reference: [(ecr): add option to auto delete images upon ECR repository removal #12618](https://github.com/aws/aws-cdk/issues/12618)
+If the command fails, check the error message or CloudFormation console to understand what happened and address the root cause.
 
 ### Additional commands
 
-Since `diff, list`, which is the CDK command, has already been implemented in gulp, these commands can also be executed via gulp.
+Since `diff, list`, which are CDK commands, have already been implemented in npm scripts, these commands can also be executed:
 
 ```
-npm run diff -- --{alias}
-npm run list -- --{alias}
+$ npm run diff
+$ npm run list
 ```
 
 ## Job management feature implemented by Step Functions
 
-A job management feature requires functions such as:
+A job management platform requires features such as "① Creating workflows", "② Enabling re-execution", and "③ Sending notifications on failure".
+While ① can be achieved with Step Functions, ② and ③ require implementation.
+This sample provides implementation examples for ② and ③.
 
-- 1. Create a workflow
-- 2. Re-run job script
-- 3. Sending a notification when job script fails
+The sample implemented here has a parent-child relationship in the Step Functions state machines, with the parent handling the main workflow and the child implementing ② and ③.
+For information on how to create workflows in state machines, please refer to the [official documentation](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html).
 
-As for the first function ① Create a workflow, it is possible to achieve it with AWS Step Functions, but we need to implement functions ② and ③.
+Here, we will explain the implementation of ② and ③.
+The following figure shows a child state machine called from the parent state machine:
 
-In this sample, we provide examples of these ② and ③.
+![Job](./docs/images/job.png)
 
-AWS Step Functions state machine has a parent-child relationship, and the parent side realizes the main workflow, and ② and ③ are realized on the child side.
+In the child state machine, a job script is executed according to the following flow:
 
-For information on how to create a workflow in a state machine, please see [official documentation](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html).
-
-Here, we will explain about ② and ③.
-The following figure shows a child state machine called from the parent state machine.
-
-![Job](../docs/images/job.png)
-
-In the child state machine, a certain job script is executed and it is executed according to the following flow.
-
-1. Check the execution status of the job script for the day
+1. Check the execution status of the job script for the current day
 2. Determine if the job was successful
-3. If successful, the job will be skipped and child statemachine will be ended
-4. If it's not successful, run the job script
-5. If the result of the job script is successful, the execution state is registered as "SUCCEEDED" and this state machine is ended
-6. If the result of the job script fails, register the execution state as "FAILED"
-7. Continue and notify by email about the failure
-8. Set failed as a state machine and exit
+   1. If successful, the job is skipped
+3. If not successful, run the job script
+4. If the job script result is successful, register the execution state as "SUCCEEDED" and end this state machine
+5. If the job script result fails, register the execution state as "FAILED"
+6. Continue and send a failure notification by email
+7. Set the state machine as failed and exit
 
-When the status is checked or the status is registered, AWS DynamoDB is used, and the execution state of the job is checked and registered using the execution date and job ID as keys.
-By managing the execution state in this way, it is possible to re-execute the job(②).
+When checking or registering the state, DynamoDB is accessed, and the job execution state is referenced and registered using the execution date and job ID as keys.
+By managing the execution state this way, ② (job re-execution) is made possible.
 
-As for the job failure notification(③), when AWS Step Functions executes the AWS SNS API, the failed job ID is passed to AWS SNS and a notification is sent to the subscribed email address.
+For ③ (job failure notification), Step Functions executes the SNS API to send the failed job ID, and a notification is sent to the subscribed email address.
 
-## Best practices checking for CDK
+## CDK Static Analysis
 
-The CDK code of this project uses [cdk-nag](https://github.com/cdklabs/cdk-nag/blob/main/README.md) to check for best practices agains rule packs.
+The CDK code in this project uses [cdk-nag](https://github.com/cdklabs/cdk-nag/blob/main/README.md) for static analysis.
+By checking if the implementation follows the provided rules, critical security risks can be prevented.
 
-Fatal security risks are prevented by checking whether implementation has been made in accordance with the CDK-NAG rules.
+Exceptions to the rules are listed at the bottom of the source code.
+Please add or remove exceptions as needed.
 
-The rules that have been excluded are described together at the bottom of the source code. Please add or remove exceptions as needed.
+For specific usage, see [Manage application security and compliance with the AWS Cloud Development Kit and cdk-nag](https://aws.amazon.com/blogs/news/manage-application-security-and-compliance-with-the-aws-cloud-development-kit-and-cdk-nag/).
 
-For specific usage, see [Manage application security and compliance with the AWS Cloud Development Kit and cdk-nag](https://aws.amazon.com/jp/blogs/news/manage-application-security-and-compliance-with-the-aws-cloud-development-kit-and-cdk-nag/).
+## Security Hub Check Results
 
-## How to solve the checks of Security Hub
-
-When Security Hub is enable, two policies will be enable by default.
+When Security Hub is enabled, the following two standards are enabled by default:
 
 - [AWS Foundational Security Best Practices (FSBP) standard](https://docs.aws.amazon.com/securityhub/latest/userguide/fsbp-standard.html)
-- [Center for Internet Security (CIS) AWS Foundations Benchmark v1.2.0](https://docs.aws.amazon.com/ja_jp/securityhub/latest/userguide/cis-aws-foundations-benchmark.html)
+- [Center for Internet Security (CIS) AWS Foundations Benchmark v1.2.0](https://docs.aws.amazon.com/securityhub/latest/userguide/cis-aws-foundations-benchmark.html)
 
-These checks may show the detection of CRITICAL and HIGH severity by Security Hub.
+When these checks are performed, some items may be reported with CRITICAL or HIGH severity in the benchmark report.
+These require separate handling.
 
 ### Enable MFA for the root user
 
@@ -230,7 +266,7 @@ These checks may show the detection of CRITICAL and HIGH severity by Security Hu
 
 #### How to fix
 
-- Access the management console as root user and follow below document.
+- Log in to AWS as the root user and follow the documentation below to enable MFA:
   - [Enable a hardware TOTP token for the AWS account root user (console)](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_enable_physical.html#enable-hw-mfa-for-root)
 
 ### Disable CodeBuild's privileged mode
@@ -241,26 +277,27 @@ These checks may show the detection of CRITICAL and HIGH severity by Security Hu
 
 #### How to fix
 
-- CodeBuild's priviledge mode should be disable except when docker image build is required.
-- In this template, priviledge mode is enable because pipeline build a docker image.
-- Please check your enviornment and requirements and fix this configuration.
-  - If you want to fix template's configuration, [please change the priviledge parameter of CodePipeline's construct](lib/constructs/codepipeline/codepipeline-webapp-java.ts#L65) to `false`
-  - Refer:[interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
+- CodeBuild's privileged mode should be disabled except when Docker image building is required. This template has it enabled because it builds Docker images, but please adjust the setting according to your environment.
+  - For template-only fixes, change the [privileged mode setting in the CodePipeline construct](lib/construct/codepipeline/codepipeline-webapp-java.ts#L65) to `false`.
+  - Reference: [interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
 
-## Path to production
+## Production Considerations
 
-### Security updates to EC2
+### EC2 Patching
 
-If you're using an EC2 instance for operational management, consider how to apply security updates.
+When using EC2 instances for operations management, consider how to apply patches.
+While you can manually apply patches via Session Manager, Patch Manager is useful for automatic patching.
+For more information, see [AWS Systems Manager Patch Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-patch.html).
 
-It is also possible to apply package updates manually via Session Manager, but Patch Manager is useful to do this automatically. For more information, see [AWS Systems Manager Patch Manager](https://docs.aws.amazon.com/ja_jp/systems-manager/latest/userguide/systems-manager-patch.html) and [AWS Well-Architected Framework](https://docs.aws.amazon.com/ja_jp/wellarchitected/latest/framework/welcome.html).
+Beyond patch management, AWS has published the [AWS Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html), which compiles best practices based on years of experience. Please refer to it.
 
-### Container image tags
+### Container Image Tags
 
-The CI/CD Pipeline will attach the tag of commit hash version to Web app container image when you push the new code to CodeCommit repository.
-If you want to manage batch container like a webapp container, please implement pipeline for batch container image based on the CI/CD pipeline of webapp.
+In this sample, the batch container image is tagged with "latest".
+For the web application container image, versioning is done using build timestamps through the pipeline that starts with uploading to the S3 bucket.
+More strict versioning for batch containers can be achieved by implementing a similar pipeline.
 
-### Self-signed certificate
+### HTTPS Certificates
 
-This sample uses self-signed certificate to enable HTTPS.
-Since it's a self-signed certificate, please use it only for test/develop environment. Also, while accessing the webapp, you will notifice the security warning in your browser, you will have to accept it to access the application or deploy the CDK application with a signed certificate.
+This sample uses a self-signed certificate for HTTPS communication.
+As it's a self-signed certificate, please use it only for testing purposes.

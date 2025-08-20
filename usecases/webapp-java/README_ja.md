@@ -138,10 +138,30 @@ CDK のデプロイが完了したことで、S3バケットにサンプル Web 
 
 以下の手順で、`webapp` ディレクトリのソースコードをアップロードすることで、サンプル Web アプリがパイプラインからデプロイされます。
 
+まず、git-remote-s3をインストールします。これにより、S3バケットをGitリモートリポジトリとして使用できるようになります。
+
+```bash
+$ pip install git-remote-s3
+```
+
+次に、webappディレクトリをGitリポジトリとして初期化し、S3バケットをリモートとして設定します。
+特定のAWSプロファイルを使用する場合は、`{profile}@`を指定できます。
+
 ```bash
 $ cd ./webapp
-$ zip -r repo.zip .
-$ aws s3 cp repo.zip s3://{バケット名}/webapp-repository/refs/heads/main/repo.zip
+$ git init
+$ git add .
+$ git commit -m "Initial commit"
+# デフォルトプロファイルを使用する場合
+$ git remote add origin s3+zip://{バケット名}/webapp-repository
+# 特定のプロファイルを使用する場合
+$ git remote add origin s3+zip://{profile}@{バケット名}/webapp-repository
+```
+
+最後に、mainブランチにプッシュします。これにより、コードがS3バケットの指定されたパスにzipファイルとしてアップロードされ、パイプラインが開始されます。
+
+```bash
+$ git push -u origin main
 ```
 
 パイプラインの状況を確認したい場合は、マネジメントコンソールより AWS CodePipeline へアクセスしてください。
