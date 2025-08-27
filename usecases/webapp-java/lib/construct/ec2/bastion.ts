@@ -8,6 +8,7 @@ import {
   MachineImage,
   WindowsVersion,
   IVpc,
+  SecurityGroup,
 } from 'aws-cdk-lib/aws-ec2';
 import {
   Policy,
@@ -16,7 +17,7 @@ import {
   ServicePrincipal,
   ManagedPolicy,
 } from 'aws-cdk-lib/aws-iam';
-import { CfnOutput, Stack } from 'aws-cdk-lib';
+import { CfnOutput, Stack, Tags } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { NagSuppressions } from 'cdk-nag';
 
@@ -29,6 +30,7 @@ export class Bastion extends Construct {
       os: 'Linux' | 'Windows';
       vpc: IVpc;
       instanceType?: InstanceType;
+      securityGroup?: SecurityGroup; // セキュリティグループを受け取るオプションを追加
     }
   ) {
     super(scope, id);
@@ -70,6 +72,7 @@ export class Bastion extends Construct {
       },
       role: instanceRole,
       keyPair: keyPair,
+      securityGroup: props.securityGroup, // 渡されたセキュリティグループを使用
       blockDevices: [
         {
           deviceName: props.os === 'Linux' ? '/dev/xvda' : '/dev/sda1',
@@ -81,6 +84,9 @@ export class Bastion extends Construct {
       requireImdsv2: true,
     });
     this.bastionInstance = bastionInstance;
+    Tags.of(this.bastionInstance).add('GroupId', 'test');
+    Tags.of(this.bastionInstance).add('GroupId', 'admin');
+
 
     new CfnOutput(this, `${id}BastionInstanceId`, {
       value: bastionInstance.instanceId,

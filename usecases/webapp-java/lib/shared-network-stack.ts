@@ -1,4 +1,4 @@
-import { StackProps, Stack, aws_ec2, aws_ram, aws_route53resolver } from 'aws-cdk-lib';
+import { StackProps, Stack, aws_ec2, aws_ram, aws_route53resolver, CfnOutput, aws_ssm } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Network } from './construct/network/network';
 import { Bastion } from './construct/ec2/bastion';
@@ -16,7 +16,7 @@ export class SharedNetworkStack extends Stack {
   public readonly tgw: aws_ec2.CfnTransitGateway;
   public readonly resolverInboundEndpoint: aws_route53resolver.CfnResolverEndpoint;
   public readonly endpointIps: string[];
-  public readonly bastionIps: string[];
+  public readonly appRunnerVpcEndpointId: string;
 
   constructor(scope: Construct, id: string, props: SharedNetworkStackProps) {
     super(scope, id, props);
@@ -113,6 +113,15 @@ export class SharedNetworkStack extends Stack {
       service: aws_ec2.GatewayVpcEndpointAwsService.S3,
     })
 
+    // VPC Endpoint - for Instance Manager app
+    const appRunnerVpcEndpoint = network.vpc.addInterfaceEndpoint('AppRunnerVpcEndpoint', {
+      service: aws_ec2.InterfaceVpcEndpointAwsService.APP_RUNNER,
+      subnets: { subnetFilters: [aws_ec2.SubnetFilter.byIds(network.workloadSubnets.map(subnet => subnet.subnetId))] },
+      privateDnsEnabled: true,
+      securityGroups:[vpcEndpointSG]
+    })
+    this.appRunnerVpcEndpointId = appRunnerVpcEndpoint.vpcEndpointId;
+
     // Add routes via TGW
     props.destinationVpcCidrs.map(vpcCidr => {
       network.addRouteToTgwAttachementSubnets(tgw.attrId, vpcCidr);
@@ -145,15 +154,20 @@ export class SharedNetworkStack extends Stack {
     
     this.tgw = tgw;
     this.network = network;
-
+    
     // Bastion
-    this.bastionIps = [];
     if (props.windowsBastion) {
       const bastion = new Bastion(this, `Windows`, {
         os: 'Windows',
         vpc: this.network.vpc,
       });
-      this.bastionIps.push(bastion.bastionInstance.instance.attrPrivateIp);
+      
+      // WindowsバスティオンのIPをSSMパラメータに保存
+      new aws_ssm.StringParameter(this, 'WindowsBastionIpParameter', {
+        parameterName: `/${id}/WindowsBastionIp`,
+        stringValue: bastion.bastionInstance.instance.attrPrivateIp,
+        description: 'Windows Bastion Instance Private IP',
+      });
     }
 
     if (props.linuxBastion) {
@@ -161,7 +175,13 @@ export class SharedNetworkStack extends Stack {
         os: 'Linux',
         vpc: this.network.vpc,
       });
-      this.bastionIps.push(bastion.bastionInstance.instance.attrPrivateIp);
+      
+      // LinuxバスティオンのIPをSSMパラメータに保存
+      new aws_ssm.StringParameter(this, 'LinuxBastionIpParameter', {
+        parameterName: `/${id}/LinuxBastionIp`,
+        stringValue: bastion.bastionInstance.instance.attrPrivateIp,
+        description: 'Linux Bastion Instance Private IP',
+      });
     }
   }
 }

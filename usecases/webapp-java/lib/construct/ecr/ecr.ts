@@ -10,6 +10,7 @@ export class Ecr extends Construct {
       imageScanOnPush: true,
       encryption: aws_ecr.RepositoryEncryption.KMS,
       removalPolicy: RemovalPolicy.DESTROY,
+      emptyOnDelete: true // For develop environment
     });
 
     new CfnOutput(this, 'RepositoryName', {

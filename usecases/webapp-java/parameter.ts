@@ -14,7 +14,7 @@ const devParameter: Parameter = {
   sharedVpcCidr: '10.0.0.0/16',
   appVpcCidr: '10.1.0.0/16',
   filePathOfSourceArtifact: 'webapp-repository/refs/heads/main/repo.zip',
-  windowsBastion: false,
+  windowsBastion: true,
   linuxBastion: true,
   domainName: "templateapp.local",
   notifyEmail: "johndoe+notify@example.com"

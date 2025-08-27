@@ -8,6 +8,7 @@ import { StorageStack } from '../lib/storage-stack';
 import { WebappStack } from '../lib/webapp-stack';
 import { CicdStack } from '../lib/cicd-stack';
 import { BatchStack } from '../lib/batch-stack';
+import { InstanceManagerStack } from '../lib/instance-manager-stack';
 import parameter from '../parameter';
 // Please do npm run create:certificate before cdk deploy
 import { CertificateArn } from '../config/certificate_arn.json'
@@ -54,7 +55,9 @@ const storageStack = new StorageStack(app, `${deployEnv}Storage`, {
   env,
   description: 'NetworkStack will provision vpc (uksb-1tupboc54) (tag:storage).',
   vpc: appNetworkStack.vpc,
-  bastionIps: sharedNetworkStack.bastionIps
+  sharedNetworkStackName: sharedNetworkStack.node.id,
+  windowsBastion: windowsBastion, 
+  linuxBastion: linuxBastion
 })
 
 const webappStack = new WebappStack(app, `${deployEnv}Webapp`, {
@@ -101,6 +104,12 @@ new DomainStack(app, `${deployEnv}Domain`, {
     target: aws_route53.RecordTarget.fromAlias(new aws_route53_targets.LoadBalancerTarget(webappStack.alb))
   }],
   resolverInboundEndpointIps: sharedNetworkStack.endpointIps
+})
+
+// インスタンスマネージャースタックの作成
+const instanceManagerStack = new InstanceManagerStack(app, `${deployEnv}InstanceManager`, {
+  env,
+  description: 'InstanceManagerStack will provision DynamoDB table and AppRunner service for instance manager (uksb-1tupboc54) (tag:instance-manager).',
 })
 
 /**
