@@ -15,6 +15,7 @@
     "@aws-sdk/client-ec2": "^3.873.0",
     "@aws-sdk/client-secrets-manager": "^3.873.0",
     "@aws-sdk/lib-dynamodb": "^3.873.0",
+    "@headlessui/react": "^2.2.7",
     "@mjackson/headers": "^0.11.1",
     "@remix-run/node": "^2.17.0",
     "@remix-run/react": "^2.17.0",

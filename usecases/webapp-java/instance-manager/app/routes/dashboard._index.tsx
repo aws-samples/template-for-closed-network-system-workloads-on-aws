@@ -1,14 +1,18 @@
 import { redirect } from '@remix-run/node';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
 import { Form, Link, useLoaderData, useNavigation, useSubmit } from '@remix-run/react';
+import { useState, Fragment, useEffect } from 'react';
+import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react';
+import { useDebounce } from '~/hooks/useDebounce';
 import { ec2Client } from '~/utils/aws.server';
 import { requireUser } from '~/utils/auth.server';
-import { Button, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '~/components';
+import { Button, Modal, Select, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '~/components';
 
 type Instance = {
   id: string | undefined;
   state: string | undefined;
   type: string | undefined;
+  alternativeType: string | undefined; // 代替タイプ
   name: string;
   groupId: string | null; // インスタンスのグループID
 }
@@ -37,9 +41,35 @@ export async function action({ request }: ActionFunctionArgs) {
       await ec2Client.startInstance({ instanceId });
     } else if (action === 'stop') {
       await ec2Client.stopInstance({ instanceId });
+    } else if (action === 'updateAlternativeType') {
+      const alternativeType = formData.get('alternativeType') as string;
+      
+      // AlternativeTypeタグを更新
+      await ec2Client.createTags({
+        resourceIds: [instanceId],
+        tags: [
+          {
+            Key: 'AlternativeType',
+            Value: alternativeType
+          }
+        ]
+      });
     }
   } catch (error) {
     console.error(`Error ${action}ing instance ${instanceId}:`, error);
+    
+    // エラー情報をセッションストレージに保存して、リダイレクト後に表示できるようにする
+    const errorInfo = {
+      message: `インスタンス ${instanceId} の ${action} 処理中にエラーが発生しました`,
+      details: error instanceof Error ? error.message : String(error)
+    };
+    
+    // セッションストレージに保存するためのスクリプトをレスポンスヘッダーに追加
+    return redirect('/dashboard', {
+      headers: {
+        'Set-Cookie': `ec2OperationError=${JSON.stringify(errorInfo)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=60`
+      }
+    });
   }
 
   // 同じページにリダイレクト（リロードして最新の状態を表示）
@@ -75,6 +105,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         id: instance.InstanceId || '',
         state: instance.State?.Name,
         type: instance.InstanceType,
+        alternativeType: instance.Tags?.find(tag => tag.Key === 'AlternativeType')?.Value || '未登録',
         name: instance.Tags?.find(tag => tag.Key === 'Name')?.Value || 'No Name',
         groupId: instance.Tags?.find(tag => tag.Key === 'GroupId')?.Value || null,
       })) || []
@@ -91,6 +122,106 @@ export default function Dashboard() {
   const { user, instances } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
+  const submit = useSubmit();
+  
+  // モーダル関連の状態
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null);
+  const [availableInstanceTypes, setAvailableInstanceTypes] = useState<string[]>([]);
+  const [selectedAlternativeType, setSelectedAlternativeType] = useState('');
+  const [inputValue, setInputValue] = useState('');
+  const [typeQuery, setTypeQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // デバウンスフックを使用（300msのデバウンス時間）
+  const debouncedInputValue = useDebounce(inputValue, 300);
+  
+  // デバウンスされた値が変更されたときにのみtypeQueryを更新
+  useEffect(() => {
+    setTypeQuery(debouncedInputValue);
+  }, [debouncedInputValue]);
+  
+  // エラーアラート関連の状態
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  
+  // Cookieからエラー情報を読み込む
+  useEffect(() => {
+    // Cookieからエラー情報を取得
+    const getCookie = (name: string) => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) {
+        const cookieValue = parts.pop()?.split(';').shift();
+        return cookieValue;
+      }
+      return null;
+    };
+    
+    const errorCookie = getCookie('ec2OperationError');
+    if (errorCookie) {
+      try {
+        const errorInfo = JSON.parse(decodeURIComponent(errorCookie));
+        setErrorMessage(`${errorInfo.message}\n${errorInfo.details}`);
+        setIsErrorModalOpen(true);
+        
+        // Cookieを削除
+        document.cookie = 'ec2OperationError=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      } catch (e) {
+        console.error('エラー情報の解析に失敗しました:', e);
+      }
+    }
+  }, []);
+
+  // 代替タイプをクリックしたときの処理
+  const handleAlternativeTypeClick = async (instance: Instance) => {
+    setSelectedInstance(instance);
+    setIsLoading(true);
+    
+    try {
+      // インスタンスタイプのファミリーを取得（例：t2.microからt2を抽出）
+      const instanceFamily = instance.type?.split('.')[0] || '';
+      
+      // 入力値を設定（これがデバウンスされてtypeQueryに反映される）
+      setInputValue(instanceFamily);
+      
+      // 検索クエリに基づいてインスタンスタイプを取得
+      const response = await fetch(`/api/instance-types?query=${instanceFamily}`, {
+        method: 'GET',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableInstanceTypes(data.instanceTypes);
+        
+        // 現在の代替タイプがあれば選択、なければ空に
+        setSelectedAlternativeType(instance.alternativeType && instance.alternativeType !== '未登録' ? instance.alternativeType : '');
+      } else {
+        console.error('インスタンスタイプの取得に失敗しました');
+        // 取得失敗時には空の配列を設定する
+        setAvailableInstanceTypes([]);
+      }
+    } catch (error) {
+      console.error('インスタンスタイプの取得中にエラーが発生しました:', error);
+    } finally {
+      setIsLoading(false);
+      setIsModalOpen(true);
+    }
+  };
+
+  // 代替タイプを保存する処理
+  const handleSaveAlternativeType = () => {
+    if (selectedInstance && selectedAlternativeType) {
+      const formData = new FormData();
+      formData.append('action', 'updateAlternativeType');
+      formData.append('instanceId', selectedInstance.id || '');
+      formData.append('groupId', selectedInstance.groupId || '');
+      formData.append('alternativeType', selectedAlternativeType);
+      
+      submit(formData, { method: 'post' });
+      setIsModalOpen(false);
+    }
+  };
 
   return (
     <div className="dashboard-container">
@@ -132,6 +263,7 @@ export default function Dashboard() {
               <TableHeaderCell>名前</TableHeaderCell>
               <TableHeaderCell>インスタンスID</TableHeaderCell>
               <TableHeaderCell>タイプ</TableHeaderCell>
+              <TableHeaderCell>代替タイプ</TableHeaderCell>
               {user.isAdmin && <TableHeaderCell>グループID</TableHeaderCell>}
               <TableHeaderCell>状態</TableHeaderCell>
               <TableHeaderCell>アクション</TableHeaderCell>
@@ -143,6 +275,33 @@ export default function Dashboard() {
                 <TableCell>{instance.name}</TableCell>
                 <TableCell>{instance.id}</TableCell>
                 <TableCell>{instance.type}</TableCell>
+                <TableCell>
+                  <div className="flex items-center space-x-2">
+                    {instance.alternativeType === '未登録' ? (
+                      <button
+                        onClick={() => handleAlternativeTypeClick(instance)}
+                        className="text-blue-600 hover:underline focus:outline-none"
+                        disabled={isSubmitting}
+                      >
+                        {instance.alternativeType}
+                      </button>
+                    ) : (
+                      <>
+                        <span>{instance.alternativeType}</span>
+                        <button
+                          onClick={() => handleAlternativeTypeClick(instance)}
+                          className="text-gray-500 hover:text-blue-600 focus:outline-none"
+                          disabled={isSubmitting}
+                          title="代替タイプを編集"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </TableCell>
                 {user.isAdmin && <TableCell>{instance.groupId || '未設定'}</TableCell>}
                 <TableCell>
                   <StatusBadge status={instance.state || 'unknown'} />
@@ -188,12 +347,145 @@ export default function Dashboard() {
             ))}
             {instances.length === 0 && (
               <TableRow>
-                <TableCell colSpan={user.isAdmin ? 6 : 5}>インスタンスが見つかりません</TableCell>
+                <TableCell colSpan={user.isAdmin ? 7 : 6}>インスタンスが見つかりません</TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </main>
+
+      {/* 代替タイプ設定モーダル */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="代替タイプの設定"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsModalOpen(false)}
+              disabled={isSubmitting}
+            >
+              キャンセル
+            </Button>
+            <Button
+              type="button"
+              variant="solid-fill"
+              size="sm"
+              onClick={handleSaveAlternativeType}
+              disabled={isSubmitting || !selectedAlternativeType}
+            >
+              保存
+            </Button>
+          </>
+        }
+      >
+        {isLoading ? (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p>インスタンス: {selectedInstance?.name} ({selectedInstance?.id})</p>
+            <p>現在のタイプ: {selectedInstance?.type}</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="alternativeType" className="block text-sm font-medium text-gray-700 mb-1">
+                  代替タイプ
+                </label>
+                <Combobox 
+                  value={selectedAlternativeType} 
+                  onChange={(value: string | null) => setSelectedAlternativeType(value || '')}
+                >
+                  <div className="relative mt-1">
+                    <div className="relative w-full cursor-default overflow-hidden rounded-lg bg-white text-left border border-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-300">
+                      <ComboboxInput
+                        className="w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 focus:ring-0"
+                        displayValue={(type:string) => type}
+                        onChange={(event) => setInputValue(event.target.value)}
+                        placeholder="タイプを検索..."
+                      />
+                      <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                      </ComboboxButton>
+                    </div>
+                    <ComboboxOptions className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                      {availableInstanceTypes.filter(type => 
+                        typeQuery === '' || type.toLowerCase().includes(typeQuery.toLowerCase())
+                      ).length === 0 ? (
+                        <div className="relative cursor-default select-none py-2 px-4 text-gray-700">
+                          該当するタイプがありません
+                        </div>
+                      ) : (
+                        availableInstanceTypes
+                          .filter(type => typeQuery === '' || type.toLowerCase().includes(typeQuery.toLowerCase()))
+                          .map((type) => (
+                          <ComboboxOption
+                            key={type}
+                            className='relative cursor-default select-none py-2 pl-10 pr-4 text-gray-900'
+                            value={type}
+                          >
+                            {({ selected }) => (
+                              <>
+                                <span
+                                  className={`block truncate ${
+                                    selected ? 'font-medium' : 'font-normal'
+                                  }`}
+                                >
+                                  {type}
+                                </span>
+                                {selected ? (
+                                  <span
+                                    className='relative cursor-default select-none py-2 pl-10 pr-4 text-gray-900'
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                    </svg>
+                                  </span>
+                                ) : null}
+                              </>
+                            )}
+                          </ComboboxOption>
+                        ))
+                      )}
+                    </ComboboxOptions>
+                  </div>
+                </Combobox>
+              </div>
+            </div>
+            
+            <p className="text-sm text-gray-500">
+              代替タイプを設定すると、インスタンスのAlternativeTypeタグに値が保存されます。
+            </p>
+          </div>
+        )}
+      </Modal>
+
+      {/* エラーアラートモーダル */}
+      <Modal
+        isOpen={isErrorModalOpen}
+        onClose={() => setIsErrorModalOpen(false)}
+        title="エラー"
+        footer={
+          <Button
+            type="button"
+            variant="solid-fill"
+            size="sm"
+            onClick={() => setIsErrorModalOpen(false)}
+          >
+            閉じる
+          </Button>
+        }
+      >
+        <div className="text-red-600">
+          {errorMessage}
+        </div>
+      </Modal>
     </div>
   );
 }

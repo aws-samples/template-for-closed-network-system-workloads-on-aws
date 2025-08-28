@@ -1,10 +1,10 @@
-import { CfnOutput, StackProps, Stack, aws_dynamodb, aws_ec2, aws_iam, aws_cognito} from 'aws-cdk-lib';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import { CfnOutput, StackProps, Stack, aws_dynamodb, aws_ec2, aws_iam, aws_cognito, aws_lambda, aws_sqs, aws_lambda_event_sources, aws_events, aws_events_targets } from 'aws-cdk-lib';
 import * as apprunner from '@aws-cdk/aws-apprunner-alpha';
 import * as assets from 'aws-cdk-lib/aws-ecr-assets';
 import * as path from 'path';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 // DynamoDBテーブル名の定数
 export const USER_TABLE_NAME = 'UserTable';
@@ -25,59 +25,68 @@ export class InstanceManagerStack extends Stack {
   constructor(scope: Construct, id: string, props: InstanceManagerStackProps) {
     super(scope, id, props);
 
-    // ユーザー情報を保存するDynamoDBテーブルの作成
-    this.userTable = new aws_dynamodb.Table(this, 'UserTable', {
-      partitionKey: {
-        name: 'email',
-        type: aws_dynamodb.AttributeType.STRING,
-      },
-      encryption: aws_dynamodb.TableEncryption.AWS_MANAGED,
-      billingMode: aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-      pointInTimeRecoverySpecification: {
-        pointInTimeRecoveryEnabled: true
+    // SQS FIFO キューの作成
+    const instanceDeadLetterQueue = new aws_sqs.Queue(this,'InstanceDeadLetterQueue', {
+      fifo: true,
+      enforceSSL: true
+    });
+    const instanceQueue = new aws_sqs.Queue(this, 'InstanceQueue', {
+      fifo: true,
+      contentBasedDeduplication: true, // 重複排除を有効化
+      queueName: 'ice-instance-recovery-queue.fifo',
+      enforceSSL: true,
+      deadLetterQueue: {
+        queue: instanceDeadLetterQueue,
+        maxReceiveCount: 50
       }
     });
 
-    // グループIDによるクエリのためのGSI
-    this.userTable.addGlobalSecondaryIndex({
-      indexName: USER_TABLE_GROUP_INDEX,
-      partitionKey: {
-        name: 'groupId',
-        type: aws_dynamodb.AttributeType.STRING,
-      },
-      sortKey: {
-        name: 'email',
-        type: aws_dynamodb.AttributeType.STRING,
-      },
-      projectionType: aws_dynamodb.ProjectionType.ALL
+    // Lambda 関数の作成
+    const iceRecoveryFunction = new NodejsFunction(this, 'IceRecoveryFunction', {
+      runtime: aws_lambda.Runtime.NODEJS_22_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../functions/ice-recovery/index.ts'),
     });
 
-    // ユーザー一覧取得のためのGSI
-    this.userTable.addGlobalSecondaryIndex({
-      indexName: USER_TABLE_TYPE_INDEX,
-      partitionKey: {
-        name: 'entityType',
-        type: aws_dynamodb.AttributeType.STRING,
-      },
-      sortKey: {
-        name: 'createdAt',
-        type: aws_dynamodb.AttributeType.STRING,
-      },
-      projectionType: aws_dynamodb.ProjectionType.ALL
-    });
+    // EC2 インスタンスに対する権限を付与
+    iceRecoveryFunction.addToRolePolicy(new aws_iam.PolicyStatement({
+      actions: [
+        'ec2:DescribeInstances',
+        'ec2:StartInstances',
+        'ec2:StopInstances',
+        'ec2:RunInstances',
+        'ec2:ModifyInstanceAttribute'
+      ],
+      resources: ['*']
+    }));
 
-    // ロールによるクエリのためのGSI
-    this.userTable.addGlobalSecondaryIndex({
-      indexName: USER_TABLE_ROLE_INDEX,
-      partitionKey: {
-        name: 'role',
-        type: aws_dynamodb.AttributeType.STRING,
+    // Lambda に SQS トリガーを連携させる
+    iceRecoveryFunction.addEventSource(new aws_lambda_event_sources.SqsEventSource(instanceQueue, {
+      batchSize: 1,
+    }));
+
+    // Lambda がキューを受け取ることができる権限を付与
+    instanceQueue.grantConsumeMessages(iceRecoveryFunction);
+
+    // ICE のログのイベントをトリガーに SQS へキューイングするためのルール 
+    new aws_events.Rule(this, 'IceEventRule', {
+      eventPattern: {
+        source: ['aws.ec2'],
+        detailType: ['AWS API Call via CloudTrail'],
+        detail: {
+          eventSource: ['ec2.amazonaws.com'],
+          eventName: ['StartInstances', 'RunInstances'], // 起動に関するイベントをキャッチする
+          errorCode: ['Server.InsufficientInstanceCapacity']
+        },
       },
-      sortKey: {
-        name: 'email',
-        type: aws_dynamodb.AttributeType.STRING,
-      },
-      projectionType: aws_dynamodb.ProjectionType.ALL
+      targets: [new aws_events_targets.SqsQueue(instanceQueue, {
+        message: aws_events.RuleTargetInput.fromObject({
+          // ログからインスタンス ID をメッセージに詰める
+          instanceId: aws_events.EventField.fromPath('$.detail.requestParameters.instancesSet.items[0].instanceId'),
+        }),
+        // FIFOキューではメッセージグループIDが必須のため、メッセージグループIDを決める必要がある（ここでは、簡単のためにインスタンスIDを利用した）
+        messageGroupId: aws_events.EventField.fromPath('$.detail.requestParameters.instancesSet.items[0].instanceId'),
+      })]
     });
 
     // Cognitoユーザープールの作成
@@ -105,8 +114,8 @@ export class InstanceManagerStack extends Stack {
       },
       accountRecovery: aws_cognito.AccountRecovery.EMAIL_ONLY,
       customAttributes: {
-        "isAdmin": new aws_cognito.BooleanAttribute({mutable: true}),
-        "groupId": new aws_cognito.StringAttribute({mutable: true})
+        "isAdmin": new aws_cognito.BooleanAttribute({ mutable: true }),
+        "groupId": new aws_cognito.StringAttribute({ mutable: true })
       }
     });
 
@@ -146,12 +155,6 @@ export class InstanceManagerStack extends Stack {
         aws_cognito.UserPoolClientIdentityProvider.COGNITO
       ],
       generateSecret: true
-    });
-
-    // セッションシークレットの作成（ランダムな値を生成）
-    const sessionSecret = new secretsmanager.Secret(this, 'SessionSecret', {
-      secretName: 'instance-manager/session-secret',
-      description: 'Instance Manager Session Secret',
     });
 
     // ローカルのコードをビルドしてECRにプッシュ
@@ -236,11 +239,6 @@ export class InstanceManagerStack extends Stack {
     // this.userTable.grantReadWriteData(service);
 
     // 出力
-    new CfnOutput(this, 'UserTableName', {
-      exportName: 'UserTableName',
-      value: this.userTable.tableName,
-    });
-
     // new CfnOutput(this, 'AppRunnerServiceUrl', {
     //   exportName: 'AppRunnerServiceUrl',
     //   value: service.serviceUrl
@@ -257,18 +255,17 @@ export class InstanceManagerStack extends Stack {
     //   }]
     // );
 
-    NagSuppressions.addResourceSuppressions([
-      sessionSecret
-    ], [
-      {
-        id: 'AwsSolutions-SMG4',
-        reason: 'This app is for internal use.'
-      }
-    ]);
-
     NagSuppressions.addResourceSuppressions(this.userPool, [{
       id: 'AwsSolutions-COG3',
       reason: "It's used on closed network"
-    }])
+    }]);
+    NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), `${iceRecoveryFunction.node.path}/ServiceRole/DefaultPolicy/Resource`, [{
+      id: 'AwsSolutions-IAM5',
+      reason: 'To manage all instances',
+    }]);
+    NagSuppressions.addResourceSuppressions(iceRecoveryFunction.role!, [{
+      id: 'AwsSolutions-IAM4',
+      reason: 'To use ManagedPolicy for AppRunner service',
+    }]);
   }
 }

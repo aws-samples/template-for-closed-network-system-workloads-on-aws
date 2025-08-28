@@ -1,5 +1,21 @@
 // AWS SDKの実装
-import { EC2Client, DescribeInstancesCommand, StartInstancesCommand, StartInstancesCommandInput, StopInstancesCommand } from '@aws-sdk/client-ec2';
+import { 
+  EC2Client, 
+  DescribeInstancesCommand, 
+  StartInstancesCommand, 
+  StartInstancesCommandInput, 
+  StopInstancesCommand,
+  DescribeInstanceTypesCommand,
+  CreateTagsCommand,
+  DescribeInstanceTypesCommandOutput,
+  InstanceTypeInfo,
+  GetInstanceTypesFromInstanceRequirementsCommand,
+  ArchitectureType,
+  VirtualizationType,
+  InstanceRequirementsRequest,
+  DescribeInstanceTypeOfferingsCommand,
+  LocationType
+} from '@aws-sdk/client-ec2';
 import { 
   SecretsManagerClient, 
   GetSecretValueCommand,
@@ -52,7 +68,7 @@ export const ec2Client = {
     try {
       return await ec2.send(command);
     } catch (error) {
-      console.error('Error fetching EC2 instances:', error);
+      console.error('Error starting EC2 instances:', error);
       // エラーが発生した場合は空のレスポンスを返す
       return { Reservations: [] };
     }
@@ -65,9 +81,81 @@ export const ec2Client = {
     try {
       return await ec2.send(command);
     } catch (error) {
-      console.error('Error fetching EC2 instances:', error);
+      console.error('Error stopping EC2 instances:', error);
       // エラーが発生した場合は空のレスポンスを返す
       return { Reservations: [] };
+    }
+  },
+  describeInstanceTypes: async (params: { filters?: Array<{ Name: string, Values: string[] }> }): Promise<{InstanceTypes: InstanceTypeInfo[]; NextToken?: string}> => {
+    console.log('EC2 describeInstanceTypes called with:', params);
+    const command = new DescribeInstanceTypesCommand({
+      Filters: params.filters
+    });
+    try {
+      const { InstanceTypes, NextToken } = await ec2.send(command);
+      return { 
+        InstanceTypes: InstanceTypes ? InstanceTypes : [], 
+        NextToken 
+      }
+    } catch (error) {
+      console.error('Error fetching EC2 instance types:', error);
+      // エラーが発生した場合は空のレスポンスを返す
+      return { InstanceTypes: [],  };
+    }
+  },
+  createTags: async (params: { resourceIds: string[], tags: Array<{ Key: string, Value: string }> }) => {
+    console.log('EC2 createTags called with:', params);
+    const command = new CreateTagsCommand({
+      Resources: params.resourceIds,
+      Tags: params.tags
+    });
+    try {
+      return await ec2.send(command);
+    } catch (error) {
+      console.error('Error creating EC2 tags:', error);
+      throw error;
+    }
+  },
+  getInstanceTypesFromInstanceRequirements: async (params: {
+    architectureTypes: ArchitectureType[],
+    virtualizationTypes: VirtualizationType[],
+    instanceRequirements: InstanceRequirementsRequest
+  }) => {
+    console.log('EC2 getInstanceTypesFromInstanceRequirements called with:', params);
+    const command = new GetInstanceTypesFromInstanceRequirementsCommand({
+      ArchitectureTypes: params.architectureTypes,
+      VirtualizationTypes: params.virtualizationTypes,
+      InstanceRequirements: params.instanceRequirements
+    });
+    try {
+      const response = await ec2.send(command);
+      return {
+        InstanceTypes: response.InstanceTypes || [],
+        NextToken: response.NextToken
+      };
+    } catch (error) {
+      console.error('Error fetching EC2 instance types from requirements:', error);
+      return { InstanceTypes: [] };
+    }
+  },
+  describeInstanceTypeOfferings: async (params: { 
+    filters?: Array<{ Name: string, Values: string[] }>,
+    locationType?: LocationType,
+  }) => {
+    console.log('EC2 describeInstanceTypeOfferings called with:', params);
+    const command = new DescribeInstanceTypeOfferingsCommand({
+      Filters: params.filters,
+      LocationType: params.locationType || 'region',
+    });
+    try {
+      const response = await ec2.send(command);
+      return {
+        InstanceTypeOfferings: response.InstanceTypeOfferings || [],
+        NextToken: response.NextToken
+      };
+    } catch (error) {
+      console.error('Error fetching EC2 instance type offerings:', error);
+      return { InstanceTypeOfferings: [] };
     }
   }
 };
