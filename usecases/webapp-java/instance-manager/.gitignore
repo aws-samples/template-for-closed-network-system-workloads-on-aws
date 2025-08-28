@@ -1,0 +1,4 @@
+.cache
+build
+!postcss.config.js
+!tailwind.config.js

@@ -107,9 +107,11 @@ new DomainStack(app, `${deployEnv}Domain`, {
 })
 
 // インスタンスマネージャースタックの作成
-const instanceManagerStack = new InstanceManagerStack(app, `${deployEnv}InstanceManager`, {
+new InstanceManagerStack(app, `${deployEnv}InstanceManager`, {
   env,
   description: 'InstanceManagerStack will provision DynamoDB table and AppRunner service for instance manager (uksb-1tupboc54) (tag:instance-manager).',
+  sharedVpc: sharedNetworkStack.network.vpc,
+  appRunnerVpcEndpointId: sharedNetworkStack.appRunnerVpcEndpointId
 })
 
 /**
