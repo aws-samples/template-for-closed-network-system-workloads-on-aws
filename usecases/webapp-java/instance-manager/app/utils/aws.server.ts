@@ -16,11 +16,17 @@ import {
   DescribeInstanceTypeOfferingsCommand,
   LocationType
 } from '@aws-sdk/client-ec2';
-import { 
-  SecretsManagerClient, 
-  GetSecretValueCommand,
-  UpdateSecretCommand 
-} from '@aws-sdk/client-secrets-manager';
+import {
+  SchedulerClient,
+  CreateScheduleCommand,
+  GetScheduleCommand,
+  UpdateScheduleCommand,
+  DeleteScheduleCommand,
+  ListSchedulesCommand,
+  FlexibleTimeWindowMode,
+  ScheduleState,
+  ScheduleSummary
+} from '@aws-sdk/client-scheduler';
 import { 
   CognitoIdentityProviderClient,
   AdminGetUserCommand,
@@ -48,6 +54,9 @@ export const clientConfig = {
 
 // EC2クライアントの初期化
 const ec2 = new EC2Client(clientConfig);
+
+// EventBridge Schedulerクライアントの初期化
+const scheduler = new SchedulerClient(clientConfig);
 export const ec2Client = {
   describeInstances: async (params: any) => {
     console.log('EC2 describeInstances called with:', params);
@@ -160,73 +169,163 @@ export const ec2Client = {
   }
 };
 
-// SecretsManagerクライアントの初期化
-const secretsManager = new SecretsManagerClient(clientConfig);
-
-export const smClient = {
-  // SecretsManagerからシークレットを取得する関数
-  getSecret: async (secretName: string): Promise<any> =>  {
-    console.log(`Getting secret for: ${secretName}`);
-
+// schedulerClientの実装
+export const schedulerClient = {
+  // スケジュールの作成
+  createSchedule: async (params: {
+    name: string;
+    instanceId: string;
+    action: 'start' | 'stop';
+    cronExpression: string;
+    description?: string;
+  }) => {
+    console.log('Scheduler createSchedule called with:', params);
+    
+    // ターゲットの設定
+    const targetInput = JSON.stringify({
+      InstanceIds: [params.instanceId]
+    });
+    
+    // EC2 StartInstances または StopInstances APIのARNを設定
+    const targetArn = params.action === 'start' 
+      ? `arn:aws:scheduler:::aws-sdk:ec2:startInstances`
+      : `arn:aws:scheduler:::aws-sdk:ec2:stopInstances`;
+    
+    const command = new CreateScheduleCommand({
+      Name: params.name,
+      ScheduleExpression: `cron(${params.cronExpression})`,
+      Description: params.description || `${params.action === 'start' ? '起動' : '停止'} スケジュール for ${params.instanceId}`,
+      State: ScheduleState.ENABLED,
+      Target: {
+        Arn: targetArn,
+        RoleArn: process.env.EVENTBRIDGE_SCHEDULER_ROLE_ARN,
+        Input: targetInput
+      },
+      FlexibleTimeWindow: {
+        Mode: FlexibleTimeWindowMode.OFF
+      }
+    });
+    
     try {
-      const command = new GetSecretValueCommand({
-        SecretId: secretName,
-      });
-
-      const response = await secretsManager.send(command);
-
-      if (response.SecretString) {
-        return JSON.parse(response.SecretString);
-      }
-
-      return null;
+      return await scheduler.send(command);
     } catch (error) {
-      console.error(`Error getting secret ${secretName}:`, error);
-
-      // 開発環境用のフォールバック値
-      if (process.env.NODE_ENV !== 'production') {
-        if (secretName === 'oauth2-secret') {
-          return {
-            clientId: 'mock-client-id',
-            clientSecret: 'mock-client-secret',
-            userPoolId: 'mock-user-pool-id',
-            domain: 'mock-domain',
-            region: 'us-east-1'
-          };
-        } else if (secretName === 'instance-manager/users') {
-          return {
-            users: [
-              {
-                email: 'admin@example.com',
-                role: 'admin',
-                createdAt: new Date().toISOString()
-              }
-            ]
-          };
-        }
-      }
-
-      return null;
+      console.error('Error creating schedule:', error);
+      throw error;
     }
   },
-  // SecretsManagerにシークレットを保存する関数
-  putSecret: async (secretName: string, secretValue: any): Promise<void> => {
-    console.log(`Updating secret for: ${secretName}`);
-
+  
+  // スケジュールの取得
+  getSchedule: async (name: string) => {
+    console.log('Scheduler getSchedule called with:', name);
+    const command = new GetScheduleCommand({
+      Name: name
+    });
+    
     try {
-      const command = new UpdateSecretCommand({
-        SecretId: secretName,
-        SecretString: JSON.stringify(secretValue),
+      return await scheduler.send(command);
+    } catch (error) {
+      console.error(`Error getting schedule ${name}:`, error);
+      throw error;
+    }
+  },
+  
+  // スケジュールの更新
+  updateSchedule: async (params: {
+    name: string;
+    instanceId: string;
+    action: 'start' | 'stop';
+    cronExpression: string;
+    description?: string;
+  }) => {
+    console.log('Scheduler updateSchedule called with:', params);
+    
+    // ターゲットの設定
+    const targetInput = JSON.stringify({
+      instanceId: params.instanceId
+    });
+    
+    // EC2 StartInstances または StopInstances APIのARNを設定
+    const targetArn = params.action === 'start' 
+      ? `arn:aws:scheduler:::aws-sdk:ec2:startInstances`
+      : `arn:aws:scheduler:::aws-sdk:ec2:stopInstances`;
+    
+    const command = new UpdateScheduleCommand({
+      Name: params.name,
+      ScheduleExpression: `cron(${params.cronExpression})`,
+      Description: params.description || `${params.action === 'start' ? '起動' : '停止'} スケジュール for ${params.instanceId}`,
+      State: ScheduleState.ENABLED,
+      Target: {
+        Arn: targetArn,
+        RoleArn: `arn:aws:iam::${process.env.AWS_ACCOUNT_ID || ''}:role/EventBridgeSchedulerExecutionRole`,
+        Input: targetInput
+      },
+      FlexibleTimeWindow: {
+        Mode: FlexibleTimeWindowMode.OFF
+      }
+    });
+    
+    try {
+      return await scheduler.send(command);
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+      throw error;
+    }
+  },
+  
+  // スケジュールの削除
+  deleteSchedule: async (name: string) => {
+    console.log('Scheduler deleteSchedule called with:', name);
+    const command = new DeleteScheduleCommand({
+      Name: name
+    });
+    
+    try {
+      return await scheduler.send(command);
+    } catch (error) {
+      console.error(`Error deleting schedule ${name}:`, error);
+      throw error;
+    }
+  },
+  
+  // インスタンスに関連するスケジュールの一覧取得
+  listSchedulesForInstance: async (instanceId: string) => {
+    console.log('Scheduler listSchedulesForInstance called with:', instanceId);
+    
+    // スケジュール名のプレフィックスでフィルタリング
+    const command = new ListSchedulesCommand({
+      NamePrefix: instanceId
+    });
+    
+    try {
+      const listSchedules = await scheduler.send(command);
+      console.log(`Schedules: ${JSON.stringify(listSchedules)}`)
+      
+      const getScheduleCommands = listSchedules.Schedules?.map((schedule: ScheduleSummary) => {
+        return scheduler.send(new GetScheduleCommand({
+          Name: schedule.Name!,
+          GroupName: schedule.GroupName!
+        }));
       });
 
-      await secretsManager.send(command);
-    } catch (error) {
-      console.error(`Error updating secret ${secretName}:`, error);
+      const response = await Promise.all(getScheduleCommands!);
+      const schedules = response.map(schedule => {
 
-      // 開発環境の場合はエラーを無視
-      if (process.env.NODE_ENV === 'production') {
-        throw error;
-      }
+        // スケジュール情報を整形
+        const action = schedule.Target?.Arn?.includes('startInstances') ? 'start' : 'stop';
+        
+        return {
+          name: schedule.Name ? schedule.Name : 'no-name',
+          action,
+          description: schedule.Description ? schedule.Description : 'No description',
+          cronExpression: schedule.ScheduleExpression ? schedule.ScheduleExpression : 'No schedule expression',
+          targetInstanceId: instanceId
+        };
+      }) || [];
+      
+      return schedules;
+    } catch (error) {
+      console.error('Error listing schedules:', error);
+      return [];
     }
   }
 };

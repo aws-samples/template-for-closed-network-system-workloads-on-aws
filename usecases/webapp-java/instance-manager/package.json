@@ -13,6 +13,7 @@
     "@aws-sdk/client-cognito-identity-provider": "^3.873.0",
     "@aws-sdk/client-dynamodb": "^3.873.0",
     "@aws-sdk/client-ec2": "^3.873.0",
+    "@aws-sdk/client-scheduler": "^3.876.0",
     "@aws-sdk/client-secrets-manager": "^3.873.0",
     "@aws-sdk/lib-dynamodb": "^3.873.0",
     "@headlessui/react": "^2.2.7",

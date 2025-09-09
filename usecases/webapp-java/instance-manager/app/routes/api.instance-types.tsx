@@ -8,9 +8,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // 認証チェック
   await requireUser(request);
 
-  // クエリパラメータからインスタンスファミリーを取得
-  const url = new URL(request.url);
-
   try {
       const filters = [{
           Name: 'location',

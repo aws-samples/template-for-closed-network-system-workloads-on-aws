@@ -67,6 +67,22 @@ export class InstanceManagerStack extends Stack {
 
     // Lambda がキューを受け取ることができる権限を付与
     instanceQueue.grantConsumeMessages(iceRecoveryFunction);
+    
+    // EventBridge Scheduler実行ロールの作成
+    const schedulerExecutionRole = new aws_iam.Role(this, 'EventBridgeSchedulerExecutionRole', {
+      roleName: 'EventBridgeSchedulerExecutionRole',
+      assumedBy: new aws_iam.ServicePrincipal('scheduler.amazonaws.com'),
+      description: 'Role for EventBridge Scheduler to execute EC2 actions'
+    });
+    
+    // EC2インスタンスの起動・停止権限を付与
+    schedulerExecutionRole.addToPolicy(new aws_iam.PolicyStatement({
+      actions: [
+        'ec2:StartInstances',
+        'ec2:StopInstances'
+      ],
+      resources: ['*']
+    }));
 
     // ICE のログのイベントをトリガーに SQS へキューイングするためのルール 
     new aws_events.Rule(this, 'IceEventRule', {
@@ -260,6 +276,10 @@ export class InstanceManagerStack extends Stack {
       reason: "It's used on closed network"
     }]);
     NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), `${iceRecoveryFunction.node.path}/ServiceRole/DefaultPolicy/Resource`, [{
+      id: 'AwsSolutions-IAM5',
+      reason: 'To manage all instances',
+    }]);
+    NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), `${schedulerExecutionRole.node.path}/DefaultPolicy/Resource`, [{
       id: 'AwsSolutions-IAM5',
       reason: 'To manage all instances',
     }]);

@@ -1,12 +1,24 @@
 import { redirect } from '@remix-run/node';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
-import { Form, Link, useLoaderData, useNavigation, useSubmit } from '@remix-run/react';
-import { useState, Fragment, useEffect } from 'react';
-import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react';
+import { Form, Link, useLoaderData, useNavigation, useSubmit, useFetcher } from '@remix-run/react';
+import { useState, useEffect } from 'react';
 import { useDebounce } from '~/hooks/useDebounce';
 import { ec2Client } from '~/utils/aws.server';
 import { requireUser } from '~/utils/auth.server';
-import { Button, Modal, Select, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '~/components';
+import type { Schedule } from '~/models/schedule';
+import { 
+  Button, 
+  StatusBadge, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeaderCell, 
+  TableRow,
+  ScheduleForm,
+  AlternativeTypeModal,
+  ErrorModal
+} from '~/components';
 
 type Instance = {
   id: string | undefined;
@@ -54,6 +66,31 @@ export async function action({ request }: ActionFunctionArgs) {
           }
         ]
       });
+    } else if (action === 'createSchedule' || action === 'deleteSchedule') {
+      // スケジュール作成・削除処理はAPIエンドポイントに委譲
+      const apiFormData = new FormData();
+      apiFormData.append('actionType', action === 'createSchedule' ? 'create' : 'delete');
+      apiFormData.append('instanceId', instanceId);
+      apiFormData.append('groupId', instanceGroupId);
+      
+      if (action === 'createSchedule') {
+        apiFormData.append('scheduleName', formData.get('scheduleName') as string);
+        apiFormData.append('scheduleAction', formData.get('scheduleAction') as string);
+        apiFormData.append('cronExpression', formData.get('cronExpression') as string);
+        apiFormData.append('description', formData.get('description') as string);
+      } else {
+        apiFormData.append('scheduleName', formData.get('scheduleName') as string);
+      }
+      
+      const response = await fetch('/api/schedules', {
+        method: 'POST',
+        body: apiFormData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'スケジュール操作に失敗しました');
+      }
     }
   } catch (error) {
     console.error(`Error ${action}ing instance ${instanceId}:`, error);
@@ -124,6 +161,38 @@ export default function Dashboard() {
   const isSubmitting = navigation.state === 'submitting';
   const submit = useSubmit();
   
+  // 選択されたインスタンスの管理
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
+  
+  // インスタンスを選択する関数
+  const selectInstance = (instanceId: string) => {
+    // 同じインスタンスが選択された場合は選択解除（トグル動作）
+    if (selectedInstanceId === instanceId) {
+      setSelectedInstanceId(null);
+      return;
+    }
+    
+    setSelectedInstanceId(instanceId);
+    
+    // 選択されたインスタンスのスケジュール情報を取得
+    setIsScheduleLoading(prev => ({
+      ...prev,
+      [instanceId]: true
+    }));
+    scheduleFetcher.load(`/api/schedules?instanceId=${instanceId}`);
+    
+    // インスタンスの入力状態を初期化（まだ存在しない場合）
+    if (!newScheduleInputs[instanceId]) {
+      setNewScheduleInputs(prev => ({
+        ...prev,
+        [instanceId]: { action: 'start', cron: '', description: '' }
+      }));
+    }
+    
+    // 選択されたインスタンスを設定
+    setSelectedInstanceForSchedule(instances.find(i => i.id === instanceId) || null);
+  };
+  
   // モーダル関連の状態
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null);
@@ -132,6 +201,20 @@ export default function Dashboard() {
   const [inputValue, setInputValue] = useState('');
   const [typeQuery, setTypeQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // スケジュール関連の状態
+  const [selectedInstanceForSchedule, setSelectedInstanceForSchedule] = useState<Instance | null>(null);
+  // インスタンスIDごとにスケジュールを保持するオブジェクト
+  const [schedules, setSchedules] = useState<Record<string, Schedule[]>>({});
+  // 既にリクエストを送信したインスタンスIDを記録
+  const [loadedInstanceIds, setLoadedInstanceIds] = useState<Set<string>>(new Set());
+  // インスタンスIDごとの新規スケジュール入力状態を管理
+  const [newScheduleInputs, setNewScheduleInputs] = useState<Record<string, {
+    action: 'start' | 'stop',
+    cron: string,
+    description: string
+  }>>({});
+  const [isScheduleLoading, setIsScheduleLoading] = useState<Record<string, boolean>>({});
   
   // デバウンスフックを使用（300msのデバウンス時間）
   const debouncedInputValue = useDebounce(inputValue, 300);
@@ -222,6 +305,121 @@ export default function Dashboard() {
       setIsModalOpen(false);
     }
   };
+  
+  // スケジュール関連のfetcher
+  const scheduleFetcher = useFetcher<{ 
+    schedules?: Array<Schedule>,
+    error?: string 
+  }>();
+  
+  // scheduleFetcherの結果を処理
+  useEffect(() => {
+    // 現在選択されているインスタンスのIDを使用
+    if (selectedInstanceForSchedule?.id) {
+      const instanceId = selectedInstanceForSchedule.id;
+      
+      // ローディング状態の更新
+      if (scheduleFetcher.state === 'loading') {
+        setIsScheduleLoading(prev => ({
+          ...prev,
+          [instanceId]: true
+        }));
+      } else if (scheduleFetcher.state === 'idle' && scheduleFetcher.data) {
+        // スケジュールデータを更新
+        if (scheduleFetcher.data.schedules) {
+          setSchedules(prev => ({
+            ...prev,
+            [instanceId]: scheduleFetcher.data?.schedules || []
+          }));
+        }
+        
+        // ローディング状態を更新
+        setIsScheduleLoading(prev => ({
+          ...prev,
+          [instanceId]: false
+        }));
+      }
+    }
+  }, [scheduleFetcher.data, scheduleFetcher.state, selectedInstanceForSchedule]);
+
+  // スケジュール追加処理
+  const handleAddSchedule = () => {
+    if (!selectedInstanceForSchedule) return;
+    
+    const instanceId = selectedInstanceForSchedule.id || '';
+    const inputs = newScheduleInputs[instanceId] || { action: 'start', cron: '', description: '' };
+    
+    if (!inputs.cron) return;
+    
+    // ローディング状態を更新
+    setIsScheduleLoading(prev => ({
+      ...prev,
+      [instanceId]: true
+    }));
+    
+    const formData = new FormData();
+    formData.append('actionType', 'create');
+    formData.append('instanceId', instanceId);
+    formData.append('groupId', selectedInstanceForSchedule.groupId || '');
+    formData.append('scheduleName', `${instanceId}-${inputs.action}-${Date.now()}`);
+    formData.append('scheduleAction', inputs.action);
+    formData.append('cronExpression', inputs.cron);
+    formData.append('description', inputs.description);
+    
+    console.log('Creating schedule with cron expression:', inputs.cron);
+    
+    // useFetcherを使用してスケジュールを作成
+    scheduleFetcher.submit(formData, {
+      method: 'post',
+      action: '/api/schedules'
+    });
+    
+    // フォームをリセット
+    setNewScheduleInputs(prev => ({
+      ...prev,
+      [instanceId]: { action: 'start', cron: '', description: '' }
+    }));
+
+    setIsScheduleLoading(prev => ({
+      ...prev,
+      [instanceId]: false
+    }));
+  };
+
+  // スケジュール削除処理
+  const handleDeleteSchedule = (instanceId: string, scheduleName: string) => {
+    // ローディング状態を更新
+    setIsScheduleLoading(prev => ({
+      ...prev,
+      [instanceId]: true
+    }));
+    
+    const formData = new FormData();
+    formData.append('actionType', 'delete');
+    formData.append('instanceId', instanceId);
+    formData.append('groupId', instances.find(i => i.id === instanceId)?.groupId || '');
+    formData.append('scheduleName', scheduleName);
+    
+    // useFetcherを使用してスケジュールを削除
+    scheduleFetcher.submit(formData, {
+      method: 'post',
+      action: '/api/schedules'
+    });
+    
+    // スケジュールのリストから削除（楽観的UI更新）
+    setSchedules(prev => {
+      const updatedSchedules = prev[instanceId]?.filter(schedule => schedule.name !== scheduleName) || [];
+      return {
+        ...prev,
+        [instanceId]: updatedSchedules
+      };
+    });
+
+    setIsScheduleLoading(prev => ({
+      ...prev,
+      [instanceId]: false
+    }));
+  };
 
   return (
     <div className="dashboard-container">
@@ -270,81 +468,104 @@ export default function Dashboard() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {(instances as Instance[]).map(instance => (
-              <TableRow key={instance.id}>
-                <TableCell>{instance.name}</TableCell>
-                <TableCell>{instance.id}</TableCell>
-                <TableCell>{instance.type}</TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    {instance.alternativeType === '未登録' ? (
-                      <button
-                        onClick={() => handleAlternativeTypeClick(instance)}
-                        className="text-blue-600 hover:underline focus:outline-none"
-                        disabled={isSubmitting}
-                      >
-                        {instance.alternativeType}
-                      </button>
-                    ) : (
-                      <>
-                        <span>{instance.alternativeType}</span>
-                        <button
-                          onClick={() => handleAlternativeTypeClick(instance)}
-                          className="text-gray-500 hover:text-blue-600 focus:outline-none"
-                          disabled={isSubmitting}
-                          title="代替タイプを編集"
+            {(instances as Instance[]).map(instance => {
+              const instanceId = instance.id || '';
+              // インスタンスごとのスケジュール関連の状態を管理
+              
+              return (
+                <>
+                  <TableRow key={`row-${instance.id}`} className={selectedInstanceId === instance.id ? 'bg-gray-50' : ''}>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          onClick={() => selectInstance(instanceId)}
+                          className={`w-4 h-4 rounded-full border border-gray-400 flex items-center justify-center cursor-pointer ${selectedInstanceId === instanceId ? 'border-blue-600' : 'hover:border-gray-600'}`}
+                          role="radio"
+                          aria-checked={selectedInstanceId === instanceId}
+                          aria-label={selectedInstanceId === instanceId ? "選択解除" : "選択"}
+                          tabIndex={0}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                          </svg>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </TableCell>
-                {user.isAdmin && <TableCell>{instance.groupId || '未設定'}</TableCell>}
-                <TableCell>
-                  <StatusBadge status={instance.state || 'unknown'} />
-                </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    {instance.state === 'stopped' && (
-                      <Form method="post">
-                        <input type="hidden" name="instanceId" value={instance.id} />
-                        <input type="hidden" name="action" value="start" />
-                        <input type="hidden" name="groupId" value={instance.groupId || ''} />
-                        <Button 
-                          type="submit" 
-                          variant="text" 
-                          size="xs"
-                          disabled={isSubmitting}
-                        >
-                          起動
-                        </Button>
-                      </Form>
-                    )}
-                    {instance.state === 'running' && (
-                      <Form method="post">
-                        <input type="hidden" name="instanceId" value={instance.id} />
-                        <input type="hidden" name="action" value="stop" />
-                        <input type="hidden" name="groupId" value={instance.groupId || ''} />
-                        <Button 
-                          type="submit" 
-                          variant="text" 
-                          size="xs"
-                          disabled={isSubmitting}
-                        >
-                          停止
-                        </Button>
-                      </Form>
-                    )}
-                    {instance.state !== 'running' && instance.state !== 'stopped' && (
-                      <span className="text-sm text-gray-500">処理中...</span>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                          {selectedInstanceId === instanceId && (
+                            <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                          )}
+                        </div>
+                        <span>{instance.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{instance.id}</TableCell>
+                    <TableCell>{instance.type}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        {instance.alternativeType === '未登録' ? (
+                          <button
+                            onClick={() => handleAlternativeTypeClick(instance)}
+                            className="text-blue-600 hover:underline focus:outline-none"
+                            disabled={isSubmitting}
+                          >
+                            {instance.alternativeType}
+                          </button>
+                        ) : (
+                          <>
+                            <span>{instance.alternativeType}</span>
+                            <button
+                              onClick={() => handleAlternativeTypeClick(instance)}
+                              className="text-gray-500 hover:text-blue-600 focus:outline-none"
+                              disabled={isSubmitting}
+                              title="代替タイプを編集"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                              </svg>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                    {user.isAdmin && <TableCell>{instance.groupId || '未設定'}</TableCell>}
+                    <TableCell>
+                      <StatusBadge status={instance.state || 'unknown'} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        {instance.state === 'stopped' && (
+                          <Form method="post">
+                            <input type="hidden" name="instanceId" value={instance.id} />
+                            <input type="hidden" name="action" value="start" />
+                            <input type="hidden" name="groupId" value={instance.groupId || ''} />
+                            <Button 
+                              type="submit" 
+                              variant="text" 
+                              size="xs"
+                              disabled={isSubmitting}
+                            >
+                              起動
+                            </Button>
+                          </Form>
+                        )}
+                        {instance.state === 'running' && (
+                          <Form method="post">
+                            <input type="hidden" name="instanceId" value={instance.id} />
+                            <input type="hidden" name="action" value="stop" />
+                            <input type="hidden" name="groupId" value={instance.groupId || ''} />
+                            <Button 
+                              type="submit" 
+                              variant="text" 
+                              size="xs"
+                              disabled={isSubmitting}
+                            >
+                              停止
+                            </Button>
+                          </Form>
+                        )}
+                        {instance.state !== 'running' && instance.state !== 'stopped' && (
+                          <span className="text-sm text-gray-500">処理中...</span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                </>
+              );
+            })}
             {instances.length === 0 && (
               <TableRow>
                 <TableCell colSpan={user.isAdmin ? 7 : 6}>インスタンスが見つかりません</TableCell>
@@ -354,138 +575,69 @@ export default function Dashboard() {
         </Table>
       </main>
 
+      {/* 選択されたインスタンスのスケジュール表示領域 */}
+      {selectedInstanceId && (
+        <div className="mt-8 p-4 border rounded-md bg-gray-50">
+          <h3 className="text-lg font-medium mb-4">
+            {instances.find(i => i.id === selectedInstanceId)?.name} のスケジュール
+          </h3>
+          <ScheduleForm
+            schedules={schedules[selectedInstanceId] || []}
+            newScheduleAction={newScheduleInputs[selectedInstanceId]?.action || 'start'}
+            setNewScheduleAction={(action) => {
+              setNewScheduleInputs(prev => ({
+                ...prev,
+                [selectedInstanceId]: { ...(prev[selectedInstanceId] || { cron: '', description: '' }), action }
+              }));
+            }}
+            newScheduleCron={newScheduleInputs[selectedInstanceId]?.cron || ''}
+            setNewScheduleCron={(cron) => {
+              setNewScheduleInputs(prev => ({
+                ...prev,
+                [selectedInstanceId]: { ...(prev[selectedInstanceId] || { action: 'start', description: '' }), cron }
+              }));
+            }}
+            newScheduleDescription={newScheduleInputs[selectedInstanceId]?.description || ''}
+            setNewScheduleDescription={(description) => {
+              setNewScheduleInputs(prev => ({
+                ...prev,
+                [selectedInstanceId]: { ...(prev[selectedInstanceId] || { action: 'start', cron: '' }), description }
+              }));
+            }}
+            isLoading={isScheduleLoading[selectedInstanceId] || false}
+            isSubmitting={isSubmitting}
+            onAddSchedule={() => {
+              handleAddSchedule();
+            }}
+            onDeleteSchedule={(scheduleName) => {
+              handleDeleteSchedule(selectedInstanceId, scheduleName);
+            }}
+          />
+        </div>
+      )}
+
       {/* 代替タイプ設定モーダル */}
-      <Modal
+      <AlternativeTypeModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="代替タイプの設定"
-        footer={
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsModalOpen(false)}
-              disabled={isSubmitting}
-            >
-              キャンセル
-            </Button>
-            <Button
-              type="button"
-              variant="solid-fill"
-              size="sm"
-              onClick={handleSaveAlternativeType}
-              disabled={isSubmitting || !selectedAlternativeType}
-            >
-              保存
-            </Button>
-          </>
-        }
-      >
-        {isLoading ? (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p>インスタンス: {selectedInstance?.name} ({selectedInstance?.id})</p>
-            <p>現在のタイプ: {selectedInstance?.type}</p>
-            
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="alternativeType" className="block text-sm font-medium text-gray-700 mb-1">
-                  代替タイプ
-                </label>
-                <Combobox 
-                  value={selectedAlternativeType} 
-                  onChange={(value: string | null) => setSelectedAlternativeType(value || '')}
-                >
-                  <div className="relative mt-1">
-                    <div className="relative w-full cursor-default overflow-hidden rounded-lg bg-white text-left border border-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-300">
-                      <ComboboxInput
-                        className="w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 focus:ring-0"
-                        displayValue={(type:string) => type}
-                        onChange={(event) => setInputValue(event.target.value)}
-                        placeholder="タイプを検索..."
-                      />
-                      <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                        </svg>
-                      </ComboboxButton>
-                    </div>
-                    <ComboboxOptions className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
-                      {availableInstanceTypes.filter(type => 
-                        typeQuery === '' || type.toLowerCase().includes(typeQuery.toLowerCase())
-                      ).length === 0 ? (
-                        <div className="relative cursor-default select-none py-2 px-4 text-gray-700">
-                          該当するタイプがありません
-                        </div>
-                      ) : (
-                        availableInstanceTypes
-                          .filter(type => typeQuery === '' || type.toLowerCase().includes(typeQuery.toLowerCase()))
-                          .map((type) => (
-                          <ComboboxOption
-                            key={type}
-                            className='relative cursor-default select-none py-2 pl-10 pr-4 text-gray-900'
-                            value={type}
-                          >
-                            {({ selected }) => (
-                              <>
-                                <span
-                                  className={`block truncate ${
-                                    selected ? 'font-medium' : 'font-normal'
-                                  }`}
-                                >
-                                  {type}
-                                </span>
-                                {selected ? (
-                                  <span
-                                    className='relative cursor-default select-none py-2 pl-10 pr-4 text-gray-900'
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                    </svg>
-                                  </span>
-                                ) : null}
-                              </>
-                            )}
-                          </ComboboxOption>
-                        ))
-                      )}
-                    </ComboboxOptions>
-                  </div>
-                </Combobox>
-              </div>
-            </div>
-            
-            <p className="text-sm text-gray-500">
-              代替タイプを設定すると、インスタンスのAlternativeTypeタグに値が保存されます。
-            </p>
-          </div>
-        )}
-      </Modal>
+        selectedInstance={selectedInstance}
+        availableInstanceTypes={availableInstanceTypes}
+        selectedAlternativeType={selectedAlternativeType}
+        setSelectedAlternativeType={setSelectedAlternativeType}
+        inputValue={inputValue}
+        setInputValue={setInputValue}
+        typeQuery={typeQuery}
+        isLoading={isLoading}
+        isSubmitting={isSubmitting}
+        onSave={handleSaveAlternativeType}
+      />
 
       {/* エラーアラートモーダル */}
-      <Modal
+      <ErrorModal
         isOpen={isErrorModalOpen}
         onClose={() => setIsErrorModalOpen(false)}
-        title="エラー"
-        footer={
-          <Button
-            type="button"
-            variant="solid-fill"
-            size="sm"
-            onClick={() => setIsErrorModalOpen(false)}
-          >
-            閉じる
-          </Button>
-        }
-      >
-        <div className="text-red-600">
-          {errorMessage}
-        </div>
-      </Modal>
+        errorMessage={errorMessage}
+      />
     </div>
   );
 }
