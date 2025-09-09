@@ -16,9 +16,9 @@ import {
   TableHeaderCell, 
   TableRow,
   ScheduleForm,
-  AlternativeTypeModal,
   ErrorModal
 } from '~/components';
+import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react';
 
 type Instance = {
   id: string | undefined;
@@ -193,14 +193,13 @@ export default function Dashboard() {
     setSelectedInstanceForSchedule(instances.find(i => i.id === instanceId) || null);
   };
   
-  // モーダル関連の状態
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null);
-  const [availableInstanceTypes, setAvailableInstanceTypes] = useState<string[]>([]);
-  const [selectedAlternativeType, setSelectedAlternativeType] = useState('');
+  // 代替タイプ編集関連の状態
+  const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null); // 編集中のインスタンスID
+  const [availableInstanceTypes, setAvailableInstanceTypes] = useState<Record<string, string[]>>({});
+  const [selectedAlternativeType, setSelectedAlternativeType] = useState<Record<string, string>>({});
   const [inputValue, setInputValue] = useState('');
   const [typeQuery, setTypeQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
   
   // スケジュール関連の状態
   const [selectedInstanceForSchedule, setSelectedInstanceForSchedule] = useState<Instance | null>(null);
@@ -256,10 +255,21 @@ export default function Dashboard() {
     }
   }, []);
 
-  // 代替タイプをクリックしたときの処理
+  // 代替タイプの編集ボタンをクリックしたときの処理
   const handleAlternativeTypeClick = async (instance: Instance) => {
-    setSelectedInstance(instance);
-    setIsLoading(true);
+    const instanceId = instance.id || '';
+    
+    // 既に編集中のインスタンスの場合は編集モードを終了
+    if (editingInstanceId === instanceId) {
+      setEditingInstanceId(null);
+      return;
+    }
+    
+    // 編集モードを開始
+    setEditingInstanceId(instanceId);
+    
+    // ローディング状態を設定
+    setIsLoading(prev => ({ ...prev, [instanceId]: true }));
     
     try {
       // インスタンスタイプのファミリーを取得（例：t2.microからt2を抽出）
@@ -275,34 +285,42 @@ export default function Dashboard() {
       
       if (response.ok) {
         const data = await response.json();
-        setAvailableInstanceTypes(data.instanceTypes);
+        setAvailableInstanceTypes(prev => ({ 
+          ...prev, 
+          [instanceId]: data.instanceTypes 
+        }));
         
         // 現在の代替タイプがあれば選択、なければ空に
-        setSelectedAlternativeType(instance.alternativeType && instance.alternativeType !== '未登録' ? instance.alternativeType : '');
+        setSelectedAlternativeType(prev => ({ 
+          ...prev, 
+          [instanceId]: instance.alternativeType && instance.alternativeType !== '未登録' ? instance.alternativeType : '' 
+        }));
       } else {
         console.error('インスタンスタイプの取得に失敗しました');
         // 取得失敗時には空の配列を設定する
-        setAvailableInstanceTypes([]);
+        setAvailableInstanceTypes(prev => ({ ...prev, [instanceId]: [] }));
       }
     } catch (error) {
       console.error('インスタンスタイプの取得中にエラーが発生しました:', error);
     } finally {
-      setIsLoading(false);
-      setIsModalOpen(true);
+      setIsLoading(prev => ({ ...prev, [instanceId]: false }));
     }
   };
 
   // 代替タイプを保存する処理
-  const handleSaveAlternativeType = () => {
-    if (selectedInstance && selectedAlternativeType) {
+  const handleSaveAlternativeType = (instanceId: string) => {
+    const instance = instances.find(i => i.id === instanceId);
+    const alternativeType = selectedAlternativeType[instanceId];
+    
+    if (instance && alternativeType) {
       const formData = new FormData();
       formData.append('action', 'updateAlternativeType');
-      formData.append('instanceId', selectedInstance.id || '');
-      formData.append('groupId', selectedInstance.groupId || '');
-      formData.append('alternativeType', selectedAlternativeType);
+      formData.append('instanceId', instanceId);
+      formData.append('groupId', instance.groupId || '');
+      formData.append('alternativeType', alternativeType);
       
       submit(formData, { method: 'post' });
-      setIsModalOpen(false);
+      setEditingInstanceId(null); // 編集モードを終了
     }
   };
   
@@ -496,17 +514,110 @@ export default function Dashboard() {
                     <TableCell>{instance.type}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        {instance.alternativeType === '未登録' ? (
-                          <button
-                            onClick={() => handleAlternativeTypeClick(instance)}
-                            className="text-blue-600 hover:underline focus:outline-none"
-                            disabled={isSubmitting}
-                          >
-                            {instance.alternativeType}
-                          </button>
+                        {editingInstanceId === instance.id ? (
+                          // 編集モード時はプルダウンを表示
+                          <div className="w-full">
+                            {isLoading[instance.id || ''] ? (
+                              <div className="flex justify-center py-1">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <Combobox 
+                                  value={selectedAlternativeType[instance.id || '']} 
+                                  onChange={(value: string | null) => {
+                                    setSelectedAlternativeType(prev => ({ 
+                                      ...prev, 
+                                      [instance.id || '']: value || '' 
+                                    }));
+                                  }}
+                                >
+                                  <div className="relative">
+                                    <div className="relative w-full cursor-default overflow-hidden rounded-lg bg-white text-left border border-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-300" style={{ minWidth: '180px' }}>
+                                      <ComboboxInput
+                                        className="w-full border-none py-1 pl-2 pr-8 text-sm leading-5 text-gray-900 focus:ring-0"
+                                        displayValue={(type:string) => type}
+                                        onChange={(event) => setInputValue(event.target.value)}
+                                        placeholder="タイプを検索..."
+                                      />
+                                      <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-gray-400">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                        </svg>
+                                      </ComboboxButton>
+                                    </div>
+                                    <ComboboxOptions className="absolute mt-1 max-h-80 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-100" style={{ minWidth: '220px' }}>
+                                      {(availableInstanceTypes[instance.id || ''] || []).filter(type => 
+                                        typeQuery === '' || type.toLowerCase().includes(typeQuery.toLowerCase())
+                                      ).length === 0 ? (
+                                        <div className="relative cursor-default select-none py-2 px-4 text-gray-700">
+                                          該当するタイプがありません
+                                        </div>
+                                      ) : (
+                                        (availableInstanceTypes[instance.id || ''] || [])
+                                          .filter(type => typeQuery === '' || type.toLowerCase().includes(typeQuery.toLowerCase()))
+                                          .map((type) => (
+                                          <ComboboxOption
+                                            key={type}
+                                            className='relative cursor-default select-none py-2 pl-8 pr-4 text-gray-900'
+                                            value={type}
+                                          >
+                                            {({ selected }) => (
+                                              <>
+                                                <span
+                                                  className={`block truncate ${
+                                                    selected ? 'font-medium' : 'font-normal'
+                                                  }`}
+                                                >
+                                                  {type}
+                                                </span>
+                                                {selected ? (
+                                                  <span
+                                                    className='absolute inset-y-0 left-0 flex items-center pl-3 text-gray-900'
+                                                  >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                                    </svg>
+                                                  </span>
+                                                ) : null}
+                                              </>
+                                            )}
+                                          </ComboboxOption>
+                                        ))
+                                      )}
+                                    </ComboboxOptions>
+                                  </div>
+                                </Combobox>
+                                <div className="flex space-x-1">
+                                  <button
+                                    onClick={() => handleSaveAlternativeType(instance.id || '')}
+                                    className="text-gray-500 hover:text-green-600 focus:outline-none"
+                                    title="保存"
+                                    disabled={!selectedAlternativeType[instance.id || '']}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingInstanceId(null)}
+                                    className="text-gray-500 hover:text-red-600 focus:outline-none"
+                                    title="キャンセル"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         ) : (
+                          // 通常表示モード
                           <>
-                            <span>{instance.alternativeType}</span>
+                            <span>{instance.alternativeType === '未登録' ? (
+                              <span className="text-gray-500">{instance.alternativeType}</span>
+                            ) : instance.alternativeType}</span>
                             <button
                               onClick={() => handleAlternativeTypeClick(instance)}
                               className="text-gray-500 hover:text-blue-600 focus:outline-none"
@@ -616,21 +727,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 代替タイプ設定モーダル */}
-      <AlternativeTypeModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        selectedInstance={selectedInstance}
-        availableInstanceTypes={availableInstanceTypes}
-        selectedAlternativeType={selectedAlternativeType}
-        setSelectedAlternativeType={setSelectedAlternativeType}
-        inputValue={inputValue}
-        setInputValue={setInputValue}
-        typeQuery={typeQuery}
-        isLoading={isLoading}
-        isSubmitting={isSubmitting}
-        onSave={handleSaveAlternativeType}
-      />
 
       {/* エラーアラートモーダル */}
       <ErrorModal

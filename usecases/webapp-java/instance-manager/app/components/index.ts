@@ -18,4 +18,4 @@ export {
 } from './Table';
 
 // モーダルコンポーネント
-export { AlternativeTypeModal, ErrorModal } from './modals';
+export { ErrorModal } from './modals';
