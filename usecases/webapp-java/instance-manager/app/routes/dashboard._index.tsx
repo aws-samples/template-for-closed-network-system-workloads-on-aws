@@ -3,9 +3,11 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
 import { Form, Link, useLoaderData, useNavigation, useSubmit, useFetcher } from '@remix-run/react';
 import { useState, useEffect } from 'react';
 import { useDebounce } from '~/hooks/useDebounce';
-import { ec2Client } from '~/utils/aws.server';
+import { ec2Client, ecsClient, rdsClient } from '~/utils/aws.server';
 import { requireUser } from '~/utils/auth.server';
 import type { Schedule } from '~/models/schedule';
+import type { Service } from '~/models/service';
+import type { Database } from '~/models/database';
 import { 
   Button, 
   StatusBadge, 
@@ -16,7 +18,10 @@ import {
   TableHeaderCell, 
   TableRow,
   ScheduleForm,
-  ErrorModal
+  ErrorModal,
+  ServiceList,
+  DatabaseList,
+  RefreshButton
 } from '~/components';
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react';
 
@@ -39,20 +44,28 @@ export async function action({ request }: ActionFunctionArgs) {
   const action = formData.get('action') as string;
   const instanceId = formData.get('instanceId') as string;
   const instanceGroupId = formData.get('groupId') as string;
+  const dbClusterIdentifier = formData.get('dbClusterIdentifier') as string;
 
   // 権限チェック
   // adminはすべてのインスタンスを操作可能、userは自分のgroupIdに一致するインスタンスのみ操作可能
-  if (user.isAdmin != false && user.groupId !== instanceGroupId) {
-    console.error(`User ${user.email} attempted to ${action} instance ${instanceId} without permission`);
-    return redirect('/dashboard');
+  // RDSクラスターの操作はインスタンスIDがないため、別途チェック
+  if (action !== 'stopDBCluster' && action !== 'startDBCluster') {
+    if (user.isAdmin != false && user.groupId !== instanceGroupId) {
+      console.error(`User ${user.email} attempted to ${action} instance ${instanceId} without permission`);
+      return redirect('/dashboard');
+    }
   }
 
-  // インスタンスの起動または停止
+  // インスタンスまたはDBクラスターの操作
   try {
     if (action === 'start') {
       await ec2Client.startInstance({ instanceId });
     } else if (action === 'stop') {
       await ec2Client.stopInstance({ instanceId });
+    } else if (action === 'stopDBCluster') {
+      await rdsClient.stopDBCluster({ dbClusterIdentifier });
+    } else if (action === 'startDBCluster') {
+      await rdsClient.startDBCluster({ dbClusterIdentifier });
     } else if (action === 'updateAlternativeType') {
       const alternativeType = formData.get('alternativeType') as string;
       
@@ -96,8 +109,15 @@ export async function action({ request }: ActionFunctionArgs) {
     console.error(`Error ${action}ing instance ${instanceId}:`, error);
     
     // エラー情報をセッションストレージに保存して、リダイレクト後に表示できるようにする
+    let errorMessage = '';
+    if (action === 'stopDBCluster' || action === 'startDBCluster') {
+      errorMessage = `DBクラスター ${dbClusterIdentifier} の ${action === 'stopDBCluster' ? '一時停止' : '再開'} 処理中にエラーが発生しました`;
+    } else {
+      errorMessage = `インスタンス ${instanceId} の ${action} 処理中にエラーが発生しました`;
+    }
+    
     const errorInfo = {
-      message: `インスタンス ${instanceId} の ${action} 処理中にエラーが発生しました`,
+      message: errorMessage,
       details: error instanceof Error ? error.message : String(error)
     };
     
@@ -152,14 +172,83 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // エラーが発生した場合は空の配列を使用
   }
 
-  return { user, instances };
+  // ECSサービスの一覧を取得
+  let services: Array<Service> = [];
+  try {
+    // クラスター一覧を取得
+    const { clusterArns } = await ecsClient.listClusters();
+    
+    // 各クラスターのサービスを取得
+    for (const clusterArn of clusterArns || []) {
+      const clusterName = clusterArn.split('/').pop() || '';
+      
+      // サービス一覧を取得
+      const { serviceArns } = await ecsClient.listServices({ cluster: clusterArn });
+      
+      if (serviceArns && serviceArns.length > 0) {
+        // サービスの詳細情報を取得
+        const { services: serviceDetails } = await ecsClient.describeServices({
+          cluster: clusterArn,
+          services: serviceArns
+        });
+        
+        // サービス情報を整形
+        const formattedServices = serviceDetails?.map(service => ({
+          name: service.serviceName || '',
+          status: service.status || '',
+          runningCount: service.runningCount || 0,
+          desiredCount: service.desiredCount || 0,
+          clusterName,
+          clusterArn,
+          serviceArn: service.serviceArn || ''
+        })) || [];
+        
+        services = [...services, ...formattedServices];
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching ECS services:', error);
+  }
+
+  // RDS DBクラスターの一覧を取得
+  let databases: Array<Database> = [];
+  try {
+    const { DBClusters } = await rdsClient.describeDBClusters();
+    
+    // DBクラスター情報を整形
+    databases = DBClusters?.map(cluster => {
+      // ステータスの判定
+      let status = cluster.Status || '';
+      
+      // ロールの判定（クラスターの場合は常にクラスター）
+      let role = 'クラスター';
+      
+      return {
+        identifier: cluster.DBClusterIdentifier || '',
+        status,
+        role,
+        engine: cluster.Engine || '',
+        endpoint: cluster.Endpoint,
+        arn: cluster.DBClusterArn || ''
+      };
+    }) || [];
+  } catch (error) {
+    console.error('Error fetching RDS DB clusters:', error);
+  }
+
+  return { user, instances, services, databases };
 }
 
 export default function Dashboard() {
-  const { user, instances } = useLoaderData<typeof loader>();
+  const { user, instances, services, databases } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
   const submit = useSubmit();
+  
+  // 更新ハンドラ
+  const handleRefresh = () => {
+    window.location.reload();
+  };
   
   // 選択されたインスタンスの管理
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
@@ -442,7 +531,7 @@ export default function Dashboard() {
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
-        <h1>EC2インスタンス管理ダッシュボード</h1>
+        <h1>ダッシュボード</h1>
         <div className="user-info">
           <span>{user?.email}</span>
           <div className="nav-links">
@@ -463,15 +552,10 @@ export default function Dashboard() {
       <main>
         <h2>インスタンス一覧</h2>
         <div className="flex justify-end mb-4">
-          <Button 
-            type="button" 
-            variant="text" 
-            size="sm"
-            onClick={() => window.location.reload()}
-            disabled={isSubmitting}
-          >
-            更新
-          </Button>
+          <RefreshButton 
+            onRefresh={handleRefresh}
+            isSubmitting={isSubmitting}
+          />
         </div>
         <Table>
           <TableHead>
@@ -727,6 +811,20 @@ export default function Dashboard() {
         </div>
       )}
 
+
+      {/* ECSサービス一覧 */}
+      <ServiceList 
+        services={services} 
+        isSubmitting={isSubmitting}
+        onRefresh={handleRefresh}
+      />
+
+      {/* RDS DBインスタンス一覧 */}
+      <DatabaseList 
+        databases={databases} 
+        isSubmitting={isSubmitting}
+        onRefresh={handleRefresh}
+      />
 
       {/* エラーアラートモーダル */}
       <ErrorModal

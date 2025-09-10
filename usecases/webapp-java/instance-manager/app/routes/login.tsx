@@ -83,7 +83,7 @@ export default function Login() {
 
   return (
     <div className="login-container">
-      <h1>EC2インスタンス管理ツール</h1>
+      <h1>管理ツール</h1>
       <p>ログイン情報を入力してください</p>
       
       <Form method="post">

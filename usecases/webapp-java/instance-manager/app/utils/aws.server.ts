@@ -3,11 +3,9 @@ import {
   EC2Client, 
   DescribeInstancesCommand, 
   StartInstancesCommand, 
-  StartInstancesCommandInput, 
   StopInstancesCommand,
   DescribeInstanceTypesCommand,
   CreateTagsCommand,
-  DescribeInstanceTypesCommandOutput,
   InstanceTypeInfo,
   GetInstanceTypesFromInstanceRequirementsCommand,
   ArchitectureType,
@@ -16,6 +14,19 @@ import {
   DescribeInstanceTypeOfferingsCommand,
   LocationType
 } from '@aws-sdk/client-ec2';
+import {
+  ECSClient,
+  ListClustersCommand,
+  ListServicesCommand,
+  DescribeServicesCommand,
+  UpdateServiceCommand
+} from '@aws-sdk/client-ecs';
+import {
+  RDSClient,
+  DescribeDBClustersCommand,
+  StopDBClusterCommand,
+  StartDBClusterCommand
+} from '@aws-sdk/client-rds';
 import {
   SchedulerClient,
   CreateScheduleCommand,
@@ -54,6 +65,12 @@ export const clientConfig = {
 
 // EC2クライアントの初期化
 const ec2 = new EC2Client(clientConfig);
+
+// ECSクライアントの初期化
+const ecs = new ECSClient(clientConfig);
+
+// RDSクライアントの初期化
+const rds = new RDSClient(clientConfig);
 
 // EventBridge Schedulerクライアントの初期化
 const scheduler = new SchedulerClient(clientConfig);
@@ -326,6 +343,113 @@ export const schedulerClient = {
     } catch (error) {
       console.error('Error listing schedules:', error);
       return [];
+    }
+  }
+};
+
+// ecsClientの実装
+export const ecsClient = {
+  // クラスター一覧の取得
+  listClusters: async () => {
+    console.log('ECS listClusters called');
+    const command = new ListClustersCommand({});
+    try {
+      return await ecs.send(command);
+    } catch (error) {
+      console.error('Error fetching ECS clusters:', error);
+      return { clusterArns: [] };
+    }
+  },
+  
+  // サービス一覧の取得
+  listServices: async (params: { cluster: string }) => {
+    console.log('ECS listServices called with:', params);
+    const command = new ListServicesCommand({
+      cluster: params.cluster
+    });
+    try {
+      return await ecs.send(command);
+    } catch (error) {
+      console.error('Error fetching ECS services:', error);
+      return { serviceArns: [] };
+    }
+  },
+  
+  // サービス詳細の取得
+  describeServices: async (params: { cluster: string, services: string[] }) => {
+    console.log('ECS describeServices called with:', params);
+    const command = new DescribeServicesCommand({
+      cluster: params.cluster,
+      services: params.services
+    });
+    try {
+      return await ecs.send(command);
+    } catch (error) {
+      console.error('Error describing ECS services:', error);
+      return { services: [] };
+    }
+  },
+  
+  // サービスのタスク数を更新
+  updateServiceDesiredCount: async (params: { 
+    cluster: string, 
+    service: string, 
+    desiredCount: number 
+  }) => {
+    console.log('ECS updateService called with:', params);
+    const command = new UpdateServiceCommand({
+      cluster: params.cluster,
+      service: params.service,
+      desiredCount: params.desiredCount
+    });
+    try {
+      return await ecs.send(command);
+    } catch (error) {
+      console.error('Error updating ECS service:', error);
+      throw error;
+    }
+  }
+};
+
+// rdsClientの実装
+export const rdsClient = {
+  // DBクラスター一覧の取得
+  describeDBClusters: async () => {
+    console.log('RDS describeDBClusters called');
+    const command = new DescribeDBClustersCommand({});
+    try {
+      return await rds.send(command);
+    } catch (error) {
+      console.error('Error fetching RDS DB clusters:', error);
+      return { DBClusters: [] };
+    }
+  },
+  
+  // DBクラスターの一時停止
+  stopDBCluster: async (params: { dbClusterIdentifier: string }) => {
+    console.log('RDS stopDBCluster called with:', params);
+    const command = new StopDBClusterCommand({
+      DBClusterIdentifier: params.dbClusterIdentifier
+    });
+    try {
+      return await rds.send(command);
+    } catch (error) {
+      console.error('Error stopping RDS DB cluster:', error);
+      throw error;
+    }
+  },
+  
+  // DBクラスターの再開
+  startDBCluster: async (params: { dbClusterIdentifier: string }) => {
+    console.log('RDS startDBCluster called with:', params);
+    const command = new StartDBClusterCommand({
+      DBClusterIdentifier: params.dbClusterIdentifier
+    });
+    try {
+      return await rds.send(command);
+    } catch (error) {
+      console.error('Error starting RDS DB cluster:', error);
+      throw error;
     }
   }
 };

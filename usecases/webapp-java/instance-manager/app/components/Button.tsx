@@ -8,6 +8,7 @@ export const buttonBaseStyle = `
   underline-offset-[calc(3/16*1rem)]
   focus-visible:outline focus-visible:outline-4 focus-visible:outline-black focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300
   aria-disabled:pointer-events-none aria-disabled:forced-colors:border-[GrayText] aria-disabled:forced-colors:text-[GrayText]
+  disabled:pointer-events-none disabled:forced-colors:border-[GrayText] disabled:forced-colors:text-[GrayText]
 `;
 
 export const buttonVariantStyle: { [key in ButtonVariant]: string } = {
@@ -23,6 +24,8 @@ export const buttonVariantStyle: { [key in ButtonVariant]: string } = {
     active:underline
     aria-disabled:bg-solid-gray-300
     aria-disabled:text-solid-gray-50
+    disabled:bg-solid-gray-300
+    disabled:text-solid-gray-50
   `,
   outline: `
     border
@@ -37,6 +40,8 @@ export const buttonVariantStyle: { [key in ButtonVariant]: string } = {
     active:underline
     aria-disabled:bg-white
     aria-disabled:text-solid-gray-300
+    disabled:bg-white
+    disabled:text-solid-gray-300
   `,
   text: `
     text-blue-900
@@ -50,6 +55,9 @@ export const buttonVariantStyle: { [key in ButtonVariant]: string } = {
     aria-disabled:bg-transparent
     aria-disabled:focus-visible:bg-yellow-300
     aria-disabled:text-solid-gray-300
+    disabled:bg-transparent
+    disabled:focus-visible:bg-yellow-300
+    disabled:text-solid-gray-300
   `,
 };
 
