@@ -115,9 +115,9 @@ export class SharedNetworkStack extends Stack {
 
     // VPC Endpoint - for Instance Manager app
     const appRunnerVpcEndpoint = network.vpc.addInterfaceEndpoint('AppRunnerVpcEndpoint', {
-      service: aws_ec2.InterfaceVpcEndpointAwsService.APP_RUNNER,
+      service: aws_ec2.InterfaceVpcEndpointAwsService.APP_RUNNER_REQUESTS,
       subnets: { subnetFilters: [aws_ec2.SubnetFilter.byIds(network.workloadSubnets.map(subnet => subnet.subnetId))] },
-      privateDnsEnabled: true,
+      privateDnsEnabled: false, // AppRunnerRequests could not provide private dns
       securityGroups:[vpcEndpointSG]
     })
     this.appRunnerVpcEndpointId = appRunnerVpcEndpoint.vpcEndpointId;

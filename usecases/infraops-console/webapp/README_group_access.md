@@ -50,7 +50,7 @@ export type User = {
 既存のユーザーデータに`groupId`フィールドを追加するには、以下のスクリプトを実行します：
 
 ```bash
-cd usecases/webapp-java/instance-manager/scripts
+cd usecases/webapp-java/infraops-console/scripts
 chmod +x migrate-users.sh
 ./migrate-users.sh
 ```
@@ -64,7 +64,7 @@ chmod +x migrate-users.sh
 EC2インスタンスに`GroupId`タグを追加するには、以下のスクリプトを実行します：
 
 ```bash
-cd usecases/webapp-java/instance-manager/scripts
+cd usecases/webapp-java/infraops-console/scripts
 chmod +x add-group-tags.sh
 ./add-group-tags.sh
 ```

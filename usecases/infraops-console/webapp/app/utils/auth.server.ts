@@ -8,7 +8,6 @@ import { cognitoClient } from './aws.server';
 // ユーザータイプの定義
 export type AuthUser = {
   email: string;
-  isAdmin: boolean; // Cognitoのカスタム属性isAdmin
 } | null;
 
 // Authenticatorの作成
@@ -80,7 +79,7 @@ async function initFormStrategy() {
           }
         }
           
-        if (authResult.ChallengeName === "NEW_PASSWORD_REQUIRED") {
+        if (authResult.ChallengeName === "NEW_PASSWORD_REQUIRED" && authResult.ChallengeParameters) {
           // セッションにチャレンジ情報を保存
           const session = await getSession(request.headers.get('Cookie'));
           console.log(`DEBUG: getSession ${JSON.stringify(session)}`)
@@ -99,16 +98,11 @@ async function initFormStrategy() {
               })
             }
           });
-        }
-                  
-        // ユーザー情報とトークンを返す
+        } 
         // login.tsxのaction関数でセッションに保存される
-        console.log(`DEBUG: {${email}}`)
         return {
           email,
-          isAdmin: false,
         };
-        
       }),
       'form'
     );

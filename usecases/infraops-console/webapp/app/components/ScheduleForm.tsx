@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from './';
+import { Button } from '.';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from './Table';
 import StatusBadge from './StatusBadge';
 import type { Schedule } from '~/models/schedule';

@@ -12,7 +12,8 @@ import {
   VirtualizationType,
   InstanceRequirementsRequest,
   DescribeInstanceTypeOfferingsCommand,
-  LocationType
+  LocationType,
+  DescribeInstancesCommandInput
 } from '@aws-sdk/client-ec2';
 import {
   ECSClient,
@@ -49,7 +50,12 @@ import {
   ForgotPasswordCommandInput,
   ConfirmForgotPasswordCommand,
   ConfirmForgotPasswordCommandInput,
-  AuthFlowType
+  AuthFlowType,
+  AdminGetUserCommandOutput,
+  RespondToAuthChallengeCommandOutput,
+  ForgotPasswordCommandOutput,
+  ConfirmForgotPasswordCommandOutput,
+  InitiateAuthCommandOutput
 } from '@aws-sdk/client-cognito-identity-provider';
 import crypto from 'crypto';
 
@@ -75,7 +81,7 @@ const rds = new RDSClient(clientConfig);
 // EventBridge Schedulerクライアントの初期化
 const scheduler = new SchedulerClient(clientConfig);
 export const ec2Client = {
-  describeInstances: async (params: any) => {
+  describeInstances: async (params: DescribeInstancesCommandInput) => {
     console.log('EC2 describeInstances called with:', params);
     const command = new DescribeInstancesCommand(params);
     try {
@@ -467,7 +473,7 @@ function calculateSecretHash(username: string, clientId: string, clientSecret: s
 
 export const cognitoClient = {
   // パスワードリセットを開始する関数
-  forgotPassword: async (username: string, clientId: string, clientSecret: string): Promise<any> => {
+  forgotPassword: async (username: string, clientId: string, clientSecret: string): Promise<ForgotPasswordCommandOutput> => {
     console.log(`Initiating password reset for user: ${username}`);
     
     try {
@@ -497,7 +503,7 @@ export const cognitoClient = {
     newPassword: string,
     clientId: string,
     clientSecret: string
-  ): Promise<any> => {
+  ): Promise<ConfirmForgotPasswordCommandOutput> => {
     console.log(`Confirming password reset for user: ${username}`);
     
     try {
@@ -523,7 +529,7 @@ export const cognitoClient = {
   },
 
   // ユーザー情報を取得する関数
-  getUser: async (username: string, userPoolId: string): Promise<any> => {
+  getUser: async (username: string, userPoolId: string): Promise<AdminGetUserCommandOutput> => {
     console.log(`Getting user info for: ${username} in user pool: ${userPoolId}`);
 
     try {
@@ -535,12 +541,12 @@ export const cognitoClient = {
       return await cognitoIdp.send(command);
     } catch (error) {
       console.error(`Error getting user ${username}:`, error);
-      return null;
+      throw error;
     }
   },
   
   // USER_PASSWORD_AUTH認証を行う関数
-  initiateAuth: async (username: string, password: string, clientId: string, clientSecret: string): Promise<any> => {
+  initiateAuth: async (username: string, password: string, clientId: string, clientSecret: string): Promise<InitiateAuthCommandOutput> => {
     console.log(`Initiating auth for user: ${username}`);
     
     try {
@@ -574,7 +580,7 @@ export const cognitoClient = {
     session: string, 
     clientId: string,
     clientSecret: string
-  ): Promise<any> => {
+  ): Promise<RespondToAuthChallengeCommandOutput> => {
     console.log(`Responding to new password challenge for user: ${username}`);
     
     try {

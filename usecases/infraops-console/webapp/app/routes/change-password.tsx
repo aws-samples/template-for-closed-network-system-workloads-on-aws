@@ -14,7 +14,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
   
   // チャレンジがない場合はログインページにリダイレクト
   if (challengeName !== 'NEW_PASSWORD_REQUIRED') {
-    console.log(`DEBUG: redirect /login`)
     return redirect('/login');
   }
   
@@ -59,38 +58,11 @@ export async function action({ request }: ActionFunctionArgs) {
     
     // 認証に成功した場合
     if (response.AuthenticationResult) {
-      // トークンを取得
-      const accessToken = response.AuthenticationResult.AccessToken;
-      const refreshToken = response.AuthenticationResult.RefreshToken;
-      
-      // ユーザー情報を取得
-      const userInfo = await cognitoClient.getUser(email, config.userPoolId);
-      
-      // isAdmin属性を取得
-      let isAdmin = false;
-      if (userInfo && userInfo.UserAttributes) {
-        const isAdminAttribute = userInfo.UserAttributes.find(
-          (attr: any) => attr.Name === 'custom:isAdmin'
-        );
-        if (isAdminAttribute) {
-          isAdmin = isAdminAttribute.Value === 'true';
-        }
-      }
       
       // セッションにユーザー情報とトークンを保存
       session.unset('challengeName');
       session.unset('challengeSession');
       session.unset('challengeEmail');
-      
-      session.set("user", {
-        email,
-        isAdmin
-      });
-      session.set("accessToken", accessToken);
-      
-      if (refreshToken) {
-        session.set("refreshToken", refreshToken);
-      }
       
       // セッションをコミット
       const sessionCookie = await commitSession(session, {expires: new Date(Date.now() + 3600 * 1000)});

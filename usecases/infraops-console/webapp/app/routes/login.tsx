@@ -31,17 +31,7 @@ export async function action({ request }: ActionFunctionArgs) {
     // 基本的なユーザー情報を保存
     session.set('user', {
       email: user.email,
-      isAdmin: user.isAdmin
     });
-    
-    // トークンが存在する場合は保存
-    if ('accessToken' in user) {
-      session.set('accessToken', user.accessToken);
-    }
-    
-    if ('refreshToken' in user && user.refreshToken) {
-      session.set('refreshToken', user.refreshToken);
-    }
     
     // セッションをコミット
     const sessionCookie = await commitSession(session, {

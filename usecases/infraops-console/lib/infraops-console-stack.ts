@@ -6,24 +6,24 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
-// DynamoDBテーブル名の定数
-export const USER_TABLE_NAME = 'UserTable';
-export const USER_TABLE_GROUP_INDEX = 'GroupIndex';
-export const USER_TABLE_TYPE_INDEX = 'TypeIndex';
-export const USER_TABLE_ROLE_INDEX = 'RoleIndex';
-
-interface InstanceManagerStackProps extends StackProps {
-  sharedVpc: aws_ec2.Vpc;
+interface InfraopsConsoleStackProps extends StackProps {
+  sourceVpcId: string;
   appRunnerVpcEndpointId: string;
 }
 
-export class InstanceManagerStack extends Stack {
+export class InfraopsConsoleStack extends Stack {
   public readonly userTable: aws_dynamodb.Table;
   public readonly userPool: aws_cognito.UserPool;
   public readonly userPoolClient: aws_cognito.UserPoolClient;
 
-  constructor(scope: Construct, id: string, props: InstanceManagerStackProps) {
+  constructor(scope: Construct, id: string, props: InfraopsConsoleStackProps) {
     super(scope, id, props);
+
+    const sourceVpc = aws_ec2.Vpc.fromLookup(this, 'SourceVpc', {vpcId: props.sourceVpcId});
+    const interfaceVpcEndpoint = aws_ec2.InterfaceVpcEndpoint.fromInterfaceVpcEndpointAttributes(this, 'AppRunnerVpcEndpoint', {
+      vpcEndpointId: props.appRunnerVpcEndpointId,
+      port: 443
+    })
 
     // SQS FIFO キューの作成
     const instanceDeadLetterQueue = new aws_sqs.Queue(this,'InstanceDeadLetterQueue', {
@@ -106,8 +106,8 @@ export class InstanceManagerStack extends Stack {
     });
 
     // Cognitoユーザープールの作成
-    this.userPool = new aws_cognito.UserPool(this, 'InstanceManagerUserPool', {
-      userPoolName: 'instance-manager-user-pool',
+    this.userPool = new aws_cognito.UserPool(this, 'InfraopsConsoleUserPool', {
+      userPoolName: 'infraops-console-user-pool',
       selfSignUpEnabled: false, // 管理者のみがユーザーを作成可能
       signInAliases: {
         email: true // メールアドレスでのサインインを有効化
@@ -136,15 +136,15 @@ export class InstanceManagerStack extends Stack {
     });
 
     // ユーザープールドメインの設定
-    const userPoolDomain = this.userPool.addDomain('InstanceManagerDomain', {
+    const userPoolDomain = this.userPool.addDomain('InfraopsConsoleDomain', {
       cognitoDomain: {
-        domainPrefix: `instance-manager-${this.account.substring(0, 8)}`
+        domainPrefix: `infraops-console-${this.account.substring(0, 8)}`
       }
     });
 
     // ユーザープールクライアントの作成
-    this.userPoolClient = this.userPool.addClient('InstanceManagerClient', {
-      userPoolClientName: 'instance-manager-client',
+    this.userPoolClient = this.userPool.addClient('InfraopsConsoleClient', {
+      userPoolClientName: 'infraops-console-client',
       authFlows: {
         userPassword: true,
         user: true
@@ -174,102 +174,105 @@ export class InstanceManagerStack extends Stack {
     });
 
     // ローカルのコードをビルドしてECRにプッシュ
-    const instanceManagerAsset = new assets.DockerImageAsset(this, 'InstanceManagerDockerImage', {
-      directory: path.join(__dirname, '../instance-manager'),
+    const instanceManagerAsset = new assets.DockerImageAsset(this, 'InfraopsConsoleDockerImage', {
+      directory: path.join(__dirname, '../webapp'),
       cacheDisabled: true,
     });
 
-    // // AppRunnerサービスを作成
-    // const service = new apprunner.Service(this, 'InstanceManagerService', {
-    //   serviceName: 'instance-manager',
-    //   source: apprunner.Source.fromAsset({
-    //     imageConfiguration: {
-    //       port: 3000,
-    //       environmentVariables: {
-    //         EMAIL_FROM: "suzukyz+totp@amazon.co.jp",
-    //         USER_TABLE_NAME: this.userTable.tableName,
-    //         USER_TABLE_GROUP_INDEX: USER_TABLE_GROUP_INDEX,
-    //         USER_TABLE_TYPE_INDEX: USER_TABLE_TYPE_INDEX,
-    //         USER_TABLE_ROLE_INDEX: USER_TABLE_ROLE_INDEX
-    //       },
-    //       environmentSecrets: {
-    //         OAUTH2_SECRET: apprunner.Secret.fromSecretsManager(oauth2Secret),
-    //         SESSION_SECRET: apprunner.Secret.fromSecretsManager(sessionSecret),
-    //       }
-    //     },
-    //     asset: instanceManagerAsset,
-    //   }),
-    //   cpu: apprunner.Cpu.ONE_VCPU,
-    //   memory: apprunner.Memory.TWO_GB,
-    //   autoDeploymentsEnabled: true,
-    //   isPubliclyAccessible: false // For closed network
-    // });
-    // service.addToRolePolicy(
-    //   new aws_iam.PolicyStatement({
-    //     actions: [
-    //       "cloudwatch:Get*",
-    //       "cloudwatch:Describe*",
-    //     ],
-    //     resources: ["*"],
-    //   })
-    // );
+    // AppRunnerサービスを作成
+    const service = new apprunner.Service(this, 'InfraopsConsoleService', {
+      serviceName: 'infraops-console',
+      source: apprunner.Source.fromAsset({
+        imageConfiguration: {
+          port: 3000,
+          environmentVariables: {
+            SESSION_SECRET: '1nfra0ps-c0ns0l3-s3cr3t',
+            CLIENT_ID: this.userPoolClient.userPoolClientId,
+            CLIENT_SECRET: this.userPoolClient.userPoolClientSecret.unsafeUnwrap(),
+            USER_POOL_ID: this.userPool.userPoolId,
+            DOMAIN: `infraops-console-${Stack.of(this).account}`,
+            AWS_REGION: Stack.of(this).region,
+            EVENTBRIDGE_SCHEDULER_ROLE_ARN: schedulerExecutionRole.roleArn
+          },
+        },
+        asset: instanceManagerAsset,
+        
+      }),
+      cpu: apprunner.Cpu.ONE_VCPU,
+      memory: apprunner.Memory.TWO_GB,
+      autoDeploymentsEnabled: true,
+      isPubliclyAccessible: false, // For closed network
+    });
+    service.addToRolePolicy(
+      new aws_iam.PolicyStatement({
+        actions: [
+          "cloudwatch:Get*",
+          "cloudwatch:Describe*",
+          "rds:DescribeDBClusters",
+          "rds:StopDBCluster",
+          "rds:StartDBCluster",
+          "ecs:ListClusters",
+          "ecs:ListServices",
+          "ecs:DescribeServices",
+          "ecs:UpdateService",
+          "ec2:DescribeInstances",
+          "ec2:StartInstances",
+          "ec2:StopInstances",
+          "ec2:DescribeInstanceTypes",
+          "ec2:CreateTags",
+          "ec2:GetInstanceTypesFromInstanceRequirements",
+          "ec2:DescribeInstanceTypeOfferings",
+          "scheduler:CreateSchedule",
+          "scheduler:GetSchedule",
+          "scheduler:UpdateSchedule",
+          "scheduler:DeleteSchedule",
+          "scheduler:ListSchedules",
+          "cognito-idp:ForgotPassword",
+          "cognito-idp:ConfirmForgotPassword",
+        ],
+        resources: ["*"],
+      })
+    );
+    service.addToRolePolicy(
+      new aws_iam.PolicyStatement({
+        actions: [
+          "iam:PassRole"
+        ],
+        resources: [
+          schedulerExecutionRole.roleArn
+        ]
+      }) 
+    )
 
-    // Associate App Runner Service with VPC Endpoint
-    const interfaceVpcEndpoint = aws_ec2.InterfaceVpcEndpoint.fromInterfaceVpcEndpointAttributes(this, 'AppRunnerVpcEndpoint', {
-      vpcEndpointId: props.appRunnerVpcEndpointId,
-      port: 443
-    })
-    // new apprunner.VpcIngressConnection(this, 'VpcIngressConnection', {
-    //   vpc: props.sharedVpc,
-    //   interfaceVpcEndpoint,
-    //   service,
-    // });
+    
+    new apprunner.VpcIngressConnection(this, 'VpcIngressConnection', {
+      vpc: sourceVpc,
+      service,
+      interfaceVpcEndpoint,
+    });
 
-    // // シークレットへのアクセス権限を追加
-    // service.addToRolePolicy(
-    //   new aws_iam.PolicyStatement({
-    //     actions: [
-    //       "secretsmanager:GetSecretValue",
-    //       "secretsmanager:DescribeSecret"
-    //     ],
-    //     resources: [
-    //       oauth2Secret.secretArn,
-    //       sessionSecret.secretArn
-    //     ],
-    //   })
-    // );
+    // Cognitoへのアクセス権限を追加
+    service.addToRolePolicy(
+      new aws_iam.PolicyStatement({
+        actions: [
+          "cognito-idp:InitiateAuth",
+          "cognito-idp:RespondToAuthChallenge",
+          "cognito-idp:AdminGetUser"
+        ],
+        resources: [this.userPool.userPoolArn]
+      })
+    );
 
-    // // Cognitoへのアクセス権限を追加
-    // service.addToRolePolicy(
-    //   new aws_iam.PolicyStatement({
-    //     actions: [
-    //       "cognito-idp:InitiateAuth",
-    //       "cognito-idp:RespondToAuthChallenge",
-    //       "cognito-idp:AdminGetUser"
-    //     ],
-    //     resources: [this.userPool.userPoolArn]
-    //   })
-    // );
-
-    // // DynamoDBへのアクセス権限を追加
-    // this.userTable.grantReadWriteData(service);
-
-    // 出力
-    // new CfnOutput(this, 'AppRunnerServiceUrl', {
-    //   exportName: 'AppRunnerServiceUrl',
-    //   value: service.serviceUrl
-    // });
-
-    // NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), 
-    //   [
-    //     `${service.node.path}/InstanceRole/DefaultPolicy/Resource`,
-    //     `${service.node.path}/AccessRole/DefaultPolicy/Resource`,
-    //   ], 
-    //   [{
-    //     id: 'AwsSolutions-IAM5',
-    //     reason: 'To use ManagedPolicy for AppRunner service',
-    //   }]
-    // );
+    NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), 
+      [
+        `${service.node.path}/InstanceRole/DefaultPolicy/Resource`,
+        `${service.node.path}/AccessRole/DefaultPolicy/Resource`,
+      ], 
+      [{
+        id: 'AwsSolutions-IAM5',
+        reason: 'To use ManagedPolicy for AppRunner service',
+      }]
+    );
 
     NagSuppressions.addResourceSuppressions(this.userPool, [{
       id: 'AwsSolutions-COG3',
@@ -287,5 +290,11 @@ export class InstanceManagerStack extends Stack {
       id: 'AwsSolutions-IAM4',
       reason: 'To use ManagedPolicy for AppRunner service',
     }]);
+    NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), [
+      `/${Stack.of(this).stackName}/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource`
+    ],[{
+      id: 'AwsSolutions-IAM4',
+      reason: 'To use ManagedPolicy for service',
+    }])
   }
 }
