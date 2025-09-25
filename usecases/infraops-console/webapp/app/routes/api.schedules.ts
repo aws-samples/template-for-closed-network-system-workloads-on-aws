@@ -16,7 +16,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   console.log(`start load function of schedule`);
 
   try {
-    const schedules = await schedulerClient.listSchedulesForInstance(instanceId);
+    const schedules = await schedulerClient.listSchedulesForInstance({instanceId});
     return { schedules };
   } catch (error) {
     console.error('Error fetching schedules:', error);
@@ -61,7 +61,7 @@ export async function action({ request }: ActionFunctionArgs) {
     } else if (actionType === 'delete') {
       // スケジュール削除処理
       const scheduleName = formData.get('scheduleName') as string;
-      await schedulerClient.deleteSchedule(scheduleName);
+      await schedulerClient.deleteSchedule({name: scheduleName});
       
       return { success: true, message: 'スケジュールが削除されました' };
     } else {

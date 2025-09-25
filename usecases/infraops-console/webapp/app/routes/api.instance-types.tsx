@@ -1,8 +1,6 @@
-import { json } from '@remix-run/node';
 import type { LoaderFunctionArgs } from '@remix-run/node';
 import { ec2Client } from '~/utils/aws.server';
 import { requireUser } from '~/utils/auth.server';
-import { ArchitectureType, VirtualizationType } from '@aws-sdk/client-ec2';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // 認証チェック

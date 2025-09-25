@@ -9,7 +9,6 @@ import { getCognitoConfig } from '~/utils/auth.server';
 export async function loader({ request }: LoaderFunctionArgs) {
   // セッションを確認
   const session = await getSession(request.headers.get('Cookie'));
-  console.log(`DEBUG: session= ${JSON.stringify(session)}`)
   const challengeName = session.get('challengeName');
   
   // チャレンジがない場合はログインページにリダイレクト
@@ -48,13 +47,13 @@ export async function action({ request }: ActionFunctionArgs) {
     const config = getCognitoConfig();
     
     // パスワードチャレンジに応答
-    const response = await cognitoClient.respondToNewPasswordChallenge(
-      email,
+    const response = await cognitoClient.respondToNewPasswordChallenge({
+      username: email,
       newPassword,
-      challengeSession,
-      config.clientId,
-      config.clientSecret
-    );
+      session: challengeSession,
+      clientId: config.clientId,
+      clientSecret: config.clientSecret
+    });
     
     // 認証に成功した場合
     if (response.AuthenticationResult) {

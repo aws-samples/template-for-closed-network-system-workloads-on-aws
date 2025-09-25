@@ -35,30 +35,18 @@ type Instance = {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  // 認証チェック
-  const user = await requireUser(request);
-
   // フォームデータを取得
   const formData = await request.formData();
-  console.log(`DEBUG: ${JSON.stringify(formData)}`)
   const action = formData.get('action') as string;
   const instanceId = formData.get('instanceId') as string;
   const instanceGroupId = formData.get('groupId') as string;
   const dbClusterIdentifier = formData.get('dbClusterIdentifier') as string;
-
-  // 権限チェック
-  // adminはすべてのインスタンスを操作可能、userは自分のgroupIdに一致するインスタンスのみ操作可能
-  // RDSクラスターの操作はインスタンスIDがないため、別途チェック
-  if (action !== 'stopDBCluster' && action !== 'startDBCluster') {
-    if (user.isAdmin != false && user.groupId !== instanceGroupId) {
-      console.error(`User ${user.email} attempted to ${action} instance ${instanceId} without permission`);
-      return redirect('/dashboard');
-    }
-  }
+  console.log(`Action: ${action}, InstanceId: ${instanceId}, GroupId: ${instanceGroupId}, DBClusterIdentifier: ${dbClusterIdentifier}`);
 
   // インスタンスまたはDBクラスターの操作
   try {
     if (action === 'start') {
+      console.info('startInstance called');
       await ec2Client.startInstance({ instanceId });
     } else if (action === 'stop') {
       await ec2Client.stopInstance({ instanceId });
@@ -294,8 +282,6 @@ export default function Dashboard() {
   const [selectedInstanceForSchedule, setSelectedInstanceForSchedule] = useState<Instance | null>(null);
   // インスタンスIDごとにスケジュールを保持するオブジェクト
   const [schedules, setSchedules] = useState<Record<string, Schedule[]>>({});
-  // 既にリクエストを送信したインスタンスIDを記録
-  const [loadedInstanceIds, setLoadedInstanceIds] = useState<Set<string>>(new Set());
   // インスタンスIDごとの新規スケジュール入力状態を管理
   const [newScheduleInputs, setNewScheduleInputs] = useState<Record<string, {
     action: 'start' | 'stop',

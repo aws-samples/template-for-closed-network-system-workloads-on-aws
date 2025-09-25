@@ -3,7 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
 import { Form, useActionData, useLoaderData, useNavigation } from '@remix-run/react';
 import { requireAdmin } from '~/utils/auth.server';
 import { User, getUsers, addUser, deleteUser } from '~/models/user.server';
-import { Button, Input, Select, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '~/components';
+import { Button, Input, Label, Select, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '~/components';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // 管理者権限チェック
@@ -97,11 +97,13 @@ export default function Users() {
         <Form method="post">
           <input type="hidden" name="_action" value="add" />
           
+          <Label htmlFor=":r1:">
+            メールアドレス
+          </Label>
           <Input
             id="email"
             name="email"
             type="email"
-            label="メールアドレス"
             required
             disabled={isSubmitting}
             placeholder="example@example.com"
@@ -119,11 +121,13 @@ export default function Users() {
             disabled={isSubmitting}
           />
           
+          <Label htmlFor=":r1:">
+            グループID（一般ユーザーのみ必須）
+          </Label>
           <Input
             id="groupId"
             name="groupId"
             type="text"
-            label="グループID（一般ユーザーのみ必須）"
             disabled={isSubmitting}
             placeholder="例: group-001"
           />
@@ -131,7 +135,8 @@ export default function Users() {
           <Button 
             type="submit" 
             disabled={isSubmitting}
-            fullWidth
+            size="lg"
+            variant="solid-fill"
           >
             {isSubmitting ? '追加中...' : 'ユーザーを追加'}
           </Button>
@@ -167,7 +172,6 @@ export default function Users() {
                     <input type="hidden" name="currentUserEmail" value={currentUser.email} />
                     <Button
                       type="submit"
-                      variant="danger"
                       size="sm"
                       disabled={isSubmitting || user.email === currentUser.email}
                     >

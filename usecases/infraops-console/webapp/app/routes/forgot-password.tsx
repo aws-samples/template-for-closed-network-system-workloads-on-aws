@@ -35,11 +35,11 @@ export async function action({ request }: ActionFunctionArgs) {
       const config = getCognitoConfig();
       
       // パスワードリセットを開始
-      await cognitoClient.forgotPassword(
-        email,
-        config.clientId,
-        config.clientSecret
-      );
+      await cognitoClient.forgotPassword({
+        username: email,
+        clientId: config.clientId,
+        clientSecret: config.clientSecret
+      });
       
       // セッションにメールアドレスを保存
       const session = await getSession(request.headers.get('Cookie'));
@@ -102,13 +102,13 @@ export async function action({ request }: ActionFunctionArgs) {
       const config = getCognitoConfig();
       
       // パスワードリセットを確認
-      await cognitoClient.confirmForgotPassword(
-        email,
+      await cognitoClient.confirmForgotPassword({
+        username: email,
         confirmationCode,
         newPassword,
-        config.clientId,
-        config.clientSecret
-      );
+        clientId: config.clientId,
+        clientSecret: config.clientSecret
+      });
       
       // セッションからメールアドレスを削除
       session.unset('forgotPasswordEmail');

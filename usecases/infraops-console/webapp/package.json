@@ -17,6 +17,7 @@
     "@aws-sdk/client-rds": "^3.883.0",
     "@aws-sdk/client-scheduler": "^3.876.0",
     "@aws-sdk/client-secrets-manager": "^3.873.0",
+    "@aws-sdk/credential-providers": "^3.895.0",
     "@aws-sdk/lib-dynamodb": "^3.873.0",
     "@headlessui/react": "^2.2.7",
     "@mjackson/headers": "^0.11.1",

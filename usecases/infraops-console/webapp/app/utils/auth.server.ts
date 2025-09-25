@@ -54,12 +54,12 @@ async function initFormStrategy() {
         let authResult;
         try {
           // USER_PASSWORD_AUTH認証を実行
-          authResult = await cognitoClient.initiateAuth(
-            email,
+          authResult = await cognitoClient.initiateAuth({
+            username: email,
             password,
-            config.clientId,
-            config.clientSecret
-          );
+            clientId: config.clientId,
+            clientSecret: config.clientSecret
+          });
         } catch (error: any) {
           console.error('Authentication error:', error);
           
@@ -82,15 +82,10 @@ async function initFormStrategy() {
         if (authResult.ChallengeName === "NEW_PASSWORD_REQUIRED" && authResult.ChallengeParameters) {
           // セッションにチャレンジ情報を保存
           const session = await getSession(request.headers.get('Cookie'));
-          console.log(`DEBUG: getSession ${JSON.stringify(session)}`)
-          console.log(`DEBUG: authResult ${JSON.stringify(authResult)}`)
           session.set('challengeName', authResult.ChallengeName);
           session.set('challengeSession', authResult.Session);
           session.set('challengeEmail', JSON.parse(authResult.ChallengeParameters.userAttributes).email);
-          console.log(`DEBUG: getSession ${JSON.stringify(session)}`)
 
-          console.log(`DEBUG: redirect /change-password`)
-          console.log(`DEBUG: session ${JSON.stringify(session)}`)
           throw redirect('/change-password', {
             headers: {
               'Set-Cookie': await commitSession(session, {
