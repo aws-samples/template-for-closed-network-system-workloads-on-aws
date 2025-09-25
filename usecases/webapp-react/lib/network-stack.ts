@@ -1,28 +1,46 @@
-import { StackProps, Stack, aws_codecommit, aws_ec2 } from 'aws-cdk-lib';
+import { StackProps, Stack, aws_ec2, aws_route53resolver, Token } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Network } from './construct/network/network';
 
+interface NetworkStackProps extends StackProps {
+  sharedVpcCidr: string;
+  vpcCidr: string;
+  privateLinkVpcCidr?: string;
+  tgw: aws_ec2.CfnTransitGateway;
+  resolverInboundEndpointIps: string[];
+}
+
 export class NetworkStack extends Stack {
   public readonly vpc: aws_ec2.Vpc;
-  public readonly s3InterfaceEndpoint: aws_ec2.InterfaceVpcEndpoint;
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  public readonly privateLinkVpc: aws_ec2.Vpc;
+  public readonly sgIdForVpcEndpoint: string;
+  constructor(scope: Construct, id: string, props: NetworkStackProps) {
     super(scope, id, props);
 
     // Create networking resources
-    const network = new Network(this, `AppVpc`, {
-      cidr: '10.0.0.0/16',
-      cidrMask: 24,
-      publicSubnet: false,
-      isolatedSubnet: true,
+    const network = new Network(this, `Vpc`, {
+      cidr: props.vpcCidr,
       maxAzs: 2,
+      tgw: props.tgw
     });
     this.vpc = network.vpc;
 
-    const s3InterfaceEndpoint = this.vpc.addInterfaceEndpoint('S3InterfaceEndpoint', {
-      service: aws_ec2.InterfaceVpcEndpointAwsService.S3,
-      subnets: { subnets: this.vpc.isolatedSubnets },
-      privateDnsEnabled: true,
+    const dhcpOptions = new aws_ec2.CfnDHCPOptions(this, 'DHCPOptions', {
+      domainName: `${Stack.of(this).region}.compute.internal`,
+      domainNameServers: props.resolverInboundEndpointIps 
     });
-    this.s3InterfaceEndpoint = s3InterfaceEndpoint;
+
+    // Gateway Endpoint is required in each VPCs.
+    network.vpc.addGatewayEndpoint('BastionS3GatewayEndpoint', {
+      service: aws_ec2.GatewayVpcEndpointAwsService.S3,
+    });
+
+    new aws_ec2.CfnVPCDHCPOptionsAssociation(this, 'DHCPOptionsAssociation', {
+      dhcpOptionsId: dhcpOptions.attrDhcpOptionsId,
+      vpcId: this.vpc.vpcId
+    })
+
+    // Add route from this AppVPC to SharedVpc via TransitGatewayAttachement
+    network.addRouteToTgwAttachementSubnets(props.tgw.attrId, props.sharedVpcCidr);
   }
 }

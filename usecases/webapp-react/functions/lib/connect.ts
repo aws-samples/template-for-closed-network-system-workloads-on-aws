@@ -1,9 +1,19 @@
-const referSecrets = async () => {
+const referSecrets = async (): Promise<{
+  "engine": string;
+  "host": string;
+  "username": string;
+  "password": string;
+  "dbname": string;
+  "port": number;
+  "masterarn": string;
+  "dbInstanceIdentifier": string;
+  "dbClusterIdentifier": string;
+}> => {
   const { SecretsManagerClient, GetSecretValueCommand } = await import(
     "@aws-sdk/client-secrets-manager"
   );
   const secretsManager = new SecretsManagerClient({
-    region: process.env.REGION!,
+    region: process.env.AWS_REGION!,
   });
   const response = await secretsManager.send(
     new GetSecretValueCommand({
@@ -16,19 +26,20 @@ const referSecrets = async () => {
 export default async function Connection() {
   const { Client } = await import("pg");
   const secrets = await referSecrets();
+  const {host, username, port} = secrets;
   const { Signer } = await import("@aws-sdk/rds-signer");
   const signer = new Signer({
-    region: process.env.REGION!,
-    username: secrets.username,
-    hostname: process.env.HOST!,
-    port: secrets.port,
+    region: process.env.AWS_REGION!,
+    username: username,
+    hostname: host,
+    port: port,
   });
   const token = await signer.getAuthToken();
   // client settings
   const client = new Client({
-    host: process.env.HOST!,
-    port: secrets.port,
-    user: secrets.username,
+    host: host,
+    port: port,
+    user: username,
     password: token, //secrets.password,
     ssl: true,
   });

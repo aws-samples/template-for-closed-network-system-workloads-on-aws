@@ -1,16 +1,14 @@
 import {
-  CfnKeyPair,
   BlockDeviceVolume,
   Instance,
   InstanceClass,
   InstanceSize,
   InstanceType,
+  KeyPair,
   MachineImage,
-  Port,
-  SecurityGroup,
-  SubnetType,
   WindowsVersion,
   IVpc,
+  SecurityGroup,
 } from 'aws-cdk-lib/aws-ec2';
 import {
   Policy,
@@ -19,7 +17,7 @@ import {
   ServicePrincipal,
   ManagedPolicy,
 } from 'aws-cdk-lib/aws-iam';
-import { CfnOutput, Stack } from 'aws-cdk-lib';
+import { CfnOutput, Stack, Tags } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { NagSuppressions } from 'cdk-nag';
 
@@ -31,17 +29,14 @@ export class Bastion extends Construct {
     props: {
       os: 'Linux' | 'Windows';
       vpc: IVpc;
-      region: string;
-      auroraSecurityGroupId?: string;
       instanceType?: InstanceType;
+      securityGroup?: SecurityGroup; // セキュリティグループを受け取るオプションを追加
     }
   ) {
     super(scope, id);
 
     // keypair
-    const keyPair = new CfnKeyPair(this, `${id}InstanceKeypair`, {
-      keyName: `${id}-instance-keypair`,
-    });
+    const keyPair = new KeyPair(this, `${id}InstanceKeypair`);
 
     // Create EC2 instance to do testing for PrivateLink
     const instanceRole = new Role(this, `${id}instanceRole`, {
@@ -73,10 +68,11 @@ export class Bastion extends Construct {
           ? MachineImage.latestAmazonLinux2023()
           : MachineImage.latestWindows(WindowsVersion.WINDOWS_SERVER_2022_JAPANESE_FULL_BASE),
       vpcSubnets: {
-        subnetType: SubnetType.PRIVATE_ISOLATED,
+        subnets: props.vpc.isolatedSubnets.filter(subnet => subnet.node.id.includes("workload")),
       },
       role: instanceRole,
-      keyName: keyPair.keyName,
+      keyPair: keyPair,
+      securityGroup: props.securityGroup, // 渡されたセキュリティグループを使用
       blockDevices: [
         {
           deviceName: props.os === 'Linux' ? '/dev/xvda' : '/dev/sda1',
@@ -88,14 +84,9 @@ export class Bastion extends Construct {
       requireImdsv2: true,
     });
     this.bastionInstance = bastionInstance;
+    Tags.of(this.bastionInstance).add('GroupId', 'test');
+    Tags.of(this.bastionInstance).add('GroupId', 'admin');
 
-    // Allow access to RDS
-    if (props.auroraSecurityGroupId) {
-      bastionInstance.connections.allowTo(
-        SecurityGroup.fromSecurityGroupId(this, 'AuroraSecurityGroup', props.auroraSecurityGroupId),
-        Port.tcp(5432)
-      );
-    }
 
     new CfnOutput(this, `${id}BastionInstanceId`, {
       value: bastionInstance.instanceId,
@@ -104,8 +95,8 @@ export class Bastion extends Construct {
 
     // Command to get SSH Key
     new CfnOutput(this, `GetSSHKeyFor${id}InstanceCommand`, {
-      value: `aws ssm get-parameter --name /ec2/keypair/${keyPair.getAtt('KeyPairId')} --region ${
-        props.region
+      value: `aws ssm get-parameter --name /ec2/keypair/${keyPair.keyPairId} --region ${
+        Stack.of(this).region
       } --with-decryption --query Parameter.Value --output text`,
     });
 

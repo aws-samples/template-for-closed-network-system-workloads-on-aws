@@ -180,7 +180,6 @@ export class EcsJob extends Construct {
       definitionBody: aws_stepfunctions.DefinitionBody.fromChainable(definition),
       logs: {
         destination: new aws_logs.LogGroup(this, `${this.jobId}JobLogGroup`, {
-          logGroupName: `/aws/vendedlogs/states/${this.jobId}`,
           encryptionKey: new EncryptionKey(this, `${this.jobId}StateMachineLogEncryptionKey`, {
             servicePrincipals: [new aws_iam.ServicePrincipal('logs.amazonaws.com')],
           }).encryptionKey,

@@ -30,6 +30,7 @@ export class WebappStack extends Stack {
       certificateArn: props.certificateArn,
     });
     this.alb = ecsBase.alb;
+    // Allow bastions to access to an web application
     ecsBase.albSg.addIngressRule(aws_ec2.Peer.ipv4(props.sharedVpc.vpcCidrBlock), aws_ec2.Port.HTTPS);
 
     const ecsAppService = new EcsAppService(this, `WebappService`, {

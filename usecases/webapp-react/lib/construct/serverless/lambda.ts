@@ -89,11 +89,9 @@ export class DefaultLambda extends Construct {
       architecture: aws_lambda.Architecture.ARM_64,
       memorySize: 256,
       role: lambdaFunctionRole,
-      timeout: Duration.seconds(600),
+      timeout: Duration.seconds(60),
       environment: {
         SECRET_NAME: props.dbSecretName,
-        HOST: props.dbProxyEndpoint,
-        REGION: Stack.of(this).region,
       },
       bundling: {
         forceDockerBundling: false,

@@ -15,7 +15,6 @@ import {
 } from 'aws-cdk-lib';
 import { Bucket } from '../s3/bucket';
 import { Construct } from 'constructs';
-import { WebAppBucket } from '../s3/webappbucket';
 import { ApiGw } from './apigw';
 import { DefaultLambda } from './lambda';
 import { NagSuppressions } from 'cdk-nag';
@@ -74,7 +73,7 @@ export class ServerlessApp extends Construct {
       }),
       dropInvalidHeaderFields: true,
     });
-    const albLogBucket = new Bucket(this, 'AlbLogBucket');
+    const albLogBucket = new Bucket(this, 'AlbLogBucket', {versioned: false});
 
     this.alb.logAccessLogs(albLogBucket.bucket, `${id}WebappAlbLog`);
 
@@ -134,10 +133,11 @@ export class ServerlessApp extends Construct {
     });
 
     // Import Web App S3
-    const s3Buckets = new WebAppBucket(this, 'WebappBucket', {
+    const s3Buckets = new Bucket(this, 'WebappBucket', {
       bucketName: `app.${props.domainName}`,
+      versioned: false,
     });
-    this.webappS3bucket = s3Buckets.webAppBucket;
+    this.webappS3bucket = s3Buckets.bucket;
 
     // create ALB Target Group (for s3)
     // ALB health checks Host headers will not contain a domain name, so S3 will return a non-200 HTTP response code. Add “307,405” to the health check success codes. Select “Next”.
@@ -167,12 +167,12 @@ export class ServerlessApp extends Construct {
     httpsListener.addTargetGroups('VPCEndpointTargetGroup', {
       targetGroups: [vpcEndpointTargetGroup],
     });
-    s3Buckets.webAppBucket.addToResourcePolicy(
+    this.webappS3bucket.addToResourcePolicy(
       new aws_iam.PolicyStatement({
         actions: ['s3:GetObject'],
         principals: [new aws_iam.AnyPrincipal()],
         effect: aws_iam.Effect.ALLOW,
-        resources: [s3Buckets.webAppBucket.bucketArn, s3Buckets.webAppBucket.bucketArn + '/*'],
+        resources: [this.webappS3bucket.bucketArn, `${this.webappS3bucket.bucketArn}/*`],
         conditions: {
           StringEquals: {
             'aws:SourceVpce': [s3InterfaceEndpoint.vpcEndpointId],
@@ -339,7 +339,7 @@ export class ServerlessApp extends Construct {
         }),
       });
 
-      nlbAccessLogBucket = new Bucket(this, 'NlbAccessLogBucket');
+      nlbAccessLogBucket = new Bucket(this, 'NlbAccessLogBucket', {versioned: false});
       this.nlb.logAccessLogs(nlbAccessLogBucket.bucket);
 
       const httpsTargetGroup = this.nlb

@@ -14,7 +14,6 @@ interface ServerlessappStackProps extends StackProps {
   dbEdition: string;
   dbProxyEndpoint: string;
   dbProxyArn: string;
-  accessViaPrivateLink: boolean;
   vpc: aws_ec2.Vpc;
   windowsBastion: boolean;
   linuxBastion: boolean;
@@ -47,44 +46,19 @@ export class ServerlessappStack extends Stack {
       sgForDb.addIngressRule(sgForLambda, aws_ec2.Port.tcp(5432));
     }
 
-    let serverlessApp;
-    if (props.accessViaPrivateLink) {
-      const privateLinkVpc = new Network(this, `PrivateLinkNetwork`, {
-        cidr: '10.0.0.0/16',
-        cidrMask: 24,
-        publicSubnet: false,
-        isolatedSubnet: true,
-        maxAzs: 2,
-      });
-      serverlessApp = new ServerlessApp(this, `ServerlessApp`, {
-        vpc: vpc,
-        privateLinkVpc: privateLinkVpc.vpc,
-        domainName: props.domainName,
-        certificateArn: props.certificateArn,
-        dbSecretName: props.dbSecretName,
-        dbSecretArn: props.dbSecretArn,
-        dbSecurityGroupId: props.dbSecurityGroupId,
-        dbSecretEncryptionKeyArn: props.dbSecretEncryptionKeyArn,
-        dbProxyEndpoint: props.dbProxyEndpoint,
-        dbProxyArn: props.dbProxyArn,
-        sgForLambda: sgForLambda,
-        s3InterfaceEndpoint: props.s3InterfaceEndpoint,
-      });
-    } else {
-      serverlessApp = new ServerlessApp(this, `ServerlessApp`, {
-        vpc: vpc,
-        domainName: props.domainName,
-        certificateArn: props.certificateArn,
-        dbSecretName: props.dbSecretName,
-        dbSecretArn: props.dbSecretArn,
-        dbSecurityGroupId: props.dbSecurityGroupId,
-        dbSecretEncryptionKeyArn: props.dbSecretEncryptionKeyArn,
-        dbProxyEndpoint: props.dbProxyEndpoint,
-        dbProxyArn: props.dbProxyArn,
-        sgForLambda: sgForLambda,
-        s3InterfaceEndpoint: props.s3InterfaceEndpoint,
-      });
-    }
+    const serverlessApp = new ServerlessApp(this, `ServerlessApp`, {
+      vpc: vpc,
+      domainName: props.domainName,
+      certificateArn: props.certificateArn,
+      dbSecretName: props.dbSecretName,
+      dbSecretArn: props.dbSecretArn,
+      dbSecurityGroupId: props.dbSecurityGroupId,
+      dbSecretEncryptionKeyArn: props.dbSecretEncryptionKeyArn,
+      dbProxyEndpoint: props.dbProxyEndpoint,
+      dbProxyArn: props.dbProxyArn,
+      sgForLambda: sgForLambda,
+      s3InterfaceEndpoint: props.s3InterfaceEndpoint,
+    });
     this.spaHostingBucket = serverlessApp.webappS3bucket;
 
     if (props.windowsBastion || props.linuxBastion) {
@@ -114,8 +88,6 @@ export class ServerlessappStack extends Stack {
         const windowsBastion = new Bastion(this, `Windows`, {
           os: 'Windows',
           vpc: vpc,
-          region: this.region,
-          auroraSecurityGroupId: props.dbSecurityGroupId,
         });
         bastionSecurityGroup.addIngressRule(
           aws_ec2.Peer.ipv4(`${windowsBastion.bastionInstance.instancePrivateIp}/32`),
@@ -132,8 +104,6 @@ export class ServerlessappStack extends Stack {
         const linuxBastion = new Bastion(this, `Linux`, {
           os: 'Linux',
           vpc: vpc,
-          region: this.region,
-          auroraSecurityGroupId: props.dbSecurityGroupId,
         });
         bastionSecurityGroup.addIngressRule(
           aws_ec2.Peer.ipv4(`${linuxBastion.bastionInstance.instancePrivateIp}/32`),

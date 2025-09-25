@@ -15,7 +15,7 @@ export class Aurora extends Construct {
     props: {
       enabledServerless: boolean;
       auroraEdition: aws_rds.IClusterEngine;
-      vpc: aws_ec2.Vpc;
+      vpc: aws_ec2.IVpc;
       dbUserName: string;
       enabledProxy?: boolean;
     }
@@ -33,14 +33,6 @@ export class Aurora extends Construct {
       encryptionKey: new EncryptionKey(this, 'AuroraSecretEncryptionKey', {
         servicePrincipals: [new ServicePrincipal('secretsmanager.amazonaws.com')],
       }).encryptionKey,
-    });
-
-    // Add VPC Endpoint to use SecretRotation
-    props.vpc.addInterfaceEndpoint('SecretsmanagerEndpoint', {
-      service: aws_ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
-      subnets: {
-        subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED,
-      },
     });
 
     if (props.enabledServerless) {

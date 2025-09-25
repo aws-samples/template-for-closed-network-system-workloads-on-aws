@@ -77,7 +77,7 @@ export class BatchStack extends Stack {
       }
     });
 
-    const s3bucket = new Bucket(this, 'BatchResultBucket');
+    const s3bucket = new Bucket(this, 'BatchResultBucket', {versioned: false});
 
     // Create SNS to notify errors of batches
     const kmsForSns = new aws_kms.Key(this, 'SnsTopicKms', { enableKeyRotation: true });
@@ -219,7 +219,6 @@ export class BatchStack extends Stack {
       definitionBody: aws_stepfunctions.DefinitionBody.fromChainable(definition),
       logs: {
         destination: new aws_logs.LogGroup(this, 'ParentStateMachineLogGroup', {
-          logGroupName: '/aws/vendedlogs/states/parentstatemechine',
           encryptionKey: new EncryptionKey(this, 'ParentStateMachineLogGroupKey', {
             servicePrincipals: [new aws_iam.ServicePrincipal('logs.amazonaws.com')],
           }).encryptionKey,
@@ -313,15 +312,20 @@ export class BatchStack extends Stack {
       [
         {
           id: 'AwsSolutions-IAM5',
-          reason: 'This policy was created automatically by CDK',
+          reason: 'Step Functions needs these permissions to execute child state machines',
           appliesTo: [
-            {
-              regex:
-                '/^Resource::arn:<AWS::Partition>:states:(.*):(.*):execution:\\{"Fn::Select":\\[6,\\{"Fn::Split":\\[":",\\{"Ref":"(.*)"\\}\\]\\}\\]\\}\\*/g',
-            },
-            'Resource::*',
+            `Resource::arn:aws:states:${Stack.of(this).region}:${Stack.of(this).account}:execution:{"Fn::Select":[6,{"Fn::Split":[":",{"Ref":"Job0001job0001BA9AFD4D"}]}]}*`,
+            `Resource::arn:aws:states:${Stack.of(this).region}:${Stack.of(this).account}:execution:{"Fn::Select":[6,{"Fn::Split":[":",{"Ref":"Job0002job0002EFD37956"}]}]}*`,
+            `Resource::arn:aws:states:${Stack.of(this).region}:${Stack.of(this).account}:execution:{"Fn::Select":[6,{"Fn::Split":[":",{"Ref":"Job0003job000379E39CF0"}]}]}*`,
+            `Resource::arn:aws:states:${Stack.of(this).region}:${Stack.of(this).account}:execution:{"Fn::Select":[6,{"Fn::Split":[":",{"Ref":"Job0004job0004DBD585D4"}]}]}*`,
+            `Resource::arn:aws:states:${Stack.of(this).region}:${Stack.of(this).account}:execution:{"Fn::Select":[6,{"Fn::Split":[":",{"Ref":"Job0005job000502918AE6"}]}]}*`,
           ],
         },
+        {
+          id: 'AwsSolutions-IAM5',
+          reason: 'Step Functions requires some permissions with wildcard resources for core functionality like logging and X-Ray tracing',
+          appliesTo: ['Resource::*'],
+        }
       ],
       true
     );

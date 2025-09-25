@@ -1,6 +1,8 @@
 interface Parameter {
   deployEnv: string;
-  accessViaPrivateLink: boolean;
+  sharedVpcCidr: string;
+  appVpcCidr: string;
+  filePathOfSourceArtifact: string;
   windowsBastion: boolean;
   linuxBastion: boolean;
   domainName: string;
@@ -9,10 +11,12 @@ interface Parameter {
 
 const devParameter: Parameter = {
   deployEnv: "dev",
-  accessViaPrivateLink: false,
-  windowsBastion: false,
-  linuxBastion: false,
-  domainName: "templatserverlesseapp.local",
+  sharedVpcCidr: '10.0.0.0/16',
+  appVpcCidr: '10.1.0.0/16',
+  filePathOfSourceArtifact: 'webapp-repository/refs/heads/main/repo.zip',
+  windowsBastion: true,
+  linuxBastion: true,
+  domainName: "templateapp.local",
   notifyEmail: "johndoe+notify@example.com"
 }
 
