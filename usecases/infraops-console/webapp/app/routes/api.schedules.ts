@@ -16,7 +16,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   console.log(`start load function of schedule`);
 
   try {
-    const schedules = await schedulerClient.listSchedulesForInstance({instanceId});
+    const schedules = await schedulerClient.listSchedulesForInstance({instanceId}, request);
     return { schedules };
   } catch (error) {
     console.error('Error fetching schedules:', error);
@@ -55,13 +55,13 @@ export async function action({ request }: ActionFunctionArgs) {
         action: scheduleAction,
         cronExpression,
         description
-      });
+      }, request);
       
       return { success: true, message: 'スケジュールが作成されました' };
     } else if (actionType === 'delete') {
       // スケジュール削除処理
       const scheduleName = formData.get('scheduleName') as string;
-      await schedulerClient.deleteSchedule({name: scheduleName});
+      await schedulerClient.deleteSchedule({name: scheduleName}, request);
       
       return { success: true, message: 'スケジュールが削除されました' };
     } else {

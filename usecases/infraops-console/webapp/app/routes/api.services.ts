@@ -20,7 +20,7 @@ export async function action({ request }: ActionFunctionArgs) {
         cluster: clusterArn,
         service: serviceArn,
         desiredCount
-      });
+      }, request);
       
       return { success: true };
     } catch (error) {

@@ -12,7 +12,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           Values: [process.env.AWS_REGION!]
         }];
 
-      const { InstanceTypeOfferings } = await ec2Client.describeInstanceTypeOfferings({ filters });
+      const { InstanceTypeOfferings } = await ec2Client.describeInstanceTypeOfferings({ filters }, request);
 
       // インスタンスタイプの名前のみを抽出
       const instanceTypes = InstanceTypeOfferings?.map(type => type.InstanceType || '') || [];

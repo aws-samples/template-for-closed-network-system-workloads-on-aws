@@ -8,6 +8,7 @@ ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-stati
 RUN chmod +x /tini
 
 COPY . .
+RUN npm install -g npm@latest
 RUN npm ci
 RUN npm run build
 
@@ -15,8 +16,6 @@ RUN npm run build
 FROM --platform=linux/amd64 gcr.io/distroless/nodejs22-debian12
 WORKDIR /app
 ENV NODE_ENV=production
-
-# 注意: 実行時の環境変数はAppRunnerサービスから注入されます
 
 # 必要なファイルのみをコピー
 COPY --from=build --chown=nonroot:nonroot /tini /tini

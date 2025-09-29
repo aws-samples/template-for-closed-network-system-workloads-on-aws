@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useDebounce } from '~/hooks/useDebounce';
 import { ec2Client, ecsClient, rdsClient } from '~/utils/aws.server';
 import { requireUser } from '~/utils/auth.server';
+import type { AppError } from '~/utils/error.server';
 import type { Schedule } from '~/models/schedule';
 import type { Service } from '~/models/service';
 import type { Database } from '~/models/database';
@@ -18,7 +19,7 @@ import {
   TableHeaderCell, 
   TableRow,
   ScheduleForm,
-  ErrorModal,
+  ErrorAlert,
   ServiceList,
   DatabaseList,
   RefreshButton
@@ -47,13 +48,13 @@ export async function action({ request }: ActionFunctionArgs) {
   try {
     if (action === 'start') {
       console.info('startInstance called');
-      await ec2Client.startInstance({ instanceId });
+      await ec2Client.startInstance({ instanceId }, request);
     } else if (action === 'stop') {
-      await ec2Client.stopInstance({ instanceId });
+      await ec2Client.stopInstance({ instanceId }, request);
     } else if (action === 'stopDBCluster') {
-      await rdsClient.stopDBCluster({ dbClusterIdentifier });
+      await rdsClient.stopDBCluster({ dbClusterIdentifier }, request);
     } else if (action === 'startDBCluster') {
-      await rdsClient.startDBCluster({ dbClusterIdentifier });
+      await rdsClient.startDBCluster({ dbClusterIdentifier }, request);
     } else if (action === 'updateAlternativeType') {
       const alternativeType = formData.get('alternativeType') as string;
       
@@ -66,7 +67,7 @@ export async function action({ request }: ActionFunctionArgs) {
             Value: alternativeType
           }
         ]
-      });
+      }, request);
     } else if (action === 'createSchedule' || action === 'deleteSchedule') {
       // スケジュール作成・削除処理はAPIエンドポイントに委譲
       const apiFormData = new FormData();
@@ -96,25 +97,16 @@ export async function action({ request }: ActionFunctionArgs) {
   } catch (error) {
     console.error(`Error ${action}ing instance ${instanceId}:`, error);
     
-    // エラー情報をセッションストレージに保存して、リダイレクト後に表示できるようにする
-    let errorMessage = '';
-    if (action === 'stopDBCluster' || action === 'startDBCluster') {
-      errorMessage = `DBクラスター ${dbClusterIdentifier} の ${action === 'stopDBCluster' ? '一時停止' : '再開'} 処理中にエラーが発生しました`;
-    } else {
-      errorMessage = `インスタンス ${instanceId} の ${action} 処理中にエラーが発生しました`;
-    }
-    
-    const errorInfo = {
-      message: errorMessage,
-      details: error instanceof Error ? error.message : String(error)
-    };
-    
-    // セッションストレージに保存するためのスクリプトをレスポンスヘッダーに追加
-    return redirect('/dashboard', {
-      headers: {
-        'Set-Cookie': `ec2OperationError=${JSON.stringify(errorInfo)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=60`
+    // エラー時はJSONレスポンスを返す
+    const appError = error as AppError;
+    return {
+      success: false,
+      error: {
+        message: appError.message || 'エラーが発生しました',
+        details: appError.details,
+        code: appError.code
       }
-    });
+    };
   }
 
   // 同じページにリダイレクト（リロードして最新の状態を表示）
@@ -139,10 +131,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       });
     }
     
-    // EC2インスタンスの一覧を取得
+    // EC2インスタンスの一覧を取得（リクエストオブジェクトを渡して認証チェック）
     const { Reservations } = await ec2Client.describeInstances({
       Filters: filters,
-    });
+    }, request);
 
     // インスタンス情報を整形
     instances = Reservations?.flatMap(reservation =>
@@ -163,22 +155,22 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // ECSサービスの一覧を取得
   let services: Array<Service> = [];
   try {
-    // クラスター一覧を取得
-    const { clusterArns } = await ecsClient.listClusters();
+    // クラスター一覧を取得（リクエストオブジェクトを渡して認証チェック）
+    const { clusterArns } = await ecsClient.listClusters(request);
     
     // 各クラスターのサービスを取得
     for (const clusterArn of clusterArns || []) {
       const clusterName = clusterArn.split('/').pop() || '';
       
-      // サービス一覧を取得
-      const { serviceArns } = await ecsClient.listServices({ cluster: clusterArn });
+      // サービス一覧を取得（リクエストオブジェクトを渡して認証チェック）
+      const { serviceArns } = await ecsClient.listServices({ cluster: clusterArn }, request);
       
       if (serviceArns && serviceArns.length > 0) {
-        // サービスの詳細情報を取得
+        // サービスの詳細情報を取得（リクエストオブジェクトを渡して認証チェック）
         const { services: serviceDetails } = await ecsClient.describeServices({
           cluster: clusterArn,
           services: serviceArns
-        });
+        }, request);
         
         // サービス情報を整形
         const formattedServices = serviceDetails?.map(service => ({
@@ -201,7 +193,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // RDS DBクラスターの一覧を取得
   let databases: Array<Database> = [];
   try {
-    const { DBClusters } = await rdsClient.describeDBClusters();
+    const { DBClusters } = await rdsClient.describeDBClusters(request);
     
     // DBクラスター情報を整形
     databases = DBClusters?.map(cluster => {
@@ -300,35 +292,24 @@ export default function Dashboard() {
   
   // エラーアラート関連の状態
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
-  
-  // Cookieからエラー情報を読み込む
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [isErrorAlertVisible, setIsErrorAlertVisible] = useState(false);
+
+  // useFetcherでフォーム送信とエラーハンドリング
+  const actionFetcher = useFetcher<{
+    success?: boolean;
+    error?: AppError;
+  }>();
+
+  // actionFetcherの結果を監視
   useEffect(() => {
-    // Cookieからエラー情報を取得
-    const getCookie = (name: string) => {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) {
-        const cookieValue = parts.pop()?.split(';').shift();
-        return cookieValue;
-      }
-      return null;
-    };
-    
-    const errorCookie = getCookie('ec2OperationError');
-    if (errorCookie) {
-      try {
-        const errorInfo = JSON.parse(decodeURIComponent(errorCookie));
-        setErrorMessage(`${errorInfo.message}\n${errorInfo.details}`);
-        setIsErrorModalOpen(true);
-        
-        // Cookieを削除
-        document.cookie = 'ec2OperationError=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-      } catch (e) {
-        console.error('エラー情報の解析に失敗しました:', e);
-      }
+    if (actionFetcher.data && !actionFetcher.data.success && actionFetcher.data.error) {
+      const error = actionFetcher.data.error;
+      setErrorMessage(error.message);
+      setErrorDetails(error.details || null);
+      setIsErrorAlertVisible(true);
     }
-  }, []);
+  }, [actionFetcher.data]);
 
   // 代替タイプの編集ボタンをクリックしたときの処理
   const handleAlternativeTypeClick = async (instance: Instance) => {
@@ -394,7 +375,7 @@ export default function Dashboard() {
       formData.append('groupId', instance.groupId || '');
       formData.append('alternativeType', alternativeType);
       
-      submit(formData, { method: 'post' });
+      actionFetcher.submit(formData, { method: 'post' });
       setEditingInstanceId(null); // 編集モードを終了
     }
   };
@@ -709,34 +690,36 @@ export default function Dashboard() {
                     <TableCell>
                       <div className="flex space-x-2">
                         {instance.state === 'stopped' && (
-                          <Form method="post">
-                            <input type="hidden" name="instanceId" value={instance.id} />
-                            <input type="hidden" name="action" value="start" />
-                            <input type="hidden" name="groupId" value={instance.groupId || ''} />
-                            <Button 
-                              type="submit" 
-                              variant="text" 
-                              size="xs"
-                              disabled={isSubmitting}
-                            >
-                              起動
-                            </Button>
-                          </Form>
+                          <Button 
+                            variant="text" 
+                            size="xs"
+                            disabled={isSubmitting || actionFetcher.state === 'submitting'}
+                            onClick={() => {
+                              const formData = new FormData();
+                              formData.append('instanceId', instance.id || '');
+                              formData.append('action', 'start');
+                              formData.append('groupId', instance.groupId || '');
+                              actionFetcher.submit(formData, { method: 'post' });
+                            }}
+                          >
+                            起動
+                          </Button>
                         )}
                         {instance.state === 'running' && (
-                          <Form method="post">
-                            <input type="hidden" name="instanceId" value={instance.id} />
-                            <input type="hidden" name="action" value="stop" />
-                            <input type="hidden" name="groupId" value={instance.groupId || ''} />
-                            <Button 
-                              type="submit" 
-                              variant="text" 
-                              size="xs"
-                              disabled={isSubmitting}
-                            >
-                              停止
-                            </Button>
-                          </Form>
+                          <Button 
+                            variant="text" 
+                            size="xs"
+                            disabled={isSubmitting || actionFetcher.state === 'submitting'}
+                            onClick={() => {
+                              const formData = new FormData();
+                              formData.append('instanceId', instance.id || '');
+                              formData.append('action', 'stop');
+                              formData.append('groupId', instance.groupId || '');
+                              actionFetcher.submit(formData, { method: 'post' });
+                            }}
+                          >
+                            停止
+                          </Button>
                         )}
                         {instance.state !== 'running' && instance.state !== 'stopped' && (
                           <span className="text-sm text-gray-500">処理中...</span>
@@ -810,13 +793,15 @@ export default function Dashboard() {
         databases={databases} 
         isSubmitting={isSubmitting}
         onRefresh={handleRefresh}
+        actionFetcher={actionFetcher}
       />
 
-      {/* エラーアラートモーダル */}
-      <ErrorModal
-        isOpen={isErrorModalOpen}
-        onClose={() => setIsErrorModalOpen(false)}
-        errorMessage={errorMessage}
+      {/* エラーアラート */}
+      <ErrorAlert
+        isVisible={isErrorAlertVisible}
+        message={errorMessage}
+        details={errorDetails}
+        onClose={() => setIsErrorAlertVisible(false)}
       />
     </div>
   );

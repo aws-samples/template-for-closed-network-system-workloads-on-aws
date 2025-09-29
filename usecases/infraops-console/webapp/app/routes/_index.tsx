@@ -4,6 +4,7 @@ import { getSession } from "~/utils/session.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // ユーザーが認証されているかチェック
+  console.log('index page loader');
   const session = await getSession(request.headers.get('Cookie'));
   const user = session.get('user');
   

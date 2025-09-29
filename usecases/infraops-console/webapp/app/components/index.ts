@@ -1,5 +1,6 @@
 export { default as Button } from './Button';
 export { default as DatabaseList } from './DatabaseList';
+export { default as ErrorAlert } from './ErrorAlert';
 export { default as Input } from './Input';
 export { default as Label } from './Label';
 export { default as Modal } from './Modal';

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Form } from '@remix-run/react';
+import type { FetcherWithComponents } from '@remix-run/react';
 import type { Database } from '~/models/database';
+import type { AppError } from '~/utils/error.server';
 import { 
   Table, 
   TableBody, 
@@ -17,6 +18,10 @@ interface DatabaseListProps {
   databases: Database[];
   isSubmitting?: boolean;
   onRefresh?: () => void;
+  actionFetcher?: FetcherWithComponents<{
+    success?: boolean;
+    error?: AppError;
+  }>;
 }
 
 // RDSクラスターの状態に基づいてアクションを判断する関数
@@ -36,7 +41,8 @@ const getClusterAction = (status: string): { action: string | null, label: strin
 export const DatabaseList: React.FC<DatabaseListProps> = ({ 
   databases, 
   isSubmitting = false,
-  onRefresh
+  onRefresh,
+  actionFetcher
 }) => {
   return (
     <div className="mt-8">
@@ -75,18 +81,21 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
                     
                     if (action && label) {
                       return (
-                        <Form method="post">
-                          <input type="hidden" name="dbClusterIdentifier" value={database.identifier} />
-                          <input type="hidden" name="action" value={action === 'stop' ? 'stopDBCluster' : 'startDBCluster'} />
-                          <Button 
-                            type="submit" 
-                            variant="text" 
-                            size="xs"
-                            disabled={isSubmitting}
-                          >
-                            {label}
-                          </Button>
-                        </Form>
+                        <Button 
+                          variant="text" 
+                          size="xs"
+                          disabled={isSubmitting || (actionFetcher?.state === 'submitting')}
+                          onClick={() => {
+                            if (actionFetcher) {
+                              const formData = new FormData();
+                              formData.append('dbClusterIdentifier', database.identifier);
+                              formData.append('action', action === 'stop' ? 'stopDBCluster' : 'startDBCluster');
+                              actionFetcher.submit(formData, { method: 'post' });
+                            }
+                          }}
+                        >
+                          {label}
+                        </Button>
                       );
                     } else if (database.status.toLowerCase() !== 'available' && database.status.toLowerCase() !== 'stopped') {
                       return <span className="text-sm text-gray-500">処理中...</span>;

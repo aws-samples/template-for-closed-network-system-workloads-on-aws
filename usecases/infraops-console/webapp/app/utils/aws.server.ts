@@ -49,8 +49,6 @@ import {
 import { 
   CognitoIdentityProviderClient,
   GetUserCommand,
-  InitiateAuthCommand,
-  InitiateAuthCommandInput,
   RespondToAuthChallengeCommand,
   RespondToAuthChallengeCommandInput,
   ForgotPasswordCommand,
@@ -62,28 +60,37 @@ import {
   RespondToAuthChallengeCommandOutput,
   ForgotPasswordCommandOutput,
   ConfirmForgotPasswordCommandOutput,
-  InitiateAuthCommandOutput,
+  AdminInitiateAuthCommand,
+  AdminInitiateAuthCommandInput,
+  AdminInitiateAuthCommandOutput,
 } from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 import crypto from 'crypto';
-import { fromCognitoIdentityPool, fromIni } from "@aws-sdk/credential-providers";
-import { getSession } from '~/utils/session.server';
+import { fromIni } from "@aws-sdk/credential-providers";
+import { fromCognitoIdentityPool } from "@aws-sdk/credential-provider-cognito-identity"
+import { requireAuthentication } from '~/utils/auth.server';
+import { createAppError } from '~/utils/error.server';
 
 // リージョンの設定
 const REGION = process.env.AWS_REGION || 'us-east-1'; // デフォルトは東京リージョン
 
 // AWS SDKのクライアント設定
-export const makeClientConfig = async () => {
+const makeClientConfig = async (request?: Request) => {
+  console.log(`makeClientConfig called. NODE_ENV=${process.env.NODE_ENV}`);
+  const idToken = request ? await requireAuthentication(request) : undefined;
+  console.log(`ID Token: ${idToken ? 'exists: true' : 'exists: false'}`);
   return {
     region: REGION,
-    credentials: (process.env.NODE_ENV === "production") ? 
-    fromCognitoIdentityPool({
-      clientConfig: { region: REGION },
-      identityPoolId: process.env.COGNITO_IDENTITY_POOL_ID || '',
-      logins: {
-        [`cognito-idp.${REGION}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`]: await getSession().then(session => session.get('idToken') || '')
-      }
-    }):
-    fromIni({ profile: 'closedtemplate' }),
+    credentials: (process.env.NODE_ENV === "development") 
+    // 本番環境
+    ? (request ? fromCognitoIdentityPool({
+      client: new CognitoIdentityClient({ region: REGION }),
+      identityPoolId: process.env.IDENTITY_POOL_ID || '',
+      logins: idToken ? {[`cognito-idp.${REGION}.amazonaws.com/${process.env.USER_POOL_ID}`]: idToken} : undefined
+      // request がない場合はApp Runnerの権限を利用する
+    }) : fromIni({ profile: 'closedtemplate' })) 
+    // 開発環境のみ
+    :fromIni({ profile: 'closedtemplate' }),
   }
 };
 
@@ -95,42 +102,37 @@ interface AWSClient {
 // AWS SDKクライアントのコンストラクタ型
 type AWSClientConstructor<T extends AWSClient> = new (config: any) => T;
 
-// 汎用的なAWSクライアント高階関数（ログ機能付き）
+// 汎用的なAWSクライアント高階関数（統一されたエラーハンドリング付き）
 const withAWSClient = async <TClient extends AWSClient, TResult>(
   ClientClass: AWSClientConstructor<TClient>,
   operation: (client: TClient) => Promise<TResult>,
-  options?: {
-    errorHandler?: (error: any) => TResult;
-    serviceName?: string;
-    operationName?: string;
+  options: {
+    serviceName: string;
+    operationName: string;
     params?: any;
+    request?: Request;
   }
 ): Promise<TResult> => {
-  const client = new ClientClass(await makeClientConfig());
-  const { errorHandler, serviceName, operationName, params } = options || {};
+  const client = new ClientClass(await makeClientConfig(options.request));
+  const { serviceName, operationName, params } = options;
   
-  if (serviceName && operationName) {
-    console.log(`${serviceName} ${operationName} called${params ? ' with:' : ''}`, params || '');
-  }
+  console.log(`${serviceName} ${operationName} called${params ? ' with:' : ''}`, params || '');
   
   try {
     return await operation(client);
   } catch (error) {
-    if (serviceName && operationName) {
-      console.error(`Error in ${serviceName} ${operationName}:`, error);
-    }
+    console.error(`Error in ${serviceName} ${operationName}:`, error);
     
-    if (errorHandler) {
-      return errorHandler(error);
-    }
-    throw error;
+    // 統一されたエラーメッセージを作成してthrow
+    const message = `${serviceName}の${operationName}処理中にエラーが発生しました`;
+    throw createAppError(message, error);
   } finally {
     client.destroy();
   }
 };
 
 export const ec2Client = {
-  describeInstances: async (params: DescribeInstancesCommandInput) => {
+  describeInstances: async (params: DescribeInstancesCommandInput, request: Request) => {
     return await withAWSClient(
       EC2Client,
       async (client) => {
@@ -141,18 +143,12 @@ export const ec2Client = {
         serviceName: 'EC2',
         operationName: 'describeInstances',
         params,
-        errorHandler: (error): DescribeInstancesCommandOutput => {
-          // エラーが発生した場合は空のレスポンスを返す
-          return { 
-            Reservations: [],
-            $metadata: {}
-          };
-        }
+        request
       }
     );
   },
 
-  startInstance: async (params: { instanceId: string }) => {
+  startInstance: async (params: { instanceId: string }, request: Request) => {
     return await withAWSClient(
       EC2Client,
       async (client) => {
@@ -165,18 +161,12 @@ export const ec2Client = {
         serviceName: 'EC2',
         operationName: 'startInstance',
         params,
-        errorHandler: (error): StartInstancesCommandOutput => {
-          // エラーが発生した場合は空のレスポンスを返す
-          return { 
-            StartingInstances: [],
-            $metadata: {}
-          };
-        }
+        request
       }
     );
   },
 
-  stopInstance: async (params: { instanceId: string }) => {
+  stopInstance: async (params: { instanceId: string }, request: Request) => {
     return await withAWSClient(
       EC2Client,
       async (client) => {
@@ -189,18 +179,12 @@ export const ec2Client = {
         serviceName: 'EC2',
         operationName: 'stopInstance',
         params,
-        errorHandler: (error): StopInstancesCommandOutput => {
-          // エラーが発生した場合は空のレスポンスを返す
-          return { 
-            StoppingInstances: [],
-            $metadata: {}
-          };
-        }
+        request
       }
     );
   },
 
-  describeInstanceTypes: async (params: { filters?: Array<{ Name: string, Values: string[] }> }): Promise<{InstanceTypes: InstanceTypeInfo[]; NextToken?: string}> => {
+  describeInstanceTypes: async (params: { filters?: Array<{ Name: string, Values: string[] }> }, request: Request): Promise<{InstanceTypes: InstanceTypeInfo[]; NextToken?: string}> => {
     return await withAWSClient(
       EC2Client,
       async (client) => {
@@ -217,15 +201,12 @@ export const ec2Client = {
         serviceName: 'EC2',
         operationName: 'describeInstanceTypes',
         params,
-        errorHandler: (error) => {
-          // エラーが発生した場合は空のレスポンスを返す
-          return { InstanceTypes: [], NextToken: undefined };
-        }
+        request
       }
     );
   },
 
-  createTags: async (params: { resourceIds: string[], tags: Array<{ Key: string, Value: string }> }) => {
+  createTags: async (params: { resourceIds: string[], tags: Array<{ Key: string, Value: string }> }, request: Request) => {
     return await withAWSClient(
       EC2Client,
       async (client) => {
@@ -238,7 +219,8 @@ export const ec2Client = {
       {
         serviceName: 'EC2',
         operationName: 'createTags',
-        params
+        params,
+        request
         // エラーハンドラーなし（エラーをそのまま投げる）
       }
     );
@@ -248,7 +230,7 @@ export const ec2Client = {
     architectureTypes: ArchitectureType[],
     virtualizationTypes: VirtualizationType[],
     instanceRequirements: InstanceRequirementsRequest
-  }) => {
+  }, request: Request) => {
     return await withAWSClient(
       EC2Client,
       async (client) => {
@@ -267,9 +249,7 @@ export const ec2Client = {
         serviceName: 'EC2',
         operationName: 'getInstanceTypesFromInstanceRequirements',
         params,
-        errorHandler: (error) => {
-          return { InstanceTypes: [], NextToken: undefined };
-        }
+        request
       }
     );
   },
@@ -277,7 +257,7 @@ export const ec2Client = {
   describeInstanceTypeOfferings: async (params: { 
     filters?: Array<{ Name: string, Values: string[] }>,
     locationType?: LocationType,
-  }) => {
+  }, request: Request) => {
     return await withAWSClient(
       EC2Client,
       async (client) => {
@@ -295,9 +275,7 @@ export const ec2Client = {
         serviceName: 'EC2',
         operationName: 'describeInstanceTypeOfferings',
         params,
-        errorHandler: (error) => {
-          return { InstanceTypeOfferings: [], NextToken: undefined };
-        }
+        request
       }
     );
   }
@@ -312,7 +290,7 @@ export const schedulerClient = {
     action: 'start' | 'stop';
     cronExpression: string;
     description?: string;
-  }) => {
+  }, request: Request) => {
     return await withAWSClient(
       SchedulerClient,
       async (client) => {
@@ -346,14 +324,15 @@ export const schedulerClient = {
       {
         serviceName: 'Scheduler',
         operationName: 'createSchedule',
-        params
+        params,
+        request,
         // エラーハンドラーなし（エラーをそのまま投げる）
       }
     );
   },
   
   // スケジュールの取得
-  getSchedule: async (params: {name: string}) => {
+  getSchedule: async (params: {name: string}, request: Request) => {
     return await withAWSClient(
       SchedulerClient,
       async (client) => {
@@ -365,7 +344,8 @@ export const schedulerClient = {
       {
         serviceName: 'Scheduler',
         operationName: 'getSchedule',
-        params
+        params,
+        request,
         // エラーハンドラーなし（エラーをそのまま投げる）
       }
     );
@@ -378,7 +358,7 @@ export const schedulerClient = {
     action: 'start' | 'stop';
     cronExpression: string;
     description?: string;
-  }) => {
+  }, request: Request) => {
     return await withAWSClient(
       SchedulerClient,
       async (client) => {
@@ -412,14 +392,15 @@ export const schedulerClient = {
       {
         serviceName: 'Scheduler',
         operationName: 'updateSchedule',
-        params
+        params,
+        request,
         // エラーハンドラーなし（エラーをそのまま投げる）
       }
     );
   },
   
   // スケジュールの削除
-  deleteSchedule: async (params: {name: string}) => {
+  deleteSchedule: async (params: {name: string}, request: Request) => {
     return await withAWSClient(
       SchedulerClient,
       async (client) => {
@@ -431,14 +412,15 @@ export const schedulerClient = {
       {
         serviceName: 'Scheduler',
         operationName: 'deleteSchedule',
-        params
+        params,
+        request,
         // エラーハンドラーなし（エラーをそのまま投げる）
       }
     );
   },
   
   // インスタンスに関連するスケジュールの一覧取得
-  listSchedulesForInstance: async (params:{instanceId: string}) => {
+  listSchedulesForInstance: async (params:{instanceId: string}, request: Request) => {
     return await withAWSClient(
       SchedulerClient,
       async (client) => {
@@ -478,9 +460,7 @@ export const schedulerClient = {
         serviceName: 'Scheduler',
         operationName: 'listSchedulesForInstance',
         params,
-        errorHandler: (error) => {
-          return [];
-        }
+        request
       }
     );
   }
@@ -489,7 +469,7 @@ export const schedulerClient = {
 // ecsClientの実装
 export const ecsClient = {
   // クラスター一覧の取得
-  listClusters: async () => {
+  listClusters: async (request: Request) => {
     return await withAWSClient(
       ECSClient,
       async (client) => {
@@ -499,18 +479,13 @@ export const ecsClient = {
       {
         serviceName: 'ECS',
         operationName: 'listClusters',
-        errorHandler: (error): ListClustersCommandOutput => {
-          return { 
-            clusterArns: [],
-            $metadata: {}
-          };
-        }
+        request
       }
     );
   },
   
   // サービス一覧の取得
-  listServices: async (params: { cluster: string }) => {
+  listServices: async (params: { cluster: string }, request: Request) => {
     return await withAWSClient(
       ECSClient,
       async (client) => {
@@ -523,18 +498,13 @@ export const ecsClient = {
         serviceName: 'ECS',
         operationName: 'listServices',
         params,
-        errorHandler: (error): ListServicesCommandOutput => {
-          return { 
-            serviceArns: [],
-            $metadata: {}
-          };
-        }
+        request
       }
     );
   },
   
   // サービス詳細の取得
-  describeServices: async (params: { cluster: string, services: string[] }) => {
+  describeServices: async (params: { cluster: string, services: string[] }, request: Request) => {
     return await withAWSClient(
       ECSClient,
       async (client) => {
@@ -548,12 +518,7 @@ export const ecsClient = {
         serviceName: 'ECS',
         operationName: 'describeServices',
         params,
-        errorHandler: (error): DescribeServicesCommandOutput => {
-          return { 
-            services: [],
-            $metadata: {}
-          };
-        }
+        request
       }
     );
   },
@@ -563,7 +528,7 @@ export const ecsClient = {
     cluster: string, 
     service: string, 
     desiredCount: number 
-  }) => {
+  }, request: Request) => {
     return await withAWSClient(
       ECSClient,
       async (client) => {
@@ -577,8 +542,8 @@ export const ecsClient = {
       {
         serviceName: 'ECS',
         operationName: 'updateServiceDesiredCount',
-        params
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        params,
+        request
       }
     );
   }
@@ -587,7 +552,7 @@ export const ecsClient = {
 // rdsClientの実装
 export const rdsClient = {
   // DBクラスター一覧の取得
-  describeDBClusters: async () => {
+  describeDBClusters: async (request: Request) => {
     return await withAWSClient(
       RDSClient,
       async (client) => {
@@ -597,18 +562,13 @@ export const rdsClient = {
       {
         serviceName: 'RDS',
         operationName: 'describeDBClusters',
-        errorHandler: (error): DescribeDBClustersCommandOutput => {
-          return { 
-            DBClusters: [],
-            $metadata: {}
-          };
-        }
+        request
       }
     );
   },
   
   // DBクラスターの一時停止
-  stopDBCluster: async (params: { dbClusterIdentifier: string }) => {
+  stopDBCluster: async (params: { dbClusterIdentifier: string }, request: Request) => {
     return await withAWSClient(
       RDSClient,
       async (client) => {
@@ -620,14 +580,15 @@ export const rdsClient = {
       {
         serviceName: 'RDS',
         operationName: 'stopDBCluster',
-        params
+        params,
+        request,
         // エラーハンドラーなし（エラーをそのまま投げる）
       }
     );
   },
   
   // DBクラスターの再開
-  startDBCluster: async (params: { dbClusterIdentifier: string }) => {
+  startDBCluster: async (params: { dbClusterIdentifier: string }, request: Request) => {
     return await withAWSClient(
       RDSClient,
       async (client) => {
@@ -639,7 +600,8 @@ export const rdsClient = {
       {
         serviceName: 'RDS',
         operationName: 'startDBCluster',
-        params
+        params,
+        request,
         // エラーハンドラーなし（エラーをそのまま投げる）
       }
     );
@@ -736,15 +698,16 @@ export const cognitoClient = {
   },
   
   // USER_PASSWORD_AUTH認証を行う関数
-  initiateAuth: async (params: {username: string, password: string, clientId: string, clientSecret: string}): Promise<InitiateAuthCommandOutput> => {
+  initiateAuth: async (params: {username: string, password: string, clientId: string, clientSecret: string}): Promise<AdminInitiateAuthCommandOutput> => {
     return await withAWSClient(
       CognitoIdentityProviderClient,
       async (client) => {
         // SECRET_HASHを計算
         const secretHash = calculateSecretHash(params.username, params.clientId, params.clientSecret);
         
-        const commandInput: InitiateAuthCommandInput = {
-          AuthFlow: AuthFlowType.USER_PASSWORD_AUTH,
+        const commandInput: AdminInitiateAuthCommandInput = {
+          UserPoolId: process.env.USER_POOL_ID!,
+          AuthFlow: AuthFlowType.ADMIN_USER_PASSWORD_AUTH,
           ClientId: params.clientId,
           AuthParameters: {
             USERNAME: params.username,
@@ -753,7 +716,7 @@ export const cognitoClient = {
           }
         };
         
-        const command = new InitiateAuthCommand(commandInput);
+        const command = new AdminInitiateAuthCommand(commandInput);
         return await client.send(command);
       },
       {

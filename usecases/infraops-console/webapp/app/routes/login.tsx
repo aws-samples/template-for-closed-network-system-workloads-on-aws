@@ -7,43 +7,24 @@ import { getSession, commitSession } from '~/utils/session.server';
 import { Button, Input, Label, RequirementBadge, UniversalLink } from '~/components';
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  console.log('login page loader');
   // 既にログインしている場合はダッシュボードにリダイレクト
   const session = await getSession(request.headers.get('Cookie'));
-  const user = session.get('user');
-  if (user) return redirect('/dashboard');
+  console.log(`session: ${JSON.stringify(session)}`);
+  const idToken = session.get('idToken');
+  console.log(`idToken: ${JSON.stringify(idToken)}`);
+  if (idToken) return redirect('/dashboard');
+  console.log('not logged in, stay on login page');
 
   return null;
 }
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
+    console.log('login action');
     // フォーム認証を使用
-    const user = await authenticator.authenticate('form', request);
+    await authenticator.authenticate('form', request);
     
-    // ユーザーがnullの場合はエラー
-    if (!user) {
-      throw new Error('認証に失敗しました');
-    }
-    
-    // ユーザー情報とトークンをセッションに保存
-    const session = await getSession(request.headers.get('Cookie'));
-    
-    // 基本的なユーザー情報を保存
-    session.set('user', {
-      email: user.email,
-    });
-    
-    // セッションをコミット
-    const sessionCookie = await commitSession(session, {
-      expires: new Date(Date.now() + 3600 * 1000) // 1時間有効
-    });
-    
-    // ダッシュボードにリダイレクト
-    return redirect('/dashboard', {
-      headers: {
-        'Set-Cookie': sessionCookie
-      }
-    });
   } catch (error: any) {
     
     // エラーメッセージを返す
@@ -67,9 +48,12 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Login() {
+  console.log('login');
   const actionData = useActionData<typeof action>();
-  const navigation = useNavigation();
-  const isSubmitting = navigation.state !== 'idle';
+  // const navigation = useNavigation();
+  // const isSubmitting = navigation.state !== 'idle';
+  const isSubmitting = false; // navigation.state always "idle" ???
+  console.log('Login actionData:', actionData);
 
   return (
     <div className="login-container">

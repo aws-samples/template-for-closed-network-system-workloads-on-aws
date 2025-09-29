@@ -1,7 +1,7 @@
 import { Authenticator } from 'remix-auth';
 import { FormStrategy } from 'remix-auth-form';
 import { commitSession, getSession } from './session.server';
-import { getUserByEmail, User } from '~/models/user.server';
+import { User } from '~/models/user.server';
 import { redirect } from '@remix-run/node';
 import { cognitoClient } from './aws.server';
 
@@ -53,7 +53,7 @@ async function initFormStrategy() {
         
         let authResult;
         try {
-          // USER_PASSWORD_AUTH認証を実行
+          // ADMIN_USER_PASSWORD_AUTH認証を実行
           authResult = await cognitoClient.initiateAuth({
             username: email,
             password,
@@ -94,10 +94,27 @@ async function initFormStrategy() {
             }
           });
         } 
-        // login.tsxのaction関数でセッションに保存される
-        return {
-          email,
-        };
+        // セッションにIDトークンとユーザー情報の両方を保存
+        const session = await getSession(request.headers.get('Cookie'));
+    
+        // IDトークンを保存
+        console.log(`Storing ID Token in session: ${authResult.AuthenticationResult?.IdToken}`)
+        session.set('idToken', authResult.AuthenticationResult?.IdToken);
+
+        // ユーザー情報も保存
+        session.set('user', {
+          email: email,
+          // 必要に応じて他の属性も追加
+        });
+    
+        // セッションをコミットしてダッシュボードにリダイレクト
+        throw redirect('/dashboard', {
+          headers: {
+            'Set-Cookie': await commitSession(session, {
+              expires: new Date(Date.now() + 24 * 60 * 60 * 1000) // 1日有効
+            })
+          }
+        });
       }),
       'form'
     );
@@ -143,4 +160,18 @@ export async function requireUser(request: Request):Promise<User> {
   }
   
   return user;
+}
+
+// IDトークンの検証は、一時認証情報取得時にAWS側で行うため、ここではトークンの存在チェックのみを行う
+export async function requireAuthentication(request: Request): Promise<string> {
+  console.log('requireAuthentication called');
+  const session = await getSession(request.headers.get('Cookie'));
+  const idToken = session.get('idToken');
+  
+  if (!idToken) {
+    console.log('No ID token found in session, redirecting to login');
+    throw redirect('/login');
+  }
+  
+  return idToken;
 }

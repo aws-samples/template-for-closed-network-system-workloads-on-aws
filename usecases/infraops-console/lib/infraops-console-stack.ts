@@ -1,10 +1,11 @@
-import { CfnOutput, StackProps, Stack, aws_dynamodb, aws_ec2, aws_iam, aws_cognito, aws_lambda, aws_sqs, aws_lambda_event_sources, aws_events, aws_events_targets } from 'aws-cdk-lib';
+import { CfnOutput, StackProps, Stack, aws_dynamodb, aws_ec2, aws_iam, aws_cognito, aws_lambda, aws_sqs, aws_lambda_event_sources, aws_events, aws_events_targets, aws_cognito_identitypool, Duration, CfnJson } from 'aws-cdk-lib';
 import * as apprunner from '@aws-cdk/aws-apprunner-alpha';
 import * as assets from 'aws-cdk-lib/aws-ecr-assets';
 import * as path from 'path';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { UserPoolAuthenticationProvider } from 'aws-cdk-lib/aws-cognito-identitypool';
 
 interface InfraopsConsoleStackProps extends StackProps {
   sourceVpcId: string;
@@ -15,6 +16,7 @@ export class InfraopsConsoleStack extends Stack {
   public readonly userTable: aws_dynamodb.Table;
   public readonly userPool: aws_cognito.UserPool;
   public readonly userPoolClient: aws_cognito.UserPoolClient;
+  public readonly idPool: aws_cognito.CfnIdentityPool;
 
   constructor(scope: Construct, id: string, props: InfraopsConsoleStackProps) {
     super(scope, id, props);
@@ -134,24 +136,36 @@ export class InfraopsConsoleStack extends Stack {
         "groupId": new aws_cognito.StringAttribute({ mutable: true })
       }
     });
+    this.userPool.addGroup('Admins', {
+      groupName: 'Admins',
+      description: 'Administrators group with full access'
+    });
+    this.userPool.addGroup('Users', {
+      groupName: 'Users',
+      description: 'Regular users group with limited access'
+    });
 
     // ユーザープールドメインの設定
     const userPoolDomain = this.userPool.addDomain('InfraopsConsoleDomain', {
       cognitoDomain: {
         domainPrefix: `infraops-console-${this.account.substring(0, 8)}`
-      }
+      },
     });
 
     // ユーザープールクライアントの作成
     this.userPoolClient = this.userPool.addClient('InfraopsConsoleClient', {
       userPoolClientName: 'infraops-console-client',
+      idTokenValidity: Duration.minutes(60),
+      accessTokenValidity: Duration.minutes(60),
+      refreshTokenValidity: Duration.days(1),
       authFlows: {
-        userPassword: true,
-        user: true
+        adminUserPassword: true,
       },
       oAuth: {
         flows: {
-          authorizationCodeGrant: true // 認可コードフローを有効化
+          authorizationCodeGrant: true,
+          implicitCodeGrant: false,
+          clientCredentials: false
         },
         scopes: [
           aws_cognito.OAuthScope.EMAIL,
@@ -173,106 +187,297 @@ export class InfraopsConsoleStack extends Stack {
       generateSecret: true
     });
 
-    // ローカルのコードをビルドしてECRにプッシュ
-    const instanceManagerAsset = new assets.DockerImageAsset(this, 'InfraopsConsoleDockerImage', {
-      directory: path.join(__dirname, '../webapp'),
-      cacheDisabled: true,
+    // Cognito IDプールの作成（CfnIdentityPoolを使用）
+    this.idPool = new aws_cognito.CfnIdentityPool(this, 'IdentityPool', {
+      allowUnauthenticatedIdentities: false,
+      cognitoIdentityProviders: [
+        {
+          clientId: this.userPoolClient.userPoolClientId,
+          providerName: this.userPool.userPoolProviderName,
+          serverSideTokenCheck: true
+        }
+      ]
     });
 
-    // AppRunnerサービスを作成
-    const service = new apprunner.Service(this, 'InfraopsConsoleService', {
-      serviceName: 'infraops-console',
-      source: apprunner.Source.fromAsset({
-        imageConfiguration: {
-          port: 3000,
-          environmentVariables: {
-            SESSION_SECRET: '1nfra0ps-c0ns0l3-s3cr3t',
-            CLIENT_ID: this.userPoolClient.userPoolClientId,
-            CLIENT_SECRET: this.userPoolClient.userPoolClientSecret.unsafeUnwrap(),
-            USER_POOL_ID: this.userPool.userPoolId,
-            DOMAIN: `infraops-console-${Stack.of(this).account}`,
-            AWS_REGION: Stack.of(this).region,
-            EVENTBRIDGE_SCHEDULER_ROLE_ARN: schedulerExecutionRole.roleArn
+    // Admins用のIAMロール作成（フルアクセス権限）
+    const adminRole = new aws_iam.Role(this, 'AdminRole', {
+      assumedBy: new aws_iam.FederatedPrincipal(
+        'cognito-identity.amazonaws.com',
+        {
+          "StringEquals": {
+            "cognito-identity.amazonaws.com:aud": this.idPool.ref
           },
+          "ForAnyValue:StringLike": {
+            "cognito-identity.amazonaws.com:amr": "authenticated"
+          }
         },
-        asset: instanceManagerAsset,
-        
-      }),
-      cpu: apprunner.Cpu.ONE_VCPU,
-      memory: apprunner.Memory.TWO_GB,
-      autoDeploymentsEnabled: true,
-      isPubliclyAccessible: false, // For closed network
+        'sts:AssumeRoleWithWebIdentity'
+      ),
+      description: 'Role for Admins group with full access'
     });
-    service.addToRolePolicy(
-      new aws_iam.PolicyStatement({
-        actions: [
-          "cloudwatch:Get*",
-          "cloudwatch:Describe*",
-          "rds:DescribeDBClusters",
-          "rds:StopDBCluster",
-          "rds:StartDBCluster",
-          "ecs:ListClusters",
-          "ecs:ListServices",
-          "ecs:DescribeServices",
-          "ecs:UpdateService",
-          "ec2:DescribeInstances",
-          "ec2:StartInstances",
-          "ec2:StopInstances",
-          "ec2:DescribeInstanceTypes",
-          "ec2:CreateTags",
-          "ec2:GetInstanceTypesFromInstanceRequirements",
-          "ec2:DescribeInstanceTypeOfferings",
-          "scheduler:CreateSchedule",
-          "scheduler:GetSchedule",
-          "scheduler:UpdateSchedule",
-          "scheduler:DeleteSchedule",
-          "scheduler:ListSchedules",
-          "cognito-idp:ForgotPassword",
-          "cognito-idp:ConfirmForgotPassword",
-        ],
-        resources: ["*"],
-      })
-    );
-    service.addToRolePolicy(
-      new aws_iam.PolicyStatement({
-        actions: [
-          "iam:PassRole"
-        ],
-        resources: [
-          schedulerExecutionRole.roleArn
-        ]
-      }) 
-    )
 
+    // Admins用ポリシー（既存のAuthenticatedUserPolicyと同等）
+    adminRole.attachInlinePolicy(new aws_iam.Policy(this, 'AdminPolicy', {
+      statements: [
+        new aws_iam.PolicyStatement({
+          actions: [
+            // EC2関連の権限
+            "ec2:DescribeInstances",
+            "ec2:StartInstances",
+            "ec2:StopInstances",
+            "ec2:DescribeInstanceTypes",
+            "ec2:CreateTags",
+            "ec2:GetInstanceTypesFromInstanceRequirements",
+            "ec2:DescribeInstanceTypeOfferings",
+            // ECS関連の権限
+            "ecs:ListClusters",
+            "ecs:ListServices",
+            "ecs:DescribeServices",
+            "ecs:UpdateService",
+            // RDS関連の権限
+            "rds:DescribeDBClusters",
+            "rds:StopDBCluster",
+            "rds:StartDBCluster",
+            // EventBridge Scheduler関連の権限
+            "scheduler:CreateSchedule",
+            "scheduler:GetSchedule",
+            "scheduler:UpdateSchedule",
+            "scheduler:DeleteSchedule",
+            "scheduler:ListSchedules",
+            // Cognito関連の権限
+            "cognito-idp:ForgotPassword",
+            "cognito-idp:ConfirmForgotPassword",
+            "cognito-idp:GetUser",
+            "cognito-idp:InitiateAuth",
+            "cognito-idp:RespondToAuthChallenge"
+          ],
+          resources: ["*"]
+        }),
+        new aws_iam.PolicyStatement({
+          actions: [
+            "iam:PassRole"
+          ],
+          resources: [
+            schedulerExecutionRole.roleArn
+          ]
+        })
+      ]
+    }));
+
+    // Users用のIAMロール作成（ABAC適用）
+    const usersRole = new aws_iam.Role(this, 'UsersRole', {
+      assumedBy: new aws_iam.FederatedPrincipal(
+        'cognito-identity.amazonaws.com',
+        {
+          "StringEquals": {
+            "cognito-identity.amazonaws.com:aud": this.idPool.ref
+          },
+          "ForAnyValue:StringLike": {
+            "cognito-identity.amazonaws.com:amr": "authenticated"
+          }
+        },
+        'sts:AssumeRoleWithWebIdentity'
+      ),
+      description: 'Role for Users group with ABAC-based access control'
+    });
+
+    // Users用ポリシー（ABACを適用）
+    usersRole.attachInlinePolicy(new aws_iam.Policy(this, 'UsersGroupPolicy', {
+      statements: [
+        // EC2関連の権限（ABACを適用）
+        new aws_iam.PolicyStatement({
+          actions: [
+            "ec2:DescribeInstances",
+            "ec2:StartInstances",
+            "ec2:StopInstances",
+            "ec2:DescribeInstanceTypes",
+            "ec2:CreateTags",
+            "ec2:GetInstanceTypesFromInstanceRequirements",
+            "ec2:DescribeInstanceTypeOfferings"
+          ],
+          resources: ["*"],
+          conditions: {
+            'StringEquals': {
+              'ec2:ResourceTag/GroupId': '${cognito-identity.amazonaws.com:custom:groupId}'
+            }
+          }
+        }),
+        // ECS関連の権限（ABACを適用）
+        new aws_iam.PolicyStatement({
+          actions: [
+            "ecs:ListClusters",
+            "ecs:ListServices",
+            "ecs:DescribeServices",
+            "ecs:UpdateService"
+          ],
+          resources: ["*"],
+          conditions: {
+            'StringEquals': {
+              'ecs:ResourceTag/GroupId': '${cognito-identity.amazonaws.com:custom:groupId}'
+            }
+          }
+        }),
+        // RDS関連の権限（ABACを適用）
+        new aws_iam.PolicyStatement({
+          actions: [
+            "rds:DescribeDBClusters"
+          ],
+          resources: ["*"],
+        }),
+        new aws_iam.PolicyStatement({
+          actions: [
+            "rds:StopDBCluster",
+            "rds:StartDBCluster"
+          ],
+          resources: ["*"],
+          conditions: {
+            'StringEquals': {
+              'rds:cluster-tag/GroupId': '${cognito-identity.amazonaws.com:custom:groupId}'
+            }
+          }
+        }),
+        // EventBridge Scheduler関連の権限（ABACを適用）
+        new aws_iam.PolicyStatement({
+          actions: [
+            "scheduler:CreateSchedule",
+            "scheduler:GetSchedule",
+            "scheduler:UpdateSchedule",
+            "scheduler:DeleteSchedule",
+            "scheduler:ListSchedules"
+          ],
+          resources: ["*"],
+          conditions: {
+            'StringEquals': {
+              'scheduler:ResourceTag/GroupId': '${cognito-identity.amazonaws.com:custom:groupId}'
+            }
+          }
+        }),
+        // Cognito関連の権限（ABACなし - 全ユーザーが利用可能）
+        new aws_iam.PolicyStatement({
+          actions: [
+            "cognito-idp:ForgotPassword",
+            "cognito-idp:ConfirmForgotPassword",
+            "cognito-idp:GetUser",
+            "cognito-idp:InitiateAuth",
+            "cognito-idp:RespondToAuthChallenge"
+          ],
+          resources: ["*"]
+        }),
+        // PassRole権限（ABACなし）
+        new aws_iam.PolicyStatement({
+          actions: [
+            "iam:PassRole"
+          ],
+          resources: [
+            schedulerExecutionRole.roleArn
+          ]
+        })
+      ]
+    }));
+
+    // CfnJsonを使用してroleMappingsを動的に構築
+    const roleMappingsJson = new CfnJson(this, 'RoleMappingsJson', {
+      value: {
+        [`cognito-idp.${this.region}.amazonaws.com/${this.userPool.userPoolId}:${this.userPoolClient.userPoolClientId}`]: {
+          Type: 'Rules',
+          AmbiguousRoleResolution: 'Deny',
+          RulesConfiguration: {
+            Rules: [
+              {
+                Claim: 'cognito:groups',
+                MatchType: 'Contains',
+                Value: 'Admins',
+                RoleARN: adminRole.roleArn
+              },
+              {
+                Claim: 'cognito:groups',
+                MatchType: 'Contains',
+                Value: 'Users',
+                RoleARN: usersRole.roleArn
+              }
+            ]
+          }
+        }
+      }
+    });
+
+    // ロールマッピングの作成（CfnIdentityPoolRoleAttachmentを使用）
+    new aws_cognito.CfnIdentityPoolRoleAttachment(this, 'IdentityPoolRoleAttachment', {
+      identityPoolId: this.idPool.ref,
+      roleMappings: roleMappingsJson,
+      roles: {
+        'authenticated': usersRole.roleArn
+      }
+    });
+
+//     // ローカルのコードをビルドしてECRにプッシュ
+//     const instanceManagerAsset = new assets.DockerImageAsset(this, 'InfraopsConsoleDockerImage', {
+//       directory: path.join(__dirname, '../webapp'),
+//       cacheDisabled: true,
+//     });
+// 
+    // // AppRunnerサービスを作成
+    // const service = new apprunner.Service(this, 'InfraopsConsoleService', {
+    //   serviceName: 'infraops-console',
+    //   source: apprunner.Source.fromAsset({
+    //     imageConfiguration: {
+    //       port: 3000,
+    //       environmentVariables: {
+    //         SESSION_SECRET: '1nfra0ps-c0ns0l3-s3cr3t',
+    //         CLIENT_ID: this.userPoolClient.userPoolClientId,
+    //         CLIENT_SECRET: this.userPoolClient.userPoolClientSecret.unsafeUnwrap(),
+    //         USER_POOL_ID: this.userPool.userPoolId,
+    //         DOMAIN: `infraops-console-${Stack.of(this).account}`,
+    //         AWS_REGION: Stack.of(this).region,
+    //         EVENTBRIDGE_SCHEDULER_ROLE_ARN: schedulerExecutionRole.roleArn
+    //       },
+    //     },
+    //     asset: instanceManagerAsset,
+    //     
+    //   }),
+    //   cpu: apprunner.Cpu.ONE_VCPU,
+    //   memory: apprunner.Memory.TWO_GB,
+    //   autoDeploymentsEnabled: true,
+    //   isPubliclyAccessible: false, // For closed network
+    // });
+    // service.addToRolePolicy(
+    //   new aws_iam.PolicyStatement({
+    //     actions: [
+    //       "cloudwatch:Get*",
+    //       "cloudwatch:Describe*",
+    //     ],
+    //     resources: ["*"],
+    //   })
+    // );
     
-    new apprunner.VpcIngressConnection(this, 'VpcIngressConnection', {
-      vpc: sourceVpc,
-      service,
-      interfaceVpcEndpoint,
-    });
+    // new apprunner.VpcIngressConnection(this, 'VpcIngressConnection', {
+    //   vpc: sourceVpc,
+    //   service,
+    //   interfaceVpcEndpoint,
+    // });
 
-    // Cognitoへのアクセス権限を追加
-    service.addToRolePolicy(
-      new aws_iam.PolicyStatement({
-        actions: [
-          "cognito-idp:InitiateAuth",
-          "cognito-idp:RespondToAuthChallenge",
-          "cognito-idp:AdminGetUser"
-        ],
-        resources: [this.userPool.userPoolArn]
-      })
-    );
+    // // Cognitoへのアクセス権限を追加
+    // service.addToRolePolicy(
+    //   new aws_iam.PolicyStatement({
+    //     actions: [
+    //       "cognito-idp:InitiateAuth",
+    //       "cognito-idp:RespondToAuthChallenge",
+    //       "cognito-idp:AdminGetUser"
+    //     ],
+    //     resources: [this.userPool.userPoolArn]
+    //   })
+    // );
 
-    NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), 
-      [
-        `${service.node.path}/InstanceRole/DefaultPolicy/Resource`,
-        `${service.node.path}/AccessRole/DefaultPolicy/Resource`,
-      ], 
-      [{
-        id: 'AwsSolutions-IAM5',
-        reason: 'To use ManagedPolicy for AppRunner service',
-      }]
-    );
+    // NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), 
+    //   [
+    //     `${service.node.path}/InstanceRole/DefaultPolicy/Resource`,
+    //     `${service.node.path}/AccessRole/DefaultPolicy/Resource`,
+    //   ], 
+    //   [{
+    //     id: 'AwsSolutions-IAM5',
+    //     reason: 'To use ManagedPolicy for AppRunner service',
+    //   }]
+    // );
 
     NagSuppressions.addResourceSuppressions(this.userPool, [{
       id: 'AwsSolutions-COG3',
@@ -290,11 +495,11 @@ export class InfraopsConsoleStack extends Stack {
       id: 'AwsSolutions-IAM4',
       reason: 'To use ManagedPolicy for AppRunner service',
     }]);
-    NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), [
-      `/${Stack.of(this).stackName}/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource`
-    ],[{
-      id: 'AwsSolutions-IAM4',
-      reason: 'To use ManagedPolicy for service',
-    }])
+    // NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), [
+    //   `/${Stack.of(this).stackName}/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource`
+    // ],[{
+    //   id: 'AwsSolutions-IAM4',
+    //   reason: 'To use ManagedPolicy for service',
+    // }])
   }
 }
