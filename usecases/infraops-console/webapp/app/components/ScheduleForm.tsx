@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '.';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from './Table';
 import StatusBadge from './StatusBadge';
-import type { Schedule } from '~/models/schedule';
+import type { Schedule } from '~/models/scheduler.server';
 
 interface ScheduleFormProps {
   schedules: Schedule[];

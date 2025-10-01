@@ -3,12 +3,12 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
 import { Link, useLoaderData, useNavigation, useSubmit, useFetcher } from '@remix-run/react';
 import { useState, useEffect } from 'react';
 import { useDebounce } from '~/hooks/useDebounce';
-import { ec2Client, ecsClient, rdsClient } from '~/utils/aws.server';
 import { requireAuthentication } from '~/utils/auth.server';
 import type { AppError } from '~/utils/error.server';
-import type { Schedule } from '~/models/schedule';
-import type { Service } from '~/models/service';
-import type { Database } from '~/models/database';
+import { getEC2Instances, startEC2Instance, stopEC2Instance, updateEC2InstanceAlternativeType, type EC2Instance } from '~/models/ec2.server';
+import { getServices, type Service } from '~/models/ecs.server';
+import { getDatabases, startDatabase, stopDatabase, type Database } from '~/models/rds.server';
+import type { Schedule } from '~/models/scheduler.server';
 import { 
   Button, 
   StatusBadge, 
@@ -47,25 +47,17 @@ export async function action({ request }: ActionFunctionArgs) {
     // Call API based on action type
     if (action === 'start') {
       console.info('startInstance called');
-      await ec2Client.startInstance({ instanceId }, request);
+      await startEC2Instance(instanceId, request);
     } else if (action === 'stop') {
-      await ec2Client.stopInstance({ instanceId }, request);
+      await stopEC2Instance(instanceId, request);
     } else if (action === 'stopDBCluster') {
-      await rdsClient.stopDBCluster({ dbClusterIdentifier }, request);
+      await stopDatabase(dbClusterIdentifier, request);
     } else if (action === 'startDBCluster') {
-      await rdsClient.startDBCluster({ dbClusterIdentifier }, request);
+      await startDatabase(dbClusterIdentifier, request);
     } else if (action === 'updateAlternativeType') {
       const alternativeType = formData.get('alternativeType') as string;
       
-      await ec2Client.createTags({
-        resourceIds: [instanceId],
-        tags: [
-          {
-            Key: 'AlternativeType',
-            Value: alternativeType
-          }
-        ]
-      }, request);
+      await updateEC2InstanceAlternativeType(instanceId, alternativeType, request);
     } else if (action === 'createSchedule' || action === 'deleteSchedule') {
       const apiFormData = new FormData();
       apiFormData.append('actionType', action === 'createSchedule' ? 'create' : 'delete');
@@ -114,89 +106,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Check authentication
   const { user } = await requireAuthentication(request); 
 
-  let instances: Array<Instance> = [];
+  // Get list of EC2 instances using domain logic
+  const ec2Instances = await getEC2Instances(request);
   
-  try {
-    // Get list of EC2 instances (with authentication check by passing request object)
-    const { Reservations } = await ec2Client.describeInstances({}, request);
-
-    // Format instance information
-    instances = Reservations?.flatMap(reservation =>
-      reservation.Instances?.map(instance => ({
-        id: instance.InstanceId || '',
-        state: instance.State?.Name,
-        type: instance.InstanceType,
-        alternativeType: instance.Tags?.find(tag => tag.Key === 'AlternativeType')?.Value || 'Not registered',
-        name: instance.Tags?.find(tag => tag.Key === 'Name')?.Value || 'No Name',
-        groupId: instance.Tags?.find(tag => tag.Key === 'GroupId')?.Value || null,
-      })) || []
-    ) || [];
-  } catch (error) {
-    console.error('Error fetching EC2 instances:', error);
-  }
+  // Convert EC2Instance to Instance type for compatibility with existing UI
+  const instances: Array<Instance> = ec2Instances.map(ec2Instance => ({
+    id: ec2Instance.instanceId,
+    state: ec2Instance.state,
+    type: ec2Instance.instanceType,
+    alternativeType: ec2Instance.alternativeType,
+    name: ec2Instance.name,
+    groupId: ec2Instance.groupId,
+  }));
 
   // Get list of ECS services
-  let services: Array<Service> = [];
-  try {
-    // Get list of ECS clusters (with authentication check by passing request object)
-    const { clusterArns } = await ecsClient.listClusters(request);
-    
-    // Get services for each cluster
-    for (const clusterArn of clusterArns || []) {
-      const clusterName = clusterArn.split('/').pop() || '';
-      
-      // Get list of services (with authentication check by passing request object)
-      const { serviceArns } = await ecsClient.listServices({ cluster: clusterArn }, request);
-      
-      if (serviceArns && serviceArns.length > 0) {
-        const { services: serviceDetails } = await ecsClient.describeServices({
-          cluster: clusterArn,
-          services: serviceArns
-        }, request);
-        
-        // Format service information
-        const formattedServices = serviceDetails?.map(service => ({
-          name: service.serviceName || '',
-          status: service.status || '',
-          runningCount: service.runningCount || 0,
-          desiredCount: service.desiredCount || 0,
-          clusterName,
-          clusterArn,
-          serviceArn: service.serviceArn || ''
-        })) || [];
-        
-        services = [...services, ...formattedServices];
-      }
-    }
-  } catch (error) {
-    console.error('Error fetching ECS services:', error);
-  }
+  const services = await getServices(request);
 
   // Get list of RDS DB clusters
-  let databases: Array<Database> = [];
-  try {
-    const { DBClusters } = await rdsClient.describeDBClusters(request);
-    
-    // Format DB cluster information
-    databases = DBClusters?.map(cluster => {
-      // Check status
-      let status = cluster.Status || '';
-      
-      // Check role of DBs
-      let role = 'クラスター';
-      
-      return {
-        identifier: cluster.DBClusterIdentifier || '',
-        status,
-        role,
-        engine: cluster.Engine || '',
-        endpoint: cluster.Endpoint,
-        arn: cluster.DBClusterArn || ''
-      };
-    }) || [];
-  } catch (error) {
-    console.error('Error fetching RDS DB clusters:', error);
-  }
+  const databases = await getDatabases(request);
 
   return { user, instances, services, databases };
 }

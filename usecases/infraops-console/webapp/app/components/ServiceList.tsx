@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useFetcher } from '@remix-run/react';
-import type { Service } from '~/models/service';
+import type { Service } from '~/models/ecs.server';
 import { 
   Table, 
   TableBody, 

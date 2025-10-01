@@ -1,68 +1,48 @@
+/**
+ * API Route for EC2 Instance Schedule Management
+ * 
+ * This file serves as a Remix API route that enables frontend components
+ * to call backend functionality without page navigation.
+ * 
+ * Provides endpoints for managing EC2 instance start/stop schedules
+ * using AWS EventBridge Scheduler without page transitions.
+ * 
+ * - loader: Handles GET requests (schedule data fetching)
+ * - action: Handles POST/PUT/DELETE requests (schedule manipulation)
+ * 
+ * Business logic is delegated to functions in the models/scheduler.server.ts file.
+ * This file only handles authentication checks and parameter passing.
+ * 
+ * Frontend usage examples:
+ * - useFetcher().load("/api/schedules?instanceId=xxx")
+ * - useFetcher().submit(formData, { method: "post", action: "/api/schedules" })
+ */
+
 import { type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node';
-import { schedulerClient } from '~/utils/aws.server';
+import { getSchedulesByInstanceId, handleScheduleAction } from '~/models/scheduler.server';
 import { requireAuthentication } from '~/utils/auth.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // Authentication check
-  await requireAuthentication(request)
+  await requireAuthentication(request);
 
   // Get instance ID from query parameters
   const url = new URL(request.url);
   const instanceId = url.searchParams.get('instanceId');
 
-  if (!instanceId) {
-    return { error: 'Not set Intance ID' };
-  }
-
-  try {
-    const schedules = await schedulerClient.listSchedulesForInstance({instanceId}, request);
-    return { schedules };
-  } catch (error) {
-    console.error('Error fetching schedules:', error);
-    return { error: 'Failed to fetch schedules' };
-  }
+  // Delegate business logic to models layer
+  return await getSchedulesByInstanceId(instanceId, request);
 }
 
 export async function action({ request }: ActionFunctionArgs) {
   // Authentication check
-  await requireAuthentication(request)
+  await requireAuthentication(request);
 
-  // Get form data
+  // Extract form data and convert to parameters object
   const formData = await request.formData();
-  const actionType = formData.get('actionType') as string;
-  const instanceId = formData.get('instanceId') as string;
+  const params = Object.fromEntries(formData);
+  const actionType = params.actionType as string;
 
-  try {
-    if (actionType === 'create') {
-      // Schedule creation process
-      const scheduleName = formData.get('scheduleName') as string;
-      const scheduleAction = formData.get('scheduleAction') as 'start' | 'stop';
-      const cronExpression = formData.get('cronExpression') as string;
-      const description = formData.get('description') as string;
-      
-      await schedulerClient.createSchedule({
-        name: scheduleName,
-        instanceId,
-        action: scheduleAction,
-        cronExpression,
-        description
-      }, request);
-      
-      return { success: true, message: 'Success to create a schedule' };
-    } else if (actionType === 'delete') {
-      // Schedule deletion process
-      const scheduleName = formData.get('scheduleName') as string;
-      await schedulerClient.deleteSchedule({name: scheduleName}, request);
-      
-      return { success: true, message: 'Success to delete a schedule' };
-    } else {
-      return { error: "It's not valid action type" };
-    }
-  } catch (error) {
-    console.error(`Error ${actionType}ing schedule for instance ${instanceId}:`, error);
-    return { 
-      error: `Failed to ${actionType === 'create' ? 'create' : 'delete'} schedule`,
-      details: error instanceof Error ? error.message : String(error)
-    };
-  }
+  // Delegate business logic to models layer
+  return await handleScheduleAction(actionType, params, request);
 }

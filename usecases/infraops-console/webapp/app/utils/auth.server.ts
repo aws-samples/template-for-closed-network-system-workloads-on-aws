@@ -162,7 +162,6 @@ export async function isAuthenticated(request: Request):Promise<void> {
 
 // ID token validation is performed on the AWS side when obtaining temporary credentials, so only token existence check is performed here
 export async function requireAuthentication(request: Request): Promise<{idToken: string, user: User}> {
-  console.log('requireAuthentication called');
   const session = await getSession(request.headers.get('Cookie'));
   const user:User = session.get('user');
   const idToken = session.get('idToken');

@@ -1,13 +1,5 @@
-
-import { getCognitoConfig } from '~/utils/auth.server';
-import { 
-  AdminCreateUserCommand, 
-  AdminDeleteUserCommand,
-  AdminGetUserCommand,
-  ListUsersCommand,
-  AttributeType
-} from '@aws-sdk/client-cognito-identity-provider';
-import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
+import { cognitoClient } from '~/utils/aws.server';
+import { AttributeType } from '@aws-sdk/client-cognito-identity-provider';
 
 // User type definition
 export type User = {
@@ -21,13 +13,6 @@ export type UserList = {
   users: User[];
   lastEvaluatedKey?: Record<string, any>;
 };
-
-// Initialize Cognito client
-const config = getCognitoConfig();
-const cognitoIdp = new CognitoIdentityProviderClient({
-  region: config.region,
-  ...(process.env.NODE_ENV !== 'production' && { profile: 'closedtemplate' })
-});
 
 /**
  * Create user object from Cognito user attributes
@@ -72,13 +57,10 @@ export async function getUsers(
   lastEvaluatedKey?: Record<string, any>
 ): Promise<UserList> {
   try {
-    const command = new ListUsersCommand({
-      UserPoolId: config.userPoolId,
-      Limit: limit || 60,
-      ...(lastEvaluatedKey?.token && { PaginationToken: lastEvaluatedKey.token })
+    const response = await cognitoClient.listUsers({
+      limit: limit || 60,
+      paginationToken: lastEvaluatedKey?.token
     });
-
-    const response = await cognitoIdp.send(command);
     
     const users = response.Users?.map(user => {
       const attributes = user.Attributes || [];
@@ -102,12 +84,7 @@ export async function getUsers(
  */
 export async function getUserByEmail(email: string): Promise<User | null> {
   try {
-    const command = new AdminGetUserCommand({
-      UserPoolId: config.userPoolId,
-      Username: email
-    });
-    
-    const userResponse = await cognitoIdp.send(command);
+    const userResponse = await cognitoClient.getUserByEmail({ email });
     
     if (!userResponse || !userResponse.UserAttributes) {
       return null;
@@ -133,31 +110,11 @@ export async function addUser(userData: {
   try {
     const { email, isAdmin = false, groupId } = userData;
     
-    // Set user attributes
-    const userAttributes = [
-      { Name: 'email', Value: email },
-      { Name: 'email_verified', Value: 'true' },
-      { Name: 'custom:isAdmin', Value: isAdmin ? 'true' : 'false' }
-    ];
-    
-    // Add if group ID is specified
-    if (groupId) {
-      userAttributes.push({ Name: 'custom:groupId', Value: groupId });
-    }
-    
-    // Generate temporary password (random string)
-    const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
-    
-    // Create user
-    const command = new AdminCreateUserCommand({
-      UserPoolId: config.userPoolId,
-      Username: email,
-      UserAttributes: userAttributes,
-      TemporaryPassword: tempPassword,
-      MessageAction: 'SUPPRESS' // Suppress email sending (change as needed)
+    await cognitoClient.createUser({
+      email,
+      isAdmin,
+      groupId
     });
-    
-    await cognitoIdp.send(command);
     
     // Return created user information
     return {
@@ -178,12 +135,7 @@ export async function addUser(userData: {
  */
 export async function deleteUser(email: string): Promise<void> {
   try {
-    const command = new AdminDeleteUserCommand({
-      UserPoolId: config.userPoolId,
-      Username: email
-    });
-    
-    await cognitoIdp.send(command);
+    await cognitoClient.deleteUser({ email });
   } catch (error) {
     console.error('Error deleting user from Cognito:', error);
     throw new Error('Failed to delete user');

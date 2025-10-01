@@ -59,6 +59,11 @@ import {
   AdminInitiateAuthCommand,
   AdminInitiateAuthCommandInput,
   AdminInitiateAuthCommandOutput,
+  AdminCreateUserCommand,
+  AdminDeleteUserCommand,
+  AdminGetUserCommand,
+  ListUsersCommand,
+  AttributeType
 } from '@aws-sdk/client-cognito-identity-provider';
 import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 import crypto from 'crypto';
@@ -71,6 +76,27 @@ import { getVerifiedGroupId } from './jwt-verify.server';
 
 // Region configuration
 const REGION = process.env.AWS_REGION || 'ap-northeast-1'; // Default is Tokyo region
+
+// Function to get Cognito configuration
+function getCognitoConfig() {
+  const clientId = process.env.CLIENT_ID;
+  const clientSecret = process.env.CLIENT_SECRET;
+  const userPoolId = process.env.USER_POOL_ID;
+  const domain = process.env.DOMAIN;
+  const region = process.env.AWS_REGION;  
+
+  if (!clientId || !clientSecret || !userPoolId || !domain || !region) {
+    throw new Error('Cognito configuration not found');
+  }
+  
+  return {
+    clientId,
+    clientSecret,
+    userPoolId,
+    domain,
+    region
+  };
+}
 
 // AWS SDK client configuration
 const makeClientConfig = async (request?: Request) => {
@@ -809,6 +835,119 @@ export const cognitoClient = {
         operationName: 'respondToNewPasswordChallenge',
         params: { username: params.username }
         
+      }
+    );
+  },
+
+  // Get user list
+  listUsers: async (params: {
+    limit?: number;
+    paginationToken?: string;
+  }, request?: Request) => {
+    return await withAWSClient(
+      CognitoIdentityProviderClient,
+      async (client) => {
+        const command = new ListUsersCommand({
+          UserPoolId: process.env.USER_POOL_ID!,
+          Limit: params.limit || 60,
+          ...(params.paginationToken && { PaginationToken: params.paginationToken })
+        });
+        
+        return await client.send(command);
+      },
+      {
+        serviceName: 'Cognito',
+        operationName: 'listUsers',
+        params,
+        request
+      }
+    );
+  },
+
+  // Get user by email address
+  getUserByEmail: async (params: { email: string }, request?: Request) => {
+    return await withAWSClient(
+      CognitoIdentityProviderClient,
+      async (client) => {
+        const command = new AdminGetUserCommand({
+          UserPoolId: process.env.USER_POOL_ID!,
+          Username: params.email
+        });
+        
+        return await client.send(command);
+      },
+      {
+        serviceName: 'Cognito',
+        operationName: 'getUserByEmail',
+        params,
+        request
+      }
+    );
+  },
+
+  // Create user
+  createUser: async (params: {
+    email: string;
+    isAdmin?: boolean;
+    groupId?: string | null;
+  }, request?: Request) => {
+    return await withAWSClient(
+      CognitoIdentityProviderClient,
+      async (client) => {
+        const { email, isAdmin = false, groupId } = params;
+        
+        // Set user attributes
+        const userAttributes = [
+          { Name: 'email', Value: email },
+          { Name: 'email_verified', Value: 'true' },
+          { Name: 'custom:isAdmin', Value: isAdmin ? 'true' : 'false' }
+        ];
+        
+        // Add if group ID is specified
+        if (groupId) {
+          userAttributes.push({ Name: 'custom:groupId', Value: groupId });
+        }
+        
+        // Generate temporary password (random string)
+        const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+        
+        // Create user
+        const command = new AdminCreateUserCommand({
+          UserPoolId: process.env.USER_POOL_ID!,
+          Username: email,
+          UserAttributes: userAttributes,
+          TemporaryPassword: tempPassword,
+          MessageAction: 'SUPPRESS' // Suppress email sending (change as needed)
+        });
+        
+        return await client.send(command);
+      },
+      {
+        serviceName: 'Cognito',
+        operationName: 'createUser',
+        params,
+        request
+      }
+    );
+  },
+
+  // Delete user
+  deleteUser: async (params: { email: string }, request?: Request) => {
+    return await withAWSClient(
+      CognitoIdentityProviderClient,
+      async (client) => {
+        const command = new AdminDeleteUserCommand({
+          UserPoolId: process.env.USER_POOL_ID!,
+          Username: params.email
+        });
+        
+        return await client.send(command);
+      },
+      {
+        serviceName: 'Cognito',
+        operationName: 'deleteUser',
+        params,
+        request
       }
     );
   }

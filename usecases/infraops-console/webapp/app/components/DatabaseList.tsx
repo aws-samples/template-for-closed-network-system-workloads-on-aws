@@ -1,6 +1,6 @@
 import React from 'react';
 import type { FetcherWithComponents } from '@remix-run/react';
-import type { Database } from '~/models/database';
+import type { Database } from '~/models/rds.server';
 import type { AppError } from '~/utils/error.server';
 import { 
   Table, 

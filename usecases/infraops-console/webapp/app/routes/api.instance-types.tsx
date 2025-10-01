@@ -1,32 +1,29 @@
+/**
+ * API Route for EC2 Instance Type Information
+ * 
+ * This file serves as a Remix API route that enables frontend components
+ * to call backend functionality without page navigation.
+ * 
+ * Provides endpoints for retrieving available EC2 instance types
+ * and instance families for the current AWS region.
+ * 
+ * - loader: Handles GET requests (instance type data fetching)
+ * 
+ * Business logic is delegated to functions in the models/ec2.server.ts file.
+ * This file only handles authentication checks and parameter passing.
+ * 
+ * Frontend usage examples:
+ * - useFetcher().load("/api/instance-types")
+ */
+
 import type { LoaderFunctionArgs } from '@remix-run/node';
-import { ec2Client } from '~/utils/aws.server';
+import { getInstanceTypes } from '~/models/ec2.server';
 import { requireAuthentication } from '~/utils/auth.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // Authentication check
   await requireAuthentication(request);
 
-  try {
-      const filters = [{
-          Name: 'location',
-          Values: [process.env.AWS_REGION!]
-        }];
-
-      const { InstanceTypeOfferings } = await ec2Client.describeInstanceTypeOfferings({ filters }, request);
-
-      // Extract only instance type names
-      const instanceTypes = InstanceTypeOfferings?.map(type => type.InstanceType || '') || [];
-
-      // Sort instance types by name
-      instanceTypes.sort();
-
-      // Also get list of available instance families
-      const families = Array.from(new Set(instanceTypes.map(type => type.split('.')[0])));
-      families.sort();
-
-      return { instanceTypes, families };
-  } catch (error) {
-    console.error('Error fetching instance types:', error);
-    return { error: 'Failed to fetch instance types' };
-  }
+  // Delegate business logic to models layer
+  return await getInstanceTypes(request);
 }
