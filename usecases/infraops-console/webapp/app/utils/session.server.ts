@@ -12,7 +12,7 @@ export const sessionStorage = createCookieSessionStorage({
 		httpOnly: true,
 		secrets: [process.env.SESSION_SECRET],
 		secure: process.env.NODE_ENV === 'production',
-		maxAge: 24 * 60 * 60, // 1日	
+		maxAge: 60 * 60, // 1時間（IDトークン・アクセストークンの有効期限に合わせる）
 	},
 })
 

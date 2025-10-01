@@ -58,13 +58,25 @@ export async function action({ request }: ActionFunctionArgs) {
     // If authentication is successful
     if (response.AuthenticationResult) {
       
-      // Save user information and tokens to session
+      // Save tokens and user information to session
       session.unset('challengeName');
       session.unset('challengeSession');
       session.unset('challengeEmail');
       
+      // Save only ID and Access tokens
+      session.set('idToken', response.AuthenticationResult.IdToken);
+      session.set('accessToken', response.AuthenticationResult.AccessToken);
+      
+      // Save user information
+      session.set('user', {
+        email: email,
+        // Add other attributes as needed
+      });
+      
       // Commit session
-      const sessionCookie = await commitSession(session, {expires: new Date(Date.now() + 3600 * 1000)});
+      const sessionCookie = await commitSession(session, {
+        expires: new Date(Date.now() + 60 * 60 * 1000) // Valid for 1 hour (align with token expiry)
+      });
       
       // Redirect to dashboard
       return redirect('/dashboard', {

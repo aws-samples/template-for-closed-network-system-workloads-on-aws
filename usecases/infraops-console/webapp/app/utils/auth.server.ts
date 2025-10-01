@@ -94,12 +94,13 @@ async function initFormStrategy() {
             }
           });
         } 
-        // Save both ID token and user information to session
+        // Save tokens and user information to session
         const session = await getSession(request.headers.get('Cookie'));
     
-        // Save ID token
-        console.log(`Storing ID Token in session: ${authResult.AuthenticationResult?.IdToken}`)
+        // Save only ID and Access tokens
+        console.log(`Storing tokens in session`)
         session.set('idToken', authResult.AuthenticationResult?.IdToken);
+        session.set('accessToken', authResult.AuthenticationResult?.AccessToken);
 
         // Also save user information
         session.set('user', {
@@ -111,7 +112,7 @@ async function initFormStrategy() {
         throw redirect('/dashboard', {
           headers: {
             'Set-Cookie': await commitSession(session, {
-              expires: new Date(Date.now() + 24 * 60 * 60 * 1000) // Valid for 1 day
+              expires: new Date(Date.now() + 60 * 60 * 1000) // Valid for 1 hour (align with token expiry)
             })
           }
         });
@@ -160,16 +161,22 @@ export async function isAuthenticated(request: Request):Promise<void> {
   }
 }
 
-// ID token validation is performed on the AWS side when obtaining temporary credentials, so only token existence check is performed here
-export async function requireAuthentication(request: Request): Promise<{idToken: string, user: User}> {
+// Simplified authentication function without token refresh
+export async function requireAuthentication(request: Request): Promise<{
+  idToken: string;
+  accessToken: string;
+  user: User;
+}> {
   const session = await getSession(request.headers.get('Cookie'));
-  const user:User = session.get('user');
+  const user = session.get('user');
   const idToken = session.get('idToken');
-  
-  if (!idToken) {
-    console.log('No ID token found in session, redirecting to login');
+  const accessToken = session.get('accessToken');
+
+  // Check if user and tokens exist
+  if (!user || !idToken || !accessToken) {
+    console.log('Missing user or tokens in session, redirecting to login');
     throw redirect('/login');
   }
-  
-  return {idToken, user};
+
+  return { idToken, accessToken, user };
 }

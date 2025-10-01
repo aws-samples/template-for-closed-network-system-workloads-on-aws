@@ -63,7 +63,10 @@ import {
   AdminDeleteUserCommand,
   AdminGetUserCommand,
   ListUsersCommand,
-  AttributeType
+  AttributeType,
+  InitiateAuthCommand,
+  InitiateAuthCommandInput,
+  InitiateAuthCommandOutput
 } from '@aws-sdk/client-cognito-identity-provider';
 import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 import crypto from 'crypto';
@@ -950,5 +953,6 @@ export const cognitoClient = {
         request
       }
     );
-  }
+  },
+
 };
