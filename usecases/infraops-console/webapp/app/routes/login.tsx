@@ -50,10 +50,11 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function Login() {
   console.log('login');
   const actionData = useActionData<typeof action>();
-  // const navigation = useNavigation();
-  // const isSubmitting = navigation.state !== 'idle';
-  const isSubmitting = false; // navigation.state always "idle" ???
+  const navigation = useNavigation();
+  const isSubmitting = (navigation.state === 'submitting' || navigation.state === 'loading') && 
+                      navigation.formMethod === 'POST';
   console.log('Login actionData:', actionData);
+  console.log('Navigation state:', navigation.state, 'isSubmitting:', isSubmitting);
 
   return (
     <div className="login-container">
