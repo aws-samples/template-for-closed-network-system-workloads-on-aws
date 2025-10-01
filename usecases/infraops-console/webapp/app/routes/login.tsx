@@ -1,20 +1,14 @@
-import { useEffect } from 'react';
 import { Form, useActionData, useNavigation } from '@remix-run/react';
 import { redirect } from '@remix-run/node';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
 import { authenticator } from '~/utils/auth.server';
-import { getSession, commitSession } from '~/utils/session.server';
+import { getSession } from '~/utils/session.server';
 import { Button, Input, Label, RequirementBadge, UniversalLink } from '~/components';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  console.log('login page loader');
-  // 既にログインしている場合はダッシュボードにリダイレクト
   const session = await getSession(request.headers.get('Cookie'));
-  console.log(`session: ${JSON.stringify(session)}`);
   const idToken = session.get('idToken');
-  console.log(`idToken: ${JSON.stringify(idToken)}`);
   if (idToken) return redirect('/dashboard');
-  console.log('not logged in, stay on login page');
 
   return null;
 }
@@ -22,19 +16,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   try {
     console.log('login action');
-    // フォーム認証を使用
+    // Use form authentication
     await authenticator.authenticate('form', request);
     
   } catch (error: any) {
     
-    // エラーメッセージを返す
+    // Return error response
     if (error instanceof Response) {
       return error;
     }
 
     console.log('error', error);
     
-    // エラーメッセージをより詳細に
     let errorMessage = 'ログインに失敗しました。メールアドレスとパスワードを確認してください。';
     
     if (error.message) {

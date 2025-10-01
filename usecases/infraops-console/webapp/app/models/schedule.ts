@@ -1,6 +1,6 @@
 /**
- * スケジュール型の定義
- * EC2インスタンスの起動・停止スケジュールを表す
+ * Schedule type definition
+ * Represents EC2 instance start/stop schedule
  */
 export type Schedule = {
   name: string;

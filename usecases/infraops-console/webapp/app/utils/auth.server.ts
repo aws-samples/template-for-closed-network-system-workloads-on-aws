@@ -5,15 +5,15 @@ import { User } from '~/models/user.server';
 import { redirect } from '@remix-run/node';
 import { cognitoClient } from './aws.server';
 
-// ユーザータイプの定義
+// User type definition
 export type AuthUser = {
   email: string;
 } | null;
 
-// Authenticatorの作成
+// Create Authenticator
 export const authenticator = new Authenticator<AuthUser>();
 
-// Cognitoの設定を取得する関数
+// Function to get Cognito configuration
 export function getCognitoConfig() {
   const clientId = process.env.CLIENT_ID;
   const clientSecret = process.env.CLIENT_SECRET;
@@ -34,16 +34,16 @@ export function getCognitoConfig() {
   };
 }
 
-// FormStrategyの初期化関数
+// FormStrategy initialization function
 async function initFormStrategy() {
   try {
-    // OAuth2の設定を取得
+    // Get OAuth2 configuration
     const config = getCognitoConfig();
     
-    // FormStrategyの設定
+    // FormStrategy configuration
     authenticator.use(
       new FormStrategy(async ({ form, request }) => {
-        // フォームからユーザー名とパスワードを取得
+        // Get username and password from form
         const email = form.get('email') as string;
         const password = form.get('password') as string;
         
@@ -53,7 +53,7 @@ async function initFormStrategy() {
         
         let authResult;
         try {
-          // ADMIN_USER_PASSWORD_AUTH認証を実行
+          // Execute ADMIN_USER_PASSWORD_AUTH authentication
           authResult = await cognitoClient.initiateAuth({
             username: email,
             password,
@@ -63,24 +63,24 @@ async function initFormStrategy() {
         } catch (error: any) {
           console.error('Authentication error:', error);
           
-          // エラーの種類に応じた処理
+          // Handle errors based on error type
           if (error.name === 'UserNotConfirmedException') {
-            // ユーザーが確認されていない場合
+            // When user is not confirmed
             throw redirect('/error');
           } else if (error.name === 'NotAuthorizedException') {
-            // 認証エラーの場合
+            // In case of authentication error
             throw new Error('メールアドレスまたはパスワードが正しくありません');
           } else if (error.name === 'UserNotFoundException') {
-            // ユーザーが存在しない場合
+            // When user does not exist
             throw new Error('ユーザーが存在しません');
           } else {
-            // その他のエラー
+            // Other errors
             throw new Error('認証に失敗しました');
           }
         }
           
         if (authResult.ChallengeName === "NEW_PASSWORD_REQUIRED" && authResult.ChallengeParameters) {
-          // セッションにチャレンジ情報を保存
+          // Save challenge information to session
           const session = await getSession(request.headers.get('Cookie'));
           session.set('challengeName', authResult.ChallengeName);
           session.set('challengeSession', authResult.Session);
@@ -89,29 +89,29 @@ async function initFormStrategy() {
           throw redirect('/change-password', {
             headers: {
               'Set-Cookie': await commitSession(session, {
-                expires: new Date(Date.now() + 300000) // 5分間有効
+                expires: new Date(Date.now() + 300000) // Valid for 5 minutes
               })
             }
           });
         } 
-        // セッションにIDトークンとユーザー情報の両方を保存
+        // Save both ID token and user information to session
         const session = await getSession(request.headers.get('Cookie'));
     
-        // IDトークンを保存
+        // Save ID token
         console.log(`Storing ID Token in session: ${authResult.AuthenticationResult?.IdToken}`)
         session.set('idToken', authResult.AuthenticationResult?.IdToken);
 
-        // ユーザー情報も保存
+        // Also save user information
         session.set('user', {
           email: email,
-          // 必要に応じて他の属性も追加
+          // Add other attributes as needed
         });
     
-        // セッションをコミットしてダッシュボードにリダイレクト
+        // Commit session and redirect to dashboard
         throw redirect('/dashboard', {
           headers: {
             'Set-Cookie': await commitSession(session, {
-              expires: new Date(Date.now() + 24 * 60 * 60 * 1000) // 1日有効
+              expires: new Date(Date.now() + 24 * 60 * 60 * 1000) // Valid for 1 day
             })
           }
         });
@@ -125,22 +125,22 @@ async function initFormStrategy() {
   }
 }
 
-// 初期化関数を実行
+// Execute initialization function
 initFormStrategy().catch(error => {
   console.error('Failed to initialize Form strategy:', error);
 });
 
-// 管理者権限チェック
+// Admin permission check
 export async function requireAdmin(request: Request) {
   const session = await getSession(request.headers.get('Cookie'));
   const user = session.get('user');
   
-  // ユーザー情報がない場合はエラー
+  // Error if no user information
   if (!user) {
     throw redirect('/login');
   }
   
-  // Cognitoのカスタム属性isAdminがTrueかどうかをチェック
+  // Check if Cognito custom attribute isAdmin is True
   const isAdmin = user.isAdmin === true;
   
   if (!isAdmin) {
@@ -150,7 +150,7 @@ export async function requireAdmin(request: Request) {
   return user;
 }
 
-// ログイン状態チェック
+// Login status check
 export async function isAuthenticated(request: Request):Promise<void> {
   const session = await getSession(request.headers.get('Cookie'));
   const user:User = session.get('user');
@@ -160,7 +160,7 @@ export async function isAuthenticated(request: Request):Promise<void> {
   }
 }
 
-// IDトークンの検証は、一時認証情報取得時にAWS側で行うため、ここではトークンの存在チェックのみを行う
+// ID token validation is performed on the AWS side when obtaining temporary credentials, so only token existence check is performed here
 export async function requireAuthentication(request: Request): Promise<{idToken: string, user: User}> {
   console.log('requireAuthentication called');
   const session = await getSession(request.headers.get('Cookie'));

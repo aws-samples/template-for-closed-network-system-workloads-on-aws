@@ -30,9 +30,9 @@ type Instance = {
   id: string | undefined;
   state: string | undefined;
   type: string | undefined;
-  alternativeType: string | undefined; // 代替タイプ
+  alternativeType: string | undefined; // Alternative type
   name: string;
-  groupId: string | null; // インスタンスのグループID
+  groupId: string | null; // Instance group ID
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -126,7 +126,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         id: instance.InstanceId || '',
         state: instance.State?.Name,
         type: instance.InstanceType,
-        alternativeType: instance.Tags?.find(tag => tag.Key === 'AlternativeType')?.Value || '未登録',
+        alternativeType: instance.Tags?.find(tag => tag.Key === 'AlternativeType')?.Value || 'Not registered',
         name: instance.Tags?.find(tag => tag.Key === 'Name')?.Value || 'No Name',
         groupId: instance.Tags?.find(tag => tag.Key === 'GroupId')?.Value || null,
       })) || []
@@ -243,7 +243,7 @@ export default function Dashboard() {
   };
   
   // State for managing instance type changes
-  const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null); // 編集中のインスタンスID
+  const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null); // Instance ID being edited
   const [availableInstanceTypes, setAvailableInstanceTypes] = useState<Record<string, string[]>>({});
   const [selectedAlternativeType, setSelectedAlternativeType] = useState<Record<string, string>>({});
   const [inputValue, setInputValue] = useState('');
@@ -331,7 +331,7 @@ export default function Dashboard() {
         }));
       } else {
         console.error('Failed to get instance types');
-        // 取得失敗時には空の配列を設定する
+        // Set empty array when acquisition fails
         setAvailableInstanceTypes(prev => ({ ...prev, [instanceId]: [] }));
       }
     } catch (error) {
@@ -517,7 +517,7 @@ export default function Dashboard() {
           <TableBody>
             {(instances as Instance[]).map(instance => {
               const instanceId = instance.id || '';
-              // インスタンスごとのスケジュール関連の状態を管理
+              // Manage schedule-related state for each instance
               
               return (
                 <>
@@ -544,7 +544,7 @@ export default function Dashboard() {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         {editingInstanceId === instance.id ? (
-                          // 編集モード時はプルダウンを表示
+                          // Display dropdown in edit mode
                           <div className="w-full">
                             {isLoading[instance.id || ''] ? (
                               <div className="flex justify-center py-1">
@@ -642,7 +642,7 @@ export default function Dashboard() {
                             )}
                           </div>
                         ) : (
-                          // 通常表示モード
+                          // Normal display mode
                           <>
                             <span>{instance.alternativeType === '未登録' ? (
                               <span className="text-gray-500">{instance.alternativeType}</span>

@@ -1,6 +1,6 @@
 /**
- * RDS DBクラスター型の定義
- * RDS DBクラスターの基本情報を表す
+ * RDS DB cluster type definition
+ * Represents basic information of RDS DB cluster
  */
 export type Database = {
   identifier: string;

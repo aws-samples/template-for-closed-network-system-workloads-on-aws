@@ -18,11 +18,9 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
     setIsRefreshing(true);
     onRefresh();
     
-    // ページがリロードされる場合は実行されないが、
-    // APIリクエストなどの場合のために念のため状態をリセットするタイマーを設定
     setTimeout(() => {
       setIsRefreshing(false);
-    }, 5000); // 5秒後にタイムアウト
+    }, 5000);
   };
 
   return (

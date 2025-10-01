@@ -27,14 +27,14 @@ export class InfraopsConsoleStack extends Stack {
       port: 443
     })
 
-    // SQS FIFO キューの作成
+    // Create SQS FIFO queue
     const instanceDeadLetterQueue = new aws_sqs.Queue(this,'InstanceDeadLetterQueue', {
       fifo: true,
       enforceSSL: true
     });
     const instanceQueue = new aws_sqs.Queue(this, 'InstanceQueue', {
       fifo: true,
-      contentBasedDeduplication: true, // 重複排除を有効化
+      contentBasedDeduplication: true, // Enable deduplication
       queueName: 'ice-instance-recovery-queue.fifo',
       enforceSSL: true,
       deadLetterQueue: {
@@ -43,14 +43,14 @@ export class InfraopsConsoleStack extends Stack {
       }
     });
 
-    // Lambda 関数の作成
+    // Create Lambda function
     const iceRecoveryFunction = new NodejsFunction(this, 'IceRecoveryFunction', {
       runtime: aws_lambda.Runtime.NODEJS_22_X,
       handler: 'handler',
       entry: path.join(__dirname, '../functions/ice-recovery/index.ts'),
     });
 
-    // EC2 インスタンスに対する権限を付与
+    // Grant permissions for EC2 instances
     iceRecoveryFunction.addToRolePolicy(new aws_iam.PolicyStatement({
       actions: [
         'ec2:DescribeInstances',
@@ -62,22 +62,22 @@ export class InfraopsConsoleStack extends Stack {
       resources: ['*']
     }));
 
-    // Lambda に SQS トリガーを連携させる
+    // Connect SQS trigger to Lambda
     iceRecoveryFunction.addEventSource(new aws_lambda_event_sources.SqsEventSource(instanceQueue, {
       batchSize: 1,
     }));
 
-    // Lambda がキューを受け取ることができる権限を付与
+    // Grant permission for Lambda to receive messages from queue
     instanceQueue.grantConsumeMessages(iceRecoveryFunction);
     
-    // EventBridge Scheduler実行ロールの作成
+    // Create EventBridge Scheduler execution role
     const schedulerExecutionRole = new aws_iam.Role(this, 'EventBridgeSchedulerExecutionRole', {
       roleName: 'EventBridgeSchedulerExecutionRole',
       assumedBy: new aws_iam.ServicePrincipal('scheduler.amazonaws.com'),
       description: 'Role for EventBridge Scheduler to execute EC2 actions'
     });
     
-    // EC2インスタンスの起動・停止権限を付与
+    // Grant EC2 instance start/stop permissions
     schedulerExecutionRole.addToPolicy(new aws_iam.PolicyStatement({
       actions: [
         'ec2:StartInstances',
@@ -86,36 +86,36 @@ export class InfraopsConsoleStack extends Stack {
       resources: ['*']
     }));
 
-    // ICE のログのイベントをトリガーに SQS へキューイングするためのルール 
+    // Rule to queue ICE log events to SQS as triggers
     new aws_events.Rule(this, 'IceEventRule', {
       eventPattern: {
         source: ['aws.ec2'],
         detailType: ['AWS API Call via CloudTrail'],
         detail: {
           eventSource: ['ec2.amazonaws.com'],
-          eventName: ['StartInstances', 'RunInstances'], // 起動に関するイベントをキャッチする
+          eventName: ['StartInstances', 'RunInstances'], // Catch startup-related events
           errorCode: ['Server.InsufficientInstanceCapacity']
         },
       },
       targets: [new aws_events_targets.SqsQueue(instanceQueue, {
         message: aws_events.RuleTargetInput.fromObject({
-          // ログからインスタンス ID をメッセージに詰める
+          // Pack instance ID from logs into message
           instanceId: aws_events.EventField.fromPath('$.detail.requestParameters.instancesSet.items[0].instanceId'),
         }),
-        // FIFOキューではメッセージグループIDが必須のため、メッセージグループIDを決める必要がある（ここでは、簡単のためにインスタンスIDを利用した）
+        // FIFO queues require message group ID, so we need to determine one (using instance ID for simplicity here)
         messageGroupId: aws_events.EventField.fromPath('$.detail.requestParameters.instancesSet.items[0].instanceId'),
       })]
     });
 
-    // Cognitoユーザープールの作成
+    // Create Cognito User Pool
     this.userPool = new aws_cognito.UserPool(this, 'InfraopsConsoleUserPool', {
       userPoolName: 'infraops-console-user-pool',
-      selfSignUpEnabled: false, // 管理者のみがユーザーを作成可能
+      selfSignUpEnabled: false, // Only administrators can create users
       signInAliases: {
-        email: true // メールアドレスでのサインインを有効化
+        email: true // Enable sign-in with email address
       },
       autoVerify: {
-        email: true // メールアドレスの自動検証を有効化
+        email: true // Enable automatic email verification
       },
       standardAttributes: {
         email: {
@@ -145,14 +145,14 @@ export class InfraopsConsoleStack extends Stack {
       description: 'Regular users group with limited access'
     });
 
-    // ユーザープールドメインの設定
+    // Configure User Pool domain
     const userPoolDomain = this.userPool.addDomain('InfraopsConsoleDomain', {
       cognitoDomain: {
         domainPrefix: `infraops-console-${this.account.substring(0, 8)}`
       },
     });
 
-    // ユーザープールクライアントの作成
+    // Create User Pool client
     this.userPoolClient = this.userPool.addClient('InfraopsConsoleClient', {
       userPoolClientName: 'infraops-console-client',
       idTokenValidity: Duration.minutes(60),
@@ -173,12 +173,12 @@ export class InfraopsConsoleStack extends Stack {
           aws_cognito.OAuthScope.PROFILE
         ],
         callbackUrls: [
-          'http://localhost:3000/auth/callback', // ローカル開発用
-          `https://${props.appRunnerVpcEndpointId}.execute-api.${this.region}.amazonaws.com/auth/callback` // 本番環境用
+          'http://localhost:3000/auth/callback', // For local development
+          `https://${props.appRunnerVpcEndpointId}.execute-api.${this.region}.amazonaws.com/auth/callback` // For production environment
         ],
         logoutUrls: [
-          'http://localhost:3000/', // ローカル開発用
-          `https://${props.appRunnerVpcEndpointId}.execute-api.${this.region}.amazonaws.com/` // 本番環境用
+          'http://localhost:3000/', // For local development
+          `https://${props.appRunnerVpcEndpointId}.execute-api.${this.region}.amazonaws.com/` // For production environment
         ]
       },
       supportedIdentityProviders: [
@@ -187,7 +187,7 @@ export class InfraopsConsoleStack extends Stack {
       generateSecret: true
     });
 
-    // Cognito IDプールの作成（CfnIdentityPoolを使用）
+    // Create Cognito Identity Pool (using CfnIdentityPool)
     this.idPool = new aws_cognito.CfnIdentityPool(this, 'IdentityPool', {
       allowUnauthenticatedIdentities: false,
       cognitoIdentityProviders: [
@@ -199,7 +199,7 @@ export class InfraopsConsoleStack extends Stack {
       ]
     });
 
-    // Admins用のIAMロール作成（フルアクセス権限）
+    // Create IAM role for Admins (full access permissions)
     const adminRole = new aws_iam.Role(this, 'AdminRole', {
       assumedBy: new aws_iam.CompositePrincipal(
         new aws_iam.FederatedPrincipal(
@@ -230,12 +230,12 @@ export class InfraopsConsoleStack extends Stack {
       description: 'Role for Admins group with full access'
     });
 
-    // Admins用ポリシー（既存のAuthenticatedUserPolicyと同等）
+    // Policy for Admins (equivalent to existing AuthenticatedUserPolicy)
     adminRole.attachInlinePolicy(new aws_iam.Policy(this, 'AdminPolicy', {
       statements: [
         new aws_iam.PolicyStatement({
           actions: [
-            // EC2関連の権限
+            // EC2-related permissions
             "ec2:DescribeInstances",
             "ec2:StartInstances",
             "ec2:StopInstances",
@@ -243,12 +243,12 @@ export class InfraopsConsoleStack extends Stack {
             "ec2:CreateTags",
             "ec2:GetInstanceTypesFromInstanceRequirements",
             "ec2:DescribeInstanceTypeOfferings",
-            // ECS関連の権限
+            // ECS-related permissions
             "ecs:ListClusters",
             "ecs:ListServices",
             "ecs:DescribeServices",
             "ecs:UpdateService",
-            // RDS関連の権限
+            // RDS-related permissions
             "rds:DescribeDBClusters",
             "rds:StopDBCluster",
             "rds:StopDBInstance",
@@ -256,14 +256,14 @@ export class InfraopsConsoleStack extends Stack {
             "rds:StartDBInstance",
             "rds:RebootDBCluster",
             "rds:RebootDBInstance",
-            // EventBridge Scheduler関連の権限
+            // EventBridge Scheduler-related permissions
             "scheduler:CreateSchedule",
             "scheduler:GetSchedule",
             "scheduler:UpdateSchedule",
             "scheduler:DeleteSchedule",
             "scheduler:ListSchedules",
             "scheduler:ListTagsForResource",
-            // Cognito関連の権限
+            // Cognito-related permissions
             "cognito-idp:ForgotPassword",
             "cognito-idp:ConfirmForgotPassword",
             "cognito-idp:GetUser",
@@ -283,7 +283,7 @@ export class InfraopsConsoleStack extends Stack {
       ]
     }));
 
-    // Users用のIAMロール作成（ABAC適用）
+    // Create IAM role for Users (with ABAC applied)
     const usersRole = new aws_iam.Role(this, 'UsersRole', {
       assumedBy: new aws_iam.CompositePrincipal(
         new aws_iam.FederatedPrincipal(
@@ -314,10 +314,10 @@ export class InfraopsConsoleStack extends Stack {
       description: 'Role for Users group with ABAC-based access control'
     });
 
-    // Users用ポリシー（ABACを適用）
+    // Policy for Users (with ABAC applied)
     usersRole.attachInlinePolicy(new aws_iam.Policy(this, 'UsersGroupPolicy', {
       statements: [
-        // EC2関連の権限（ABACを適用）
+        // EC2-related permissions (with ABAC applied)
         new aws_iam.PolicyStatement({
           actions: [
             "ec2:DescribeInstances",
@@ -353,7 +353,7 @@ export class InfraopsConsoleStack extends Stack {
             }
           }
         }),
-        // ECS関連の権限（ABACを適用）
+        // ECS-related permissions (with ABAC applied)
         new aws_iam.PolicyStatement({
           actions: [
             "ecs:ListClusters",
@@ -373,7 +373,7 @@ export class InfraopsConsoleStack extends Stack {
             }
           }
         }),
-        // RDS関連の権限（ABACを適用）
+        // RDS-related permissions (with ABAC applied)
         new aws_iam.PolicyStatement({
           actions: [
             "rds:DescribeDBClusters"
@@ -396,7 +396,7 @@ export class InfraopsConsoleStack extends Stack {
             }
           }
         }),
-        // EventBridge Scheduler関連の権限（ABACを適用）
+        // EventBridge Scheduler-related permissions (with ABAC applied)
         new aws_iam.PolicyStatement({
           actions: [
             "scheduler:ListSchedules",
@@ -422,7 +422,7 @@ export class InfraopsConsoleStack extends Stack {
             }
           }
         }),
-        // Cognito関連の権限（ABACなし - 全ユーザーが利用可能）
+        // Cognito-related permissions (no ABAC - available to all users)
         new aws_iam.PolicyStatement({
           actions: [
             "cognito-idp:ForgotPassword",
@@ -433,7 +433,7 @@ export class InfraopsConsoleStack extends Stack {
           ],
           resources: ["*"]
         }),
-        // PassRole権限（ABACなし）
+        // PassRole permissions (no ABAC)
         new aws_iam.PolicyStatement({
           actions: [
             "iam:PassRole"
@@ -445,7 +445,7 @@ export class InfraopsConsoleStack extends Stack {
       ]
     }));
 
-    // CfnJsonを使用してroleMappingsを動的に構築
+    // Dynamically build roleMappings using CfnJson
     const roleMappingsJson = new CfnJson(this, 'RoleMappingsJson', {
       value: {
         [`cognito-idp.${this.region}.amazonaws.com/${this.userPool.userPoolId}:${this.userPoolClient.userPoolClientId}`]: {
@@ -471,7 +471,7 @@ export class InfraopsConsoleStack extends Stack {
       }
     });
 
-    // ロールマッピングの作成（CfnIdentityPoolRoleAttachmentを使用）
+    // Create role mapping (using CfnIdentityPoolRoleAttachment)
     new aws_cognito.CfnIdentityPoolRoleAttachment(this, 'IdentityPoolRoleAttachment', {
       identityPoolId: this.idPool.ref,
       roleMappings: roleMappingsJson,
@@ -480,7 +480,7 @@ export class InfraopsConsoleStack extends Stack {
       }
     });
 
-    // PrincipalTagマッピングの作成（custom:groupIdをGroupIdにマッピング）
+    // Create PrincipalTag mapping (map custom:groupId to GroupId)
     new aws_cognito.CfnIdentityPoolPrincipalTag(this, 'IdentityPoolPrincipalTag', {
       identityPoolId: this.idPool.ref,
       identityProviderName: this.userPool.userPoolProviderName,
@@ -491,13 +491,13 @@ export class InfraopsConsoleStack extends Stack {
       useDefaults: false
     });
 
-//     // ローカルのコードをビルドしてECRにプッシュ
+//     // Build local code and push to ECR
 //     const instanceManagerAsset = new assets.DockerImageAsset(this, 'InfraopsConsoleDockerImage', {
 //       directory: path.join(__dirname, '../webapp'),
 //       cacheDisabled: true,
 //     });
 // 
-    // // AppRunnerサービスを作成
+    // // Create AppRunner service
     // const service = new apprunner.Service(this, 'InfraopsConsoleService', {
     //   serviceName: 'infraops-console',
     //   source: apprunner.Source.fromAsset({
@@ -537,7 +537,7 @@ export class InfraopsConsoleStack extends Stack {
     //   interfaceVpcEndpoint,
     // });
 
-    // // Cognitoへのアクセス権限を追加
+    // // Add access permissions to Cognito
     // service.addToRolePolicy(
     //   new aws_iam.PolicyStatement({
     //     actions: [

@@ -1,15 +1,15 @@
 
-import { cognitoClient } from '~/utils/aws.server';
 import { getCognitoConfig } from '~/utils/auth.server';
 import { 
   AdminCreateUserCommand, 
   AdminDeleteUserCommand,
+  AdminGetUserCommand,
   ListUsersCommand,
   AttributeType
 } from '@aws-sdk/client-cognito-identity-provider';
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 
-// ユーザー型の定義
+// User type definition
 export type User = {
   email: string;
   groupId?: string | null;
@@ -22,7 +22,7 @@ export type UserList = {
   lastEvaluatedKey?: Record<string, any>;
 };
 
-// Cognitoクライアントの初期化
+// Initialize Cognito client
 const config = getCognitoConfig();
 const cognitoIdp = new CognitoIdentityProviderClient({
   region: config.region,
@@ -30,9 +30,9 @@ const cognitoIdp = new CognitoIdentityProviderClient({
 });
 
 /**
- * Cognitoユーザー属性からユーザーオブジェクトを作成
- * @param userAttributes Cognitoユーザー属性
- * @returns ユーザーオブジェクト
+ * Create user object from Cognito user attributes
+ * @param userAttributes Cognito user attributes
+ * @returns User object
  */
 function mapCognitoUserToUser(userAttributes: AttributeType[]): User {
   let email = '';
@@ -40,7 +40,7 @@ function mapCognitoUserToUser(userAttributes: AttributeType[]): User {
   let isAdmin = false;
   let createdAt = new Date().toISOString();
 
-  // 属性から必要な情報を抽出
+  // Extract necessary information from attributes
   userAttributes.forEach(attr => {
     if (attr.Name === 'email') {
       email = attr.Value || '';
@@ -62,10 +62,10 @@ function mapCognitoUserToUser(userAttributes: AttributeType[]): User {
 }
 
 /**
- * ユーザー一覧を取得
- * @param limit 取得件数の上限（オプション）
- * @param lastEvaluatedKey 開始キー（ページネーション用、オプション）
- * @returns ユーザーリスト
+ * Get user list
+ * @param limit Maximum number of items to retrieve (optional)
+ * @param lastEvaluatedKey Starting key (for pagination, optional)
+ * @returns User list
  */
 export async function getUsers(
   limit?: number,
@@ -96,13 +96,18 @@ export async function getUsers(
 }
 
 /**
- * メールアドレスでユーザーを検索
- * @param email メールアドレス
- * @returns ユーザー情報、存在しない場合はnull
+ * Search user by email address
+ * @param email Email address
+ * @returns User information, null if not found
  */
 export async function getUserByEmail(email: string): Promise<User | null> {
   try {
-    const userResponse = await cognitoClient.getUser(email, config.userPoolId);
+    const command = new AdminGetUserCommand({
+      UserPoolId: config.userPoolId,
+      Username: email
+    });
+    
+    const userResponse = await cognitoIdp.send(command);
     
     if (!userResponse || !userResponse.UserAttributes) {
       return null;
@@ -116,9 +121,9 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 }
 
 /**
- * ユーザーを追加
- * @param userData ユーザーデータ
- * @returns 追加されたユーザー情報
+ * Add user
+ * @param userData User data
+ * @returns Added user information
  */
 export async function addUser(userData: {
   email: string;
@@ -128,33 +133,33 @@ export async function addUser(userData: {
   try {
     const { email, isAdmin = false, groupId } = userData;
     
-    // ユーザー属性の設定
+    // Set user attributes
     const userAttributes = [
       { Name: 'email', Value: email },
       { Name: 'email_verified', Value: 'true' },
       { Name: 'custom:isAdmin', Value: isAdmin ? 'true' : 'false' }
     ];
     
-    // グループIDが指定されている場合は追加
+    // Add if group ID is specified
     if (groupId) {
       userAttributes.push({ Name: 'custom:groupId', Value: groupId });
     }
     
-    // 一時パスワードの生成（ランダムな文字列）
+    // Generate temporary password (random string)
     const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
     
-    // ユーザーの作成
+    // Create user
     const command = new AdminCreateUserCommand({
       UserPoolId: config.userPoolId,
       Username: email,
       UserAttributes: userAttributes,
       TemporaryPassword: tempPassword,
-      MessageAction: 'SUPPRESS' // メール送信を抑制（必要に応じて変更）
+      MessageAction: 'SUPPRESS' // Suppress email sending (change as needed)
     });
     
     await cognitoIdp.send(command);
     
-    // 作成したユーザー情報を返す
+    // Return created user information
     return {
       email,
       groupId: groupId || null,
@@ -163,13 +168,13 @@ export async function addUser(userData: {
     };
   } catch (error) {
     console.error('Error adding user to Cognito:', error);
-    throw new Error('ユーザーの追加に失敗しました');
+    throw new Error('Failed to add user');
   }
 }
 
 /**
- * ユーザーを削除
- * @param email メールアドレス
+ * Delete user
+ * @param email Email address
  */
 export async function deleteUser(email: string): Promise<void> {
   try {
@@ -181,6 +186,6 @@ export async function deleteUser(email: string): Promise<void> {
     await cognitoIdp.send(command);
   } catch (error) {
     console.error('Error deleting user from Cognito:', error);
-    throw new Error('ユーザーの削除に失敗しました');
+    throw new Error('Failed to delete user');
   }
 }

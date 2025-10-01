@@ -17,7 +17,6 @@ export const links: LinksFunction = () => [
 ];
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // ユーザーが認証されているかチェック（リダイレクトはしない）
   try {
     const user = await authenticator.authenticate('TOTP', request);
     return { user }

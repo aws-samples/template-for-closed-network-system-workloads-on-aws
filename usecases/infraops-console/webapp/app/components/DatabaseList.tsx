@@ -24,7 +24,6 @@ interface DatabaseListProps {
   }>;
 }
 
-// RDSクラスターの状態に基づいてアクションを判断する関数
 const getClusterAction = (status: string): { action: string | null, label: string | null } => {
   const lowerStatus = status.toLowerCase();
   
@@ -33,7 +32,6 @@ const getClusterAction = (status: string): { action: string | null, label: strin
   } else if (lowerStatus === 'stopped') {
     return { action: 'start', label: '再開' };
   } else {
-    // 処理中の状態（stopping, starting など）
     return { action: null, label: null };
   }
 };

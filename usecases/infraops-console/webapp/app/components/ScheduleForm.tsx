@@ -39,7 +39,7 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
         </div>
       ) : (
         <>
-          {/* 既存のスケジュール一覧 */}
+          {/* List of existed schedules */}
           <div>
             <h4 className="font-medium mb-2">登録済みスケジュール</h4>
             {schedules.length === 0 ? (
@@ -87,7 +87,7 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
             )}
           </div>
           
-          {/* 新規スケジュール追加フォーム */}
+          {/* Form of new schedule */}
           <div>
             <h4 className="font-medium">新規スケジュール追加</h4>
             <span className="text-xs text-gray-500">例: 毎週月〜金の午前8時に実行する場合は「0 8 ? * MON-FRI *」と入力してください。</span>

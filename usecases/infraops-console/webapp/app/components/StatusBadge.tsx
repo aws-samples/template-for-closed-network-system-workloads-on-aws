@@ -13,22 +13,22 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   label, 
   className = '' 
 }) => {
-  // ステータスに基づくスタイル
+  // Styles based on status
   const getStatusStyle = (status: string) => {
     switch (status.toLowerCase()) {
-      // 正常・利用可能状態
+      // Normal/Available state
       case 'running':
       case 'success':
       case 'active':
       case 'available':
         return 'bg-green-100 text-green-800';
       
-      // 停止状態
+      // Stopped state
       case 'stopped':
       case 'inactive':
         return 'bg-gray-100 text-gray-800';
       
-      // 処理中・警告状態（黄色）
+      // Processing/Warning state (yellow)
       case 'pending':
       case 'warning':
       case 'creating':
@@ -42,7 +42,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       case 'promoting':
         return 'bg-yellow-100 text-yellow-800';
       
-      // 処理中・注意状態（オレンジ）
+      // Processing/Caution state (orange)
       case 'stopping':
       case 'draining':
       case 'deleting':
@@ -51,28 +51,28 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       case 'failing-over':
         return 'bg-orange-100 text-orange-800';
       
-      // エラー状態
+      // Error state
       case 'error':
       case 'failed':
       case 'inaccessible-encryption-credentials':
         return 'bg-red-100 text-red-800';
       
-      // 情報状態
+      // Info state
       case 'info':
         return 'bg-blue-100 text-blue-800';
       
-      // その他
+      // Others
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // ステータスラベルの取得
+  // Get status label
   const getStatusLabel = (status: string) => {
     if (label) return label;
     
     switch (status.toLowerCase()) {
-      // EC2インスタンスのステータス
+      // EC2 instance status
       case 'running':
         return '実行中';
       case 'stopped':
@@ -82,7 +82,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       case 'stopping':
         return '停止中';
       
-      // 一般的なステータス
+      // General status
       case 'error':
         return 'エラー';
       case 'success':
@@ -98,7 +98,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       case 'inactive':
         return '非アクティブ';
       
-      // RDSインスタンス/クラスターのステータス
+      // RDS instance/cluster status
       case 'available':
         return '利用可能';
       case 'creating':
@@ -116,7 +116,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       case 'upgrading':
         return 'アップグレード中';
       
-      // Auroraクラスター固有のステータス
+      // Aurora cluster specific status
       case 'backing-up':
         return 'バックアップ中';
       case 'failing-over':

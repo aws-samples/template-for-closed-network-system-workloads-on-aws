@@ -24,24 +24,24 @@ export const ServiceList: React.FC<ServiceListProps> = ({
   isSubmitting = false,
   onRefresh
 }) => {
-  // 編集中のサービスIDを管理
+  // Manage the service ID being edited
   const [editingServiceArn, setEditingServiceArn] = useState<string | null>(null);
-  // 編集中のタスク数を管理
+  // Manage the task count being edited
   const [editingDesiredCount, setEditingDesiredCount] = useState<number>(0);
   const fetcher = useFetcher();
   
-  // 編集モードを開始
+  // Start edit mode
   const handleStartEdit = (service: Service) => {
     setEditingServiceArn(service.serviceArn);
     setEditingDesiredCount(service.desiredCount);
   };
   
-  // 編集をキャンセル
+  // Cancel edit
   const handleCancelEdit = () => {
     setEditingServiceArn(null);
   };
   
-  // タスク数を保存
+  // Save task count
   const handleSaveDesiredCount = (service: Service) => {
     const formData = new FormData();
     formData.append('action', 'updateDesiredCount');
@@ -54,11 +54,11 @@ export const ServiceList: React.FC<ServiceListProps> = ({
       action: '/api/services'
     });
     
-    // 編集モードを終了
+    // End edit mode
     setEditingServiceArn(null);
     
-    // 楽観的UI更新（実際のAPIレスポンスを待たずに表示を更新）
-    // 注意: 実際のAPIレスポンスが返ってきたら、onRefreshを呼び出して最新の状態を取得する
+    // Optimistic UI update (update display without waiting for actual API response)
+    // Note: When the actual API response returns, call onRefresh to get the latest state
     setTimeout(() => {
       if (onRefresh) onRefresh();
     }, 1000);
@@ -96,7 +96,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
                   <span>{service.runningCount} / </span>
                   
                   {editingServiceArn === service.serviceArn ? (
-                    // 編集モード
+                    // Edit mode
                     <div className="flex items-center space-x-2">
                       <Input
                         type="number"
@@ -111,7 +111,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
                         <button
                           onClick={() => handleSaveDesiredCount(service)}
                           className="text-gray-500 hover:text-green-600 focus:outline-none"
-                          title="保存"
+                          title="Save"
                           disabled={fetcher.state !== 'idle'}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
@@ -121,7 +121,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
                         <button
                           onClick={handleCancelEdit}
                           className="text-gray-500 hover:text-red-600 focus:outline-none"
-                          title="キャンセル"
+                          title="Cancel"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -130,14 +130,14 @@ export const ServiceList: React.FC<ServiceListProps> = ({
                       </div>
                     </div>
                   ) : (
-                    // 通常表示モード
+                    // Normal display mode
                     <div className="flex items-center space-x-1">
                       <span>{service.desiredCount}</span>
                       <button
                         onClick={() => handleStartEdit(service)}
                         className="text-gray-500 hover:text-blue-600 focus:outline-none"
                         disabled={isSubmitting || fetcher.state !== 'idle' || editingServiceArn !== null}
-                        title="タスク数変更"
+                        title="Change task count"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                           <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />

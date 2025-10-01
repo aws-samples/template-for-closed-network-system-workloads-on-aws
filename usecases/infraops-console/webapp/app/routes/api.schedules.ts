@@ -3,10 +3,10 @@ import { schedulerClient } from '~/utils/aws.server';
 import { requireAuthentication } from '~/utils/auth.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // 認証チェック
+  // Authentication check
   await requireAuthentication(request)
 
-  // クエリパラメータからインスタンスIDを取得
+  // Get instance ID from query parameters
   const url = new URL(request.url);
   const instanceId = url.searchParams.get('instanceId');
 
@@ -24,17 +24,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  // 認証チェック
+  // Authentication check
   await requireAuthentication(request)
 
-  // フォームデータを取得
+  // Get form data
   const formData = await request.formData();
   const actionType = formData.get('actionType') as string;
   const instanceId = formData.get('instanceId') as string;
 
   try {
     if (actionType === 'create') {
-      // スケジュール作成処理
+      // Schedule creation process
       const scheduleName = formData.get('scheduleName') as string;
       const scheduleAction = formData.get('scheduleAction') as 'start' | 'stop';
       const cronExpression = formData.get('cronExpression') as string;
@@ -50,7 +50,7 @@ export async function action({ request }: ActionFunctionArgs) {
       
       return { success: true, message: 'Success to create a schedule' };
     } else if (actionType === 'delete') {
-      // スケジュール削除処理
+      // Schedule deletion process
       const scheduleName = formData.get('scheduleName') as string;
       await schedulerClient.deleteSchedule({name: scheduleName}, request);
       

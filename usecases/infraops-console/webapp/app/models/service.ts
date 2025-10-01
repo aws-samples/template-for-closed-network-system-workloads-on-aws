@@ -1,6 +1,6 @@
 /**
- * ECSサービス型の定義
- * ECSサービスの基本情報を表す
+ * ECS service type definition
+ * Represents basic information of ECS service
  */
 export type Service = {
   name: string;

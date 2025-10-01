@@ -3,10 +3,10 @@ import { ecsClient } from '~/utils/aws.server';
 import { requireAuthentication } from '~/utils/auth.server';
 
 export async function action({ request }: ActionFunctionArgs) {
-  // 認証チェック
+  // Authentication check
   await requireAuthentication(request)
 
-  // フォームデータを取得
+  // Get form data
   const formData = await request.formData();
   const action = formData.get('action') as string;
   
@@ -25,9 +25,9 @@ export async function action({ request }: ActionFunctionArgs) {
       return { success: true };
     } catch (error) {
       console.error('Error updating service desired count:', error);
-      return { error: 'タスク数の更新に失敗しました' };
+      return { error: 'Failed to update task count' };
     }
   }
   
-  return { error: '不正なアクション' };
+  return { error: 'Invalid action' };
 }

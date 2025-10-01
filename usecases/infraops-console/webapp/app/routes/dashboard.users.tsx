@@ -6,23 +6,23 @@ import { User, getUsers, addUser, deleteUser } from '~/models/user.server';
 import { Button, Input, Label, Select, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '~/components';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // 管理者権限チェック
+  // Check admin privileges
   const user: User = await requireAdmin(request);
   
-  // ユーザー一覧を取得
+  // Get user list
   const userList = await getUsers();
   
   return { currentUser: user, users: userList.users };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  // 管理者権限チェック
+  // Check admin privileges
   await requireAdmin(request);
   
   const formData = await request.formData();
   const action = formData.get('_action');
   
-  // ユーザー追加
+  // Add user
   if (action === 'add') {
     const email = formData.get('email')?.toString();
     const isAdminStr = formData.get('isAdmin')?.toString();
@@ -34,7 +34,7 @@ export async function action({ request }: ActionFunctionArgs) {
     
     const isAdmin = isAdminStr === 'true';
     
-    // 管理者の場合はgroupIdをnullに設定可能、一般ユーザーの場合は必須
+    // For admins, groupId can be set to null; for regular users, it's required
     if (!isAdmin && !groupId) {
       return { error: '一般ユーザーにはグループIDが必要です' };
     }
@@ -51,7 +51,7 @@ export async function action({ request }: ActionFunctionArgs) {
     }
   }
   
-  // ユーザー削除
+  // Delete user
   if (action === 'delete') {
     const email = formData.get('email')?.toString();
     const currentUserEmail = formData.get('currentUserEmail')?.toString();
@@ -60,7 +60,7 @@ export async function action({ request }: ActionFunctionArgs) {
       return { error: 'メールアドレスが必要です' };
     }
     
-    // 自分自身は削除できない
+    // Cannot delete yourself
     if (email === currentUserEmail) {
       return { error: '自分自身は削除できません' };
     }
@@ -91,7 +91,7 @@ export default function Users() {
         </div>
       </header>
       
-      {/* ユーザー追加フォーム */}
+      {/* User addition form */}
       <div className="add-user-form">
         <h2>ユーザーを追加</h2>
         <Form method="post">
@@ -145,7 +145,7 @@ export default function Users() {
         {actionData?.error && <div className="error">{actionData.error}</div>}
       </div>
       
-      {/* ユーザー一覧 */}
+      {/* User list */}
       <div className="users-list">
         <h2>ユーザー一覧</h2>
         <Table>

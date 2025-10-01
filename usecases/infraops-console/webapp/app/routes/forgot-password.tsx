@@ -7,11 +7,11 @@ import { cognitoClient } from '~/utils/aws.server';
 import { getCognitoConfig } from '~/utils/auth.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // セッションを確認
+  // Check session
   const session = await getSession(request.headers.get('Cookie'));
   const email = session.get('forgotPasswordEmail');
   
-  // 既にログインしている場合はダッシュボードにリダイレクト
+  // Redirect to dashboard if already logged in
   const user = session.get('user');
   if (user) return redirect('/dashboard');
   
@@ -22,7 +22,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const form = await request.formData();
   const _action = form.get('_action') as string;
   
-  // パスワードリセットの開始
+  // Start password reset
   if (_action === 'initiate') {
     const email = form.get('email') as string;
     
@@ -31,26 +31,26 @@ export async function action({ request }: ActionFunctionArgs) {
     }
     
     try {
-      // OAuth2の設定を取得
+      // Get OAuth2 configuration
       const config = getCognitoConfig();
       
-      // パスワードリセットを開始
+      // Start password reset
       await cognitoClient.forgotPassword({
         username: email,
         clientId: config.clientId,
         clientSecret: config.clientSecret
       });
       
-      // セッションにメールアドレスを保存
+      // Save email address to session
       const session = await getSession(request.headers.get('Cookie'));
       session.set('forgotPasswordEmail', email);
       
-      // セッションをコミット
+      // Commit session
       const sessionCookie = await commitSession(session, {
-        expires: new Date(Date.now() + 3600 * 1000) // 1時間有効
+        expires: new Date(Date.now() + 3600 * 1000) // Valid for 1 hour
       });
       
-      // 確認コード入力画面にリダイレクト
+      // Redirect to confirmation code input screen
       return redirect('/forgot-password', {
         headers: {
           'Set-Cookie': sessionCookie
@@ -59,7 +59,7 @@ export async function action({ request }: ActionFunctionArgs) {
     } catch (error: any) {
       console.error('Password reset error:', error);
       
-      // エラーの種類に応じた処理
+      // Handle errors based on error type
       if (error.name === 'UserNotFoundException') {
         return { error: 'ユーザーが存在しません。' };
       } else if (error.name === 'LimitExceededException') {
@@ -70,13 +70,13 @@ export async function action({ request }: ActionFunctionArgs) {
     }
   }
   
-  // パスワードリセットの確認
+  // Confirm password reset
   if (_action === 'confirm') {
     const confirmationCode = form.get('confirmationCode') as string;
     const newPassword = form.get('newPassword') as string;
     const confirmPassword = form.get('confirmPassword') as string;
     
-    // セッションからメールアドレスを取得
+    // Get email address from session
     const session = await getSession(request.headers.get('Cookie'));
     const email = session.get('forgotPasswordEmail');
     
@@ -84,7 +84,7 @@ export async function action({ request }: ActionFunctionArgs) {
       return { error: 'セッションが無効です。もう一度最初からお試しください。' };
     }
     
-    // 入力値の検証
+    // Validate input values
     if (!confirmationCode) {
       return { error: '確認コードを入力してください。' };
     }
@@ -98,10 +98,10 @@ export async function action({ request }: ActionFunctionArgs) {
     }
     
     try {
-      // OAuth2の設定を取得
+      // Get OAuth2 configuration
       const config = getCognitoConfig();
       
-      // パスワードリセットを確認
+      // Confirm password reset
       await cognitoClient.confirmForgotPassword({
         username: email,
         confirmationCode,
@@ -110,13 +110,13 @@ export async function action({ request }: ActionFunctionArgs) {
         clientSecret: config.clientSecret
       });
       
-      // セッションからメールアドレスを削除
+      // Remove email address from session
       session.unset('forgotPasswordEmail');
       
-      // セッションをコミット
+      // Commit session
       const sessionCookie = await commitSession(session);
       
-      // ログイン画面にリダイレクト
+      // Redirect to login screen
       return redirect('/login', {
         headers: {
           'Set-Cookie': sessionCookie
@@ -125,7 +125,7 @@ export async function action({ request }: ActionFunctionArgs) {
     } catch (error: any) {
       console.error('Password reset confirmation error:', error);
       
-      // エラーの種類に応じた処理
+      // Handle errors based on error type
       if (error.name === 'CodeMismatchException') {
         return { error: '確認コードが正しくありません。' };
       } else if (error.name === 'ExpiredCodeException') {
@@ -147,7 +147,7 @@ export default function ForgotPassword() {
   const navigation = useNavigation();
   const isSubmitting = navigation.state !== 'idle';
   
-  // メールアドレスが保存されている場合は確認コード入力画面を表示
+  // Show confirmation code input screen if email address is saved
   const showConfirmationForm = loaderData && loaderData.email;
 
   return (

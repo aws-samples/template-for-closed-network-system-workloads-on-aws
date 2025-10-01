@@ -3,14 +3,14 @@ import { redirect } from '@remix-run/node';
 import { sessionStorage } from '~/utils/session.server';
 
 export async function action({ request }: ActionFunctionArgs) {
-  // セッションを取得
+  // Get the session
   const session = await sessionStorage.getSession(request.headers.get('Cookie'));
   
   try {
-    // セッションを破棄
+    // Destroy the session
     const cookie = await sessionStorage.destroySession(session);
     
-    // ログインページにリダイレクト
+    // Redirect to login page
     return redirect('/login', {
       headers: {
         'Set-Cookie': cookie,
@@ -19,7 +19,7 @@ export async function action({ request }: ActionFunctionArgs) {
   } catch (error) {
     console.error('Error during logout:', error);
     
-    // エラーが発生した場合も同様にセッションを破棄してログインページにリダイレクト
+    // Redirect to login page even if error occurs
     return redirect('/login', {
       headers: {
         'Set-Cookie': await sessionStorage.destroySession(session),
@@ -29,11 +29,10 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export async function loader() {
-  // GETリクエストの場合はログインページにリダイレクト
+  // Redirect to login page on GET request
   return redirect('/login');
 }
 
-// このコンポーネントは実際には表示されない（リダイレクトされるため）
 export default function Logout() {
   return null;
 }

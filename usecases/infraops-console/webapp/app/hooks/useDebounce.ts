@@ -4,12 +4,12 @@ export function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
-    // 指定した遅延後に値を更新するタイマーを設定
+    // Set timer to update value after specified delay
     const timer = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
 
-    // クリーンアップ関数
+    // Cleanup function
     return () => {
       clearTimeout(timer);
     };

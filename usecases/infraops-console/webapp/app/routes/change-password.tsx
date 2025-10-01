@@ -7,11 +7,11 @@ import { cognitoClient } from '~/utils/aws.server';
 import { getCognitoConfig } from '~/utils/auth.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // セッションを確認
+  // Check session
   const session = await getSession(request.headers.get('Cookie'));
   const challengeName = session.get('challengeName');
   
-  // チャレンジがない場合はログインページにリダイレクト
+  // Redirect to login page if no challenge
   if (challengeName !== 'NEW_PASSWORD_REQUIRED') {
     return redirect('/login');
   }
@@ -24,7 +24,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const newPassword = form.get('newPassword') as string;
   const confirmPassword = form.get('confirmPassword') as string;
   
-  // パスワードの検証
+  // Password validation
   if (!newPassword || !confirmPassword) {
     return { error: '新しいパスワードを入力してください。' };
   }
@@ -34,7 +34,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
   
   try {
-    // セッションを取得
+    // Get session
     const session = await getSession(request.headers.get('Cookie'));
     const challengeSession = session.get('challengeSession');
     const email = session.get('challengeEmail');
@@ -43,10 +43,10 @@ export async function action({ request }: ActionFunctionArgs) {
       return redirect('/login');
     }
     
-    // OAuth2の設定を取得
+    // Get OAuth2 configuration
     const config = getCognitoConfig();
     
-    // パスワードチャレンジに応答
+    // Respond to password challenge
     const response = await cognitoClient.respondToNewPasswordChallenge({
       username: email,
       newPassword,
@@ -55,18 +55,18 @@ export async function action({ request }: ActionFunctionArgs) {
       clientSecret: config.clientSecret
     });
     
-    // 認証に成功した場合
+    // If authentication is successful
     if (response.AuthenticationResult) {
       
-      // セッションにユーザー情報とトークンを保存
+      // Save user information and tokens to session
       session.unset('challengeName');
       session.unset('challengeSession');
       session.unset('challengeEmail');
       
-      // セッションをコミット
+      // Commit session
       const sessionCookie = await commitSession(session, {expires: new Date(Date.now() + 3600 * 1000)});
       
-      // ダッシュボードにリダイレクト
+      // Redirect to dashboard
       return redirect('/dashboard', {
         headers: {
           'Set-Cookie': sessionCookie

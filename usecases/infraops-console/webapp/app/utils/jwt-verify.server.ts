@@ -1,14 +1,14 @@
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { requireAuthentication } from './auth.server';
 
-// Cognito JWT Verifierの初期化（シングルトンパターン）
+// Initialize Cognito JWT Verifier (Singleton pattern)
 const verifier = CognitoJwtVerifier.create({
   userPoolId: process.env.USER_POOL_ID!,
   tokenUse: "id",
   clientId: process.env.CLIENT_ID!,
 });
 
-// IDトークンを検証してペイロードを取得
+// Verify ID token and get payload
 export async function verifyAndDecodeIdToken(idToken: string) {
   try {
     const payload = await verifier.verify(idToken);
@@ -19,12 +19,12 @@ export async function verifyAndDecodeIdToken(idToken: string) {
   }
 }
 
-// 検証済みトークンからGroupIdを安全に取得
+// Safely get GroupId from verified token
 export async function getVerifiedGroupId(request: Request): Promise<string> {
   const idToken = (await requireAuthentication(request)).idToken;
   const payload = await verifyAndDecodeIdToken(idToken);
   
-  // カスタム属性からgroupIdを取得
+  // Get groupId from custom attributes
   const groupId = payload['custom:groupId'] as string;
   
   if (!groupId) {
@@ -34,7 +34,7 @@ export async function getVerifiedGroupId(request: Request): Promise<string> {
   return groupId;
 }
 
-// 管理者権限も検証済みトークンから取得
+// Get admin privileges from verified token as well
 export async function getVerifiedUserInfo(request: Request) {
   const idToken = (await requireAuthentication(request)).idToken;
   const payload = await verifyAndDecodeIdToken(idToken);
@@ -44,6 +44,6 @@ export async function getVerifiedUserInfo(request: Request) {
     groupId: payload['custom:groupId'] as string,
     isAdmin: payload['custom:isAdmin'] === 'true',
     groups: payload['cognito:groups'] as string[] || [],
-    // 必要に応じて他の属性も追加
+    // Add other attributes as needed
   };
 }

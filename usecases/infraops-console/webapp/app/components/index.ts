@@ -20,6 +20,3 @@ export {
   TableHeaderCell,
   TableCell
 } from './Table';
-
-// モーダルコンポーネント
-export { ErrorModal } from './modals';
