@@ -42,6 +42,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const instanceId = formData.get('instanceId') as string;
   const instanceGroupId = formData.get('groupId') as string;
   const dbClusterIdentifier = formData.get('dbClusterIdentifier') as string;
+  const dbInstanceIdentifier = formData.get('dbInstanceIdentifier') as string;
 
   try {
     // Call API based on action type
@@ -54,6 +55,14 @@ export async function action({ request }: ActionFunctionArgs) {
       await stopDatabase(dbClusterIdentifier, request);
     } else if (action === 'startDBCluster') {
       await startDatabase(dbClusterIdentifier, request);
+    } else if (action === 'stopDBInstance') {
+      // TODO: Implement DB instance stop functionality
+      console.info('stopDBInstance called for:', dbInstanceIdentifier);
+      // await stopDBInstance(dbInstanceIdentifier, request);
+    } else if (action === 'startDBInstance') {
+      // TODO: Implement DB instance start functionality
+      console.info('startDBInstance called for:', dbInstanceIdentifier);
+      // await startDBInstance(dbInstanceIdentifier, request);
     } else if (action === 'updateAlternativeType') {
       const alternativeType = formData.get('alternativeType') as string;
       

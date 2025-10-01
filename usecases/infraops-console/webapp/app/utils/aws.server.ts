@@ -25,6 +25,7 @@ import {
 import {
   RDSClient,
   DescribeDBClustersCommand,
+  DescribeDBInstancesCommand,
   StopDBClusterCommand,
   StartDBClusterCommand,
 } from '@aws-sdk/client-rds';
@@ -642,6 +643,31 @@ export const rdsClient = {
     );
 
     return { ...result, DBClusters: filteredClusters };
+  },
+
+  // Get DB instance list (with ABAC filtering applied)
+  describeDBInstances: async (request: Request) => {
+    const result = await withAWSClient(
+      RDSClient,
+      async (client) => {
+        const command = new DescribeDBInstancesCommand({});
+        return await client.send(command);
+      },
+      {
+        serviceName: 'RDS',
+        operationName: 'describeDBInstances',
+        request
+      }
+    );
+
+    // Apply ABAC filtering
+    const filteredInstances = await filterByGroupId(
+      result.DBInstances || [],
+      extractRDSTags,
+      request
+    );
+
+    return { ...result, DBInstances: filteredInstances };
   },
   
   // Stop DB cluster temporarily

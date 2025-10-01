@@ -250,6 +250,7 @@ export class InfraopsConsoleStack extends Stack {
             "ecs:UpdateService",
             // RDS-related permissions
             "rds:DescribeDBClusters",
+            "rds:DescribeDBInstances",
             "rds:StopDBCluster",
             "rds:StopDBInstance",
             "rds:StartDBCluster",
@@ -376,7 +377,8 @@ export class InfraopsConsoleStack extends Stack {
         // RDS-related permissions (with ABAC applied)
         new aws_iam.PolicyStatement({
           actions: [
-            "rds:DescribeDBClusters"
+            "rds:DescribeDBClusters",
+            "rds:DescribeDBInstances",
           ],
           resources: ["*"],
         }),
