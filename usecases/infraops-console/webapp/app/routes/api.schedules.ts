@@ -11,16 +11,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const instanceId = url.searchParams.get('instanceId');
 
   if (!instanceId) {
-    return { error: 'インスタンスIDが指定されていません' };
+    return { error: 'Not set Intance ID' };
   }
-  console.log(`start load function of schedule`);
 
   try {
     const schedules = await schedulerClient.listSchedulesForInstance({instanceId}, request);
     return { schedules };
   } catch (error) {
     console.error('Error fetching schedules:', error);
-    return { error: 'スケジュールの取得に失敗しました' };
+    return { error: 'Failed to fetch schedules' };
   }
 }
 
@@ -49,20 +48,20 @@ export async function action({ request }: ActionFunctionArgs) {
         description
       }, request);
       
-      return { success: true, message: 'スケジュールが作成されました' };
+      return { success: true, message: 'Success to create a schedule' };
     } else if (actionType === 'delete') {
       // スケジュール削除処理
       const scheduleName = formData.get('scheduleName') as string;
       await schedulerClient.deleteSchedule({name: scheduleName}, request);
       
-      return { success: true, message: 'スケジュールが削除されました' };
+      return { success: true, message: 'Success to delete a schedule' };
     } else {
-      return { error: '不明なアクションタイプです' };
+      return { error: "It's not valid action type" };
     }
   } catch (error) {
     console.error(`Error ${actionType}ing schedule for instance ${instanceId}:`, error);
     return { 
-      error: `スケジュールの${actionType === 'create' ? '作成' : '削除'}に失敗しました`,
+      error: `Failed to ${actionType === 'create' ? 'create' : 'delete'} schedule`,
       details: error instanceof Error ? error.message : String(error)
     };
   }

@@ -36,16 +36,15 @@ type Instance = {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  // フォームデータを取得
+  // Get form data
   const formData = await request.formData();
   const action = formData.get('action') as string;
   const instanceId = formData.get('instanceId') as string;
   const instanceGroupId = formData.get('groupId') as string;
   const dbClusterIdentifier = formData.get('dbClusterIdentifier') as string;
-  console.log(`Action: ${action}, InstanceId: ${instanceId}, GroupId: ${instanceGroupId}, DBClusterIdentifier: ${dbClusterIdentifier}`);
 
-  // インスタンスまたはDBクラスターの操作
   try {
+    // Call API based on action type
     if (action === 'start') {
       console.info('startInstance called');
       await ec2Client.startInstance({ instanceId }, request);
@@ -58,7 +57,6 @@ export async function action({ request }: ActionFunctionArgs) {
     } else if (action === 'updateAlternativeType') {
       const alternativeType = formData.get('alternativeType') as string;
       
-      // AlternativeTypeタグを更新
       await ec2Client.createTags({
         resourceIds: [instanceId],
         tags: [
@@ -69,7 +67,6 @@ export async function action({ request }: ActionFunctionArgs) {
         ]
       }, request);
     } else if (action === 'createSchedule' || action === 'deleteSchedule') {
-      // スケジュール作成・削除処理はAPIエンドポイントに委譲
       const apiFormData = new FormData();
       apiFormData.append('actionType', action === 'createSchedule' ? 'create' : 'delete');
       apiFormData.append('instanceId', instanceId);
@@ -91,39 +88,39 @@ export async function action({ request }: ActionFunctionArgs) {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'スケジュール操作に失敗しました');
+        throw new Error(errorData.error || 'Failed to process schedule');
       }
     }
   } catch (error) {
     console.error(`Error ${action}ing instance ${instanceId}:`, error);
     
-    // エラー時はJSONレスポンスを返す
+    // Return JSON response on error
     const appError = error as AppError;
     return {
       success: false,
       error: {
-        message: appError.message || 'エラーが発生しました',
+        message: appError.message || 'Error occurred',
         details: appError.details,
         code: appError.code
       }
     };
   }
 
-  // 同じページにリダイレクト（リロードして最新の状態を表示）
+  // Load latest data
   return redirect('/dashboard');
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // 認証チェック
+  // Check authentication
   const { user } = await requireAuthentication(request); 
 
   let instances: Array<Instance> = [];
   
   try {
-    // EC2インスタンスの一覧を取得（リクエストオブジェクトを渡して認証チェック）
+    // Get list of EC2 instances (with authentication check by passing request object)
     const { Reservations } = await ec2Client.describeInstances({}, request);
 
-    // インスタンス情報を整形
+    // Format instance information
     instances = Reservations?.flatMap(reservation =>
       reservation.Instances?.map(instance => ({
         id: instance.InstanceId || '',
@@ -136,30 +133,28 @@ export async function loader({ request }: LoaderFunctionArgs) {
     ) || [];
   } catch (error) {
     console.error('Error fetching EC2 instances:', error);
-    // エラーが発生した場合は空の配列を使用
   }
 
-  // ECSサービスの一覧を取得
+  // Get list of ECS services
   let services: Array<Service> = [];
   try {
-    // クラスター一覧を取得（リクエストオブジェクトを渡して認証チェック）
+    // Get list of ECS clusters (with authentication check by passing request object)
     const { clusterArns } = await ecsClient.listClusters(request);
     
-    // 各クラスターのサービスを取得
+    // Get services for each cluster
     for (const clusterArn of clusterArns || []) {
       const clusterName = clusterArn.split('/').pop() || '';
       
-      // サービス一覧を取得（リクエストオブジェクトを渡して認証チェック）
+      // Get list of services (with authentication check by passing request object)
       const { serviceArns } = await ecsClient.listServices({ cluster: clusterArn }, request);
       
       if (serviceArns && serviceArns.length > 0) {
-        // サービスの詳細情報を取得（リクエストオブジェクトを渡して認証チェック）
         const { services: serviceDetails } = await ecsClient.describeServices({
           cluster: clusterArn,
           services: serviceArns
         }, request);
         
-        // サービス情報を整形
+        // Format service information
         const formattedServices = serviceDetails?.map(service => ({
           name: service.serviceName || '',
           status: service.status || '',
@@ -177,17 +172,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
     console.error('Error fetching ECS services:', error);
   }
 
-  // RDS DBクラスターの一覧を取得
+  // Get list of RDS DB clusters
   let databases: Array<Database> = [];
   try {
     const { DBClusters } = await rdsClient.describeDBClusters(request);
     
-    // DBクラスター情報を整形
+    // Format DB cluster information
     databases = DBClusters?.map(cluster => {
-      // ステータスの判定
+      // Check status
       let status = cluster.Status || '';
       
-      // ロールの判定（クラスターの場合は常にクラスター）
+      // Check role of DBs
       let role = 'クラスター';
       
       return {
@@ -210,19 +205,17 @@ export default function Dashboard() {
   const { user, instances, services, databases } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
-  const submit = useSubmit();
   
-  // 更新ハンドラ
   const handleRefresh = () => {
     window.location.reload();
   };
   
-  // 選択されたインスタンスの管理
+  // Store the ID of the selected instance
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
   
-  // インスタンスを選択する関数
+  // function of selecting an instance
   const selectInstance = (instanceId: string) => {
-    // 同じインスタンスが選択された場合は選択解除（トグル動作）
+    // Reset selected instance if the same instance is clicked
     if (selectedInstanceId === instanceId) {
       setSelectedInstanceId(null);
       return;
@@ -230,14 +223,14 @@ export default function Dashboard() {
     
     setSelectedInstanceId(instanceId);
     
-    // 選択されたインスタンスのスケジュール情報を取得
+    // Get schedules for the selected instance
     setIsScheduleLoading(prev => ({
       ...prev,
       [instanceId]: true
     }));
     scheduleFetcher.load(`/api/schedules?instanceId=${instanceId}`);
     
-    // インスタンスの入力状態を初期化（まだ存在しない場合）
+    // Initialize the input state of the instance (if it does not exist yet)
     if (!newScheduleInputs[instanceId]) {
       setNewScheduleInputs(prev => ({
         ...prev,
@@ -245,11 +238,11 @@ export default function Dashboard() {
       }));
     }
     
-    // 選択されたインスタンスを設定
+    // Configure the selected instance for schedule management
     setSelectedInstanceForSchedule(instances.find(i => i.id === instanceId) || null);
   };
   
-  // 代替タイプ編集関連の状態
+  // State for managing instance type changes
   const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null); // 編集中のインスタンスID
   const [availableInstanceTypes, setAvailableInstanceTypes] = useState<Record<string, string[]>>({});
   const [selectedAlternativeType, setSelectedAlternativeType] = useState<Record<string, string>>({});
@@ -257,11 +250,11 @@ export default function Dashboard() {
   const [typeQuery, setTypeQuery] = useState('');
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
   
-  // スケジュール関連の状態
+  // State for managing schedules
   const [selectedInstanceForSchedule, setSelectedInstanceForSchedule] = useState<Instance | null>(null);
-  // インスタンスIDごとにスケジュールを保持するオブジェクト
+  // State for storing schedules per instance ID
   const [schedules, setSchedules] = useState<Record<string, Schedule[]>>({});
-  // インスタンスIDごとの新規スケジュール入力状態を管理
+  // State for storing new schedule inputs per instance ID
   const [newScheduleInputs, setNewScheduleInputs] = useState<Record<string, {
     action: 'start' | 'stop',
     cron: string,
@@ -269,59 +262,57 @@ export default function Dashboard() {
   }>>({});
   const [isScheduleLoading, setIsScheduleLoading] = useState<Record<string, boolean>>({});
   
-  // デバウンスフックを使用（300msのデバウンス時間）
+  // Debounce hook (300ms debounce time)
   const debouncedInputValue = useDebounce(inputValue, 300);
   
-  // デバウンスされた値が変更されたときにのみtypeQueryを更新
+  // Update typeQuery only when the debounced value changes
   useEffect(() => {
     setTypeQuery(debouncedInputValue);
   }, [debouncedInputValue]);
   
-  // エラーアラート関連の状態
+  // Error alert related state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [isErrorAlertVisible, setIsErrorAlertVisible] = useState(false);
 
-  // useFetcherでフォーム送信とエラーハンドリング
+  // Submit form data and Error handling with useFetcher
   const actionFetcher = useFetcher<{
     success?: boolean;
     error?: AppError;
   }>();
 
-  // actionFetcherの結果を監視
+  // Observe the result of actionFetcher
   useEffect(() => {
     if (actionFetcher.data && !actionFetcher.data.success && actionFetcher.data.error) {
       const error = actionFetcher.data.error;
       setErrorMessage(error.message);
-      setErrorDetails(error.details || null);
       setIsErrorAlertVisible(true);
     }
   }, [actionFetcher.data]);
 
-  // 代替タイプの編集ボタンをクリックしたときの処理
+  // Process when the edit button for the alternative type is clicked
   const handleAlternativeTypeClick = async (instance: Instance) => {
     const instanceId = instance.id || '';
     
-    // 既に編集中のインスタンスの場合は編集モードを終了
+    // End edit mode if the instance is already being edited
     if (editingInstanceId === instanceId) {
       setEditingInstanceId(null);
       return;
     }
     
-    // 編集モードを開始
+    // Start edit mode
     setEditingInstanceId(instanceId);
     
-    // ローディング状態を設定
+    // Set loading state
     setIsLoading(prev => ({ ...prev, [instanceId]: true }));
     
     try {
-      // インスタンスタイプのファミリーを取得（例：t2.microからt2を抽出）
+      // Get the instance family (e.g., extract "t2" from "t2.micro")
       const instanceFamily = instance.type?.split('.')[0] || '';
       
-      // 入力値を設定（これがデバウンスされてtypeQueryに反映される）
+      // Set the input value (this will be debounced and reflected in typeQuery)
       setInputValue(instanceFamily);
       
-      // 検索クエリに基づいてインスタンスタイプを取得
+      // Get instance types based on the search query
       const response = await fetch(`/api/instance-types?query=${instanceFamily}`, {
         method: 'GET',
       });
@@ -333,24 +324,24 @@ export default function Dashboard() {
           [instanceId]: data.instanceTypes 
         }));
         
-        // 現在の代替タイプがあれば選択、なければ空に
+        // If there is a current alternative type, select it; otherwise, set to empty
         setSelectedAlternativeType(prev => ({ 
           ...prev, 
           [instanceId]: instance.alternativeType && instance.alternativeType !== '未登録' ? instance.alternativeType : '' 
         }));
       } else {
-        console.error('インスタンスタイプの取得に失敗しました');
+        console.error('Failed to get instance types');
         // 取得失敗時には空の配列を設定する
         setAvailableInstanceTypes(prev => ({ ...prev, [instanceId]: [] }));
       }
     } catch (error) {
-      console.error('インスタンスタイプの取得中にエラーが発生しました:', error);
+      console.error('Error occured during getting instance type:', error);
     } finally {
       setIsLoading(prev => ({ ...prev, [instanceId]: false }));
     }
   };
 
-  // 代替タイプを保存する処理
+  // Set the selected alternative type when an option is selected
   const handleSaveAlternativeType = (instanceId: string) => {
     const instance = instances.find(i => i.id === instanceId);
     const alternativeType = selectedAlternativeType[instanceId];
@@ -363,30 +354,30 @@ export default function Dashboard() {
       formData.append('alternativeType', alternativeType);
       
       actionFetcher.submit(formData, { method: 'post' });
-      setEditingInstanceId(null); // 編集モードを終了
+      setEditingInstanceId(null); // Exit edit mode
     }
   };
   
-  // スケジュール関連のfetcher
+  // Fetcher for schedules
   const scheduleFetcher = useFetcher<{ 
     schedules?: Array<Schedule>,
     error?: string 
   }>();
   
-  // scheduleFetcherの結果を処理
+  // Process the result of scheduleFetcher
   useEffect(() => {
-    // 現在選択されているインスタンスのIDを使用
+    // Use the ID of the currently selected instance
     if (selectedInstanceForSchedule?.id) {
       const instanceId = selectedInstanceForSchedule.id;
       
-      // ローディング状態の更新
+      // Update loading state
       if (scheduleFetcher.state === 'loading') {
         setIsScheduleLoading(prev => ({
           ...prev,
           [instanceId]: true
         }));
       } else if (scheduleFetcher.state === 'idle' && scheduleFetcher.data) {
-        // スケジュールデータを更新
+        // Update schedule data
         if (scheduleFetcher.data.schedules) {
           setSchedules(prev => ({
             ...prev,
@@ -394,7 +385,7 @@ export default function Dashboard() {
           }));
         }
         
-        // ローディング状態を更新
+        // Update loading state
         setIsScheduleLoading(prev => ({
           ...prev,
           [instanceId]: false
@@ -403,7 +394,7 @@ export default function Dashboard() {
     }
   }, [scheduleFetcher.data, scheduleFetcher.state, selectedInstanceForSchedule]);
 
-  // スケジュール追加処理
+  // Add schedule
   const handleAddSchedule = () => {
     if (!selectedInstanceForSchedule) return;
     
@@ -412,7 +403,7 @@ export default function Dashboard() {
     
     if (!inputs.cron) return;
     
-    // ローディング状態を更新
+    // Update state to loading
     setIsScheduleLoading(prev => ({
       ...prev,
       [instanceId]: true
@@ -429,13 +420,13 @@ export default function Dashboard() {
     
     console.log('Creating schedule with cron expression:', inputs.cron);
     
-    // useFetcherを使用してスケジュールを作成
+    // Create schedule using useFetcher
     scheduleFetcher.submit(formData, {
       method: 'post',
       action: '/api/schedules'
     });
     
-    // フォームをリセット
+    // Reset the form
     setNewScheduleInputs(prev => ({
       ...prev,
       [instanceId]: { action: 'start', cron: '', description: '' }
@@ -447,9 +438,9 @@ export default function Dashboard() {
     }));
   };
 
-  // スケジュール削除処理
+  // Delete schedule
   const handleDeleteSchedule = (instanceId: string, scheduleName: string) => {
-    // ローディング状態を更新
+    // Update state to loading
     setIsScheduleLoading(prev => ({
       ...prev,
       [instanceId]: true
@@ -461,13 +452,13 @@ export default function Dashboard() {
     formData.append('groupId', instances.find(i => i.id === instanceId)?.groupId || '');
     formData.append('scheduleName', scheduleName);
     
-    // useFetcherを使用してスケジュールを削除
+    // Delete schedule using useFetcher
     scheduleFetcher.submit(formData, {
       method: 'post',
       action: '/api/schedules'
     });
     
-    // スケジュールのリストから削除（楽観的UI更新）
+    // Delete from the schedule list (optimistic UI update)
     setSchedules(prev => {
       const updatedSchedules = prev[instanceId]?.filter(schedule => schedule.name !== scheduleName) || [];
       return {
@@ -726,7 +717,7 @@ export default function Dashboard() {
         </Table>
       </main>
 
-      {/* 選択されたインスタンスのスケジュール表示領域 */}
+      {/* Schedule management section */}
       {selectedInstanceId && (
         <div className="mt-8 p-4 border rounded-md bg-gray-50">
           <h3 className="text-lg font-medium mb-4">
@@ -768,14 +759,14 @@ export default function Dashboard() {
       )}
 
 
-      {/* ECSサービス一覧 */}
+      {/* List of ECS services */}
       <ServiceList 
         services={services} 
         isSubmitting={isSubmitting}
         onRefresh={handleRefresh}
       />
 
-      {/* RDS DBインスタンス一覧 */}
+      {/* List of RDS Clusters/Instances */}
       <DatabaseList 
         databases={databases} 
         isSubmitting={isSubmitting}
@@ -783,7 +774,7 @@ export default function Dashboard() {
         actionFetcher={actionFetcher}
       />
 
-      {/* エラーアラート */}
+      {/* Error */}
       <ErrorAlert
         isVisible={isErrorAlertVisible}
         message={errorMessage}

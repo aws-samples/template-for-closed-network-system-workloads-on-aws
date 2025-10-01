@@ -1,4 +1,4 @@
-// AWS SDKの実装
+// AWS SDK implementation
 import { 
   EC2Client, 
   DescribeInstancesCommand, 
@@ -69,36 +69,36 @@ import { createAppError } from '~/utils/error.server';
 import { filterByGroupId, extractEC2Tags, extractRDSTags, extractECSTags } from '~/utils/abac-filter.server';
 import { getVerifiedGroupId } from './jwt-verify.server';
 
-// リージョンの設定
-const REGION = process.env.AWS_REGION || 'ap-northeast-1'; // デフォルトは東京リージョン
+// Region configuration
+const REGION = process.env.AWS_REGION || 'ap-northeast-1'; // Default is Tokyo region
 
-// AWS SDKのクライアント設定
+// AWS SDK client configuration
 const makeClientConfig = async (request?: Request) => {
   const idToken = request ? (await requireAuthentication(request)).idToken : undefined;
   return {
     region: REGION,
     credentials: (process.env.NODE_ENV === "development") 
-    // 本番環境
+    // Production environment
     ? (request ? fromCognitoIdentityPool({
       client: new CognitoIdentityClient({ region: REGION }),
       identityPoolId: process.env.IDENTITY_POOL_ID || '',
       logins: idToken ? {[`cognito-idp.${REGION}.amazonaws.com/${process.env.USER_POOL_ID}`]: idToken} : undefined
-      // request がない場合はApp Runnerの権限を利用する
+      // Use App Runner permissions when request is not available
     }) : fromIni({ profile: 'closedtemplate' })) 
-    // 開発環境のみ
+    // Development environment only
     :fromIni({ profile: 'closedtemplate' }),
   }
 };
 
-// AWS SDKクライアントの共通インターフェース
+// Common interface for AWS SDK clients
 interface AWSClient {
   destroy(): void;
 }
 
-// AWS SDKクライアントのコンストラクタ型
+// Constructor type for AWS SDK clients
 type AWSClientConstructor<T extends AWSClient> = new (config: any) => T;
 
-// 汎用的なAWSクライアント高階関数（統一されたエラーハンドリング付き）
+// Generic AWS client higher-order function (with unified error handling)
 const withAWSClient = async <TClient extends AWSClient, TResult>(
   ClientClass: AWSClientConstructor<TClient>,
   operation: (client: TClient) => Promise<TResult>,
@@ -119,8 +119,7 @@ const withAWSClient = async <TClient extends AWSClient, TResult>(
   } catch (error) {
     console.error(`Error in ${serviceName} ${operationName}:`, error);
     
-    // 統一されたエラーメッセージを作成してthrow
-    const message = `${serviceName}の${operationName}処理中にエラーが発生しました`;
+    const message = `Error occured during ${operationName} of ${serviceName}`;
     throw createAppError(message, error);
   } finally {
     client.destroy();
@@ -143,7 +142,7 @@ export const ec2Client = {
       }
     );
 
-    // ABACフィルタリングを適用（Reservationsの中のInstancesをフィルタリング）
+    // Apply ABAC filtering (filter Instances within Reservations)
     const filteredReservations = await Promise.all(
       (result.Reservations || []).map(async (reservation) => {
         const filteredInstances = await filterByGroupId(
@@ -155,7 +154,7 @@ export const ec2Client = {
       })
     );
 
-    // 空のReservationを除外
+    // Exclude empty Reservations
     const nonEmptyReservations = filteredReservations.filter(
       reservation => reservation.Instances && reservation.Instances.length > 0
     );
@@ -296,9 +295,9 @@ export const ec2Client = {
   }
 };
 
-// schedulerClientの実装
+// schedulerClient implementation
 export const schedulerClient = {
-  // スケジュールの作成
+  // Create schedule
   createSchedule: async (params: {
     name: string;
     instanceId: string;
@@ -309,12 +308,12 @@ export const schedulerClient = {
     return await withAWSClient(
       SchedulerClient,
       async (client) => {
-        // ターゲットの設定
+        // Target configuration
         const targetInput = JSON.stringify({
           InstanceIds: [params.instanceId]
         });
         
-        // EC2 StartInstances または StopInstances APIのARNを設定
+        // Set ARN for EC2 StartInstances or StopInstances API
         const targetArn = params.action === 'start' 
           ? `arn:aws:scheduler:::aws-sdk:ec2:startInstances`
           : `arn:aws:scheduler:::aws-sdk:ec2:stopInstances`;
@@ -322,7 +321,7 @@ export const schedulerClient = {
         const command = new CreateScheduleCommand({
           Name: params.name,
           ScheduleExpression: `cron(${params.cronExpression})`,
-          Description: params.description || `${params.action === 'start' ? '起動' : '停止'} スケジュール for ${params.instanceId}`,
+          Description: params.description || `${params.action === 'start' ? 'Start' : 'Stop'} schedule for ${params.instanceId}`,
           State: ScheduleState.ENABLED,
           Target: {
             Arn: targetArn,
@@ -336,7 +335,7 @@ export const schedulerClient = {
         
         const result = await client.send(command);
 
-        // スケジュールに対してGroupIdタグを付与
+        // Add GroupId tag to schedule
         const groupId = await getVerifiedGroupId(request); 
         const tagResourceCommand = new TagResourceCommand({
           ResourceArn: result.ScheduleArn,
@@ -359,7 +358,7 @@ export const schedulerClient = {
     );
   },
   
-  // スケジュールの取得
+  // Get schedule
   getSchedule: async (params: {name: string}, request: Request) => {
     return await withAWSClient(
       SchedulerClient,
@@ -379,7 +378,7 @@ export const schedulerClient = {
     );
   },
   
-  // スケジュールの更新
+  // Update schedule
   updateSchedule: async (params: {
     name: string;
     instanceId: string;
@@ -390,12 +389,12 @@ export const schedulerClient = {
     return await withAWSClient(
       SchedulerClient,
       async (client) => {
-        // ターゲットの設定
+        // Target configuration
         const targetInput = JSON.stringify({
           instanceId: params.instanceId
         });
         
-        // EC2 StartInstances または StopInstances APIのARNを設定
+        // Set ARN for EC2 StartInstances or StopInstances API
         const targetArn = params.action === 'start' 
           ? `arn:aws:scheduler:::aws-sdk:ec2:startInstances`
           : `arn:aws:scheduler:::aws-sdk:ec2:stopInstances`;
@@ -403,7 +402,7 @@ export const schedulerClient = {
         const command = new UpdateScheduleCommand({
           Name: params.name,
           ScheduleExpression: `cron(${params.cronExpression})`,
-          Description: params.description || `${params.action === 'start' ? '起動' : '停止'} スケジュール for ${params.instanceId}`,
+          Description: params.description || `${params.action === 'start' ? 'Start' : 'Stop'} schedule for ${params.instanceId}`,
           State: ScheduleState.ENABLED,
           Target: {
             Arn: targetArn,
@@ -427,7 +426,7 @@ export const schedulerClient = {
     );
   },
   
-  // スケジュールの削除
+  // Delete schedule
   deleteSchedule: async (params: {name: string}, request: Request) => {
     return await withAWSClient(
       SchedulerClient,
@@ -447,12 +446,12 @@ export const schedulerClient = {
     );
   },
   
-  // インスタンスに関連するスケジュールの一覧取得
+  // Get list of schedules related to instance
   listSchedulesForInstance: async (params:{instanceId: string}, request: Request) => {
     return await withAWSClient(
       SchedulerClient,
       async (client) => {
-        // スケジュール名のプレフィックスでフィルタリング
+        // Filter by schedule name prefix
         const command = new ListSchedulesCommand({
           NamePrefix: params.instanceId
         });
@@ -460,7 +459,7 @@ export const schedulerClient = {
         const listSchedules = await client.send(command);
         console.log(`Schedules: ${JSON.stringify(listSchedules.Schedules?.map(s => s.Name).join(', '))}`);
         
-        // フィルタリング後のスケジュールに対してのみ詳細情報を取得
+        // Get detailed information only for filtered schedules
         const getScheduleCommands = listSchedules.Schedules!.map((schedule: ScheduleSummary) => {
           return client.send(new GetScheduleCommand({
             Name: schedule.Name!,
@@ -470,7 +469,7 @@ export const schedulerClient = {
 
         const response = await Promise.all(getScheduleCommands);
         const schedules = response.map(schedule => {
-          // スケジュール情報を整形
+          // Format schedule information
           const action = schedule.Target?.Arn?.includes('startInstances') ? 'start' : 'stop';
           
           return {
@@ -494,9 +493,9 @@ export const schedulerClient = {
   }
 };
 
-// ecsClientの実装
+// ecsClient implementation
 export const ecsClient = {
-  // クラスター一覧の取得
+  // Get cluster list
   listClusters: async (request: Request) => {
     return await withAWSClient(
       ECSClient,
@@ -512,7 +511,7 @@ export const ecsClient = {
     );
   },
   
-  // サービス一覧の取得
+  // Get service list
   listServices: async (params: { cluster: string }, request: Request) => {
     return await withAWSClient(
       ECSClient,
@@ -531,7 +530,7 @@ export const ecsClient = {
     );
   },
   
-  // サービス詳細の取得（ABACフィルタリング適用）
+  // Get service details (with ABAC filtering applied)
   describeServices: async (params: { cluster: string, services: string[] }, request: Request) => {
     const result = await withAWSClient(
       ECSClient,
@@ -553,7 +552,7 @@ export const ecsClient = {
       }
     );
 
-    // ABACフィルタリングを適用
+    // Apply ABAC filtering
     const filteredServices = await filterByGroupId(
       result.services || [],
       extractECSTags,
@@ -563,7 +562,7 @@ export const ecsClient = {
     return { ...result, services: filteredServices };
   },
   
-  // サービスのタスク数を更新
+  // Update service task count
   updateServiceDesiredCount: async (params: { 
     cluster: string, 
     service: string, 
@@ -589,9 +588,9 @@ export const ecsClient = {
   }
 };
 
-// rdsClientの実装
+// rdsClient implementation
 export const rdsClient = {
-  // DBクラスター一覧の取得（ABACフィルタリング適用）
+  // Get DB cluster list (with ABAC filtering applied)
   describeDBClusters: async (request: Request) => {
     const result = await withAWSClient(
       RDSClient,
@@ -606,7 +605,7 @@ export const rdsClient = {
       }
     );
 
-    // ABACフィルタリングを適用
+    // Apply ABAC filtering
     const filteredClusters = await filterByGroupId(
       result.DBClusters || [],
       extractRDSTags,
@@ -616,7 +615,7 @@ export const rdsClient = {
     return { ...result, DBClusters: filteredClusters };
   },
   
-  // DBクラスターの一時停止
+  // Stop DB cluster temporarily
   stopDBCluster: async (params: { dbClusterIdentifier: string }, request: Request) => {
     return await withAWSClient(
       RDSClient,
@@ -636,7 +635,7 @@ export const rdsClient = {
     );
   },
   
-  // DBクラスターの再開
+  // Start DB cluster
   startDBCluster: async (params: { dbClusterIdentifier: string }, request: Request) => {
     return await withAWSClient(
       RDSClient,
@@ -657,9 +656,9 @@ export const rdsClient = {
   }
 };
 
-// Cognitoクライアントの初期化
+// Cognito client initialization
 
-// SECRET_HASHを計算する関数
+// Function to calculate SECRET_HASH
 function calculateSecretHash(username: string, clientId: string, clientSecret: string): string {
   const message = username + clientId;
   const hmac = crypto.createHmac('sha256', clientSecret);
@@ -668,12 +667,12 @@ function calculateSecretHash(username: string, clientId: string, clientSecret: s
 }
 
 export const cognitoClient = {
-  // パスワードリセットを開始する関数
+  // Function to initiate password reset
   forgotPassword: async (params: {username: string, clientId: string, clientSecret: string}): Promise<ForgotPasswordCommandOutput> => {
     return await withAWSClient(
       CognitoIdentityProviderClient,
       async (client) => {
-        // SECRET_HASHを計算
+        // Calculate SECRET_HASH
         const secretHash = calculateSecretHash(params.username, params.clientId, params.clientSecret);
         
         const commandInput: ForgotPasswordCommandInput = {
@@ -694,7 +693,7 @@ export const cognitoClient = {
     );
   },
   
-  // パスワードリセットを確認する関数
+  // Function to confirm password reset
   confirmForgotPassword: async (params: {
     username: string, 
     confirmationCode: string,
@@ -705,7 +704,7 @@ export const cognitoClient = {
     return await withAWSClient(
       CognitoIdentityProviderClient,
       async (client) => {
-        // SECRET_HASHを計算
+        // Calculate SECRET_HASH
         const secretHash = calculateSecretHash(params.username, params.clientId, params.clientSecret);
         
         const commandInput: ConfirmForgotPasswordCommandInput = {
@@ -728,7 +727,7 @@ export const cognitoClient = {
     );
   },
 
-  // ユーザー情報を取得する関数
+  // Function to get user information
   getUser: async (params: {accessToken: string}): Promise<GetUserCommandOutput> => {
     return await withAWSClient(
       CognitoIdentityProviderClient,
@@ -746,12 +745,12 @@ export const cognitoClient = {
     );
   },
   
-  // USER_PASSWORD_AUTH認証を行う関数
+  // Function to perform USER_PASSWORD_AUTH authentication
   initiateAuth: async (params: {username: string, password: string, clientId: string, clientSecret: string}): Promise<AdminInitiateAuthCommandOutput> => {
     return await withAWSClient(
       CognitoIdentityProviderClient,
       async (client) => {
-        // SECRET_HASHを計算
+        // Calculate SECRET_HASH
         const secretHash = calculateSecretHash(params.username, params.clientId, params.clientSecret);
         
         const commandInput: AdminInitiateAuthCommandInput = {
@@ -777,7 +776,7 @@ export const cognitoClient = {
     );
   },
   
-  // 新しいパスワードが必要な場合のチャレンジに応答する関数
+  // Function to respond to challenge when new password is required
   respondToNewPasswordChallenge: async (params: {
     username: string, 
     newPassword: string, 
@@ -788,7 +787,7 @@ export const cognitoClient = {
     return await withAWSClient(
       CognitoIdentityProviderClient,
       async (client) => {
-        // SECRET_HASHを計算
+        // Calculate SECRET_HASH
         const secretHash = calculateSecretHash(params.username, params.clientId, params.clientSecret);
         
         const commandInput: RespondToAuthChallengeCommandInput = {
