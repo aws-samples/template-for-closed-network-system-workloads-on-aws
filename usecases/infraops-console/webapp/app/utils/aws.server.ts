@@ -14,9 +14,6 @@ import {
   DescribeInstanceTypeOfferingsCommand,
   LocationType,
   DescribeInstancesCommandInput,
-  DescribeInstancesCommandOutput,
-  StartInstancesCommandOutput,
-  StopInstancesCommandOutput,
 } from '@aws-sdk/client-ec2';
 import {
   ECSClient,
@@ -24,16 +21,12 @@ import {
   ListServicesCommand,
   DescribeServicesCommand,
   UpdateServiceCommand,
-  ListClustersCommandOutput,
-  ListServicesCommandOutput,
-  DescribeServicesCommandOutput
 } from '@aws-sdk/client-ecs';
 import {
   RDSClient,
   DescribeDBClustersCommand,
   StopDBClusterCommand,
   StartDBClusterCommand,
-  DescribeDBClustersCommandOutput
 } from '@aws-sdk/client-rds';
 import {
   SchedulerClient,
@@ -44,7 +37,10 @@ import {
   ListSchedulesCommand,
   FlexibleTimeWindowMode,
   ScheduleState,
-  ScheduleSummary
+  ScheduleSummary,
+  TagResourceCommand,
+  ListTagsForResourceCommand,
+  Tag
 } from '@aws-sdk/client-scheduler';
 import { 
   CognitoIdentityProviderClient,
@@ -70,15 +66,15 @@ import { fromIni } from "@aws-sdk/credential-providers";
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-provider-cognito-identity"
 import { requireAuthentication } from '~/utils/auth.server';
 import { createAppError } from '~/utils/error.server';
+import { filterByGroupId, extractEC2Tags, extractRDSTags, extractECSTags } from '~/utils/abac-filter.server';
+import { getVerifiedGroupId } from './jwt-verify.server';
 
 // リージョンの設定
-const REGION = process.env.AWS_REGION || 'us-east-1'; // デフォルトは東京リージョン
+const REGION = process.env.AWS_REGION || 'ap-northeast-1'; // デフォルトは東京リージョン
 
 // AWS SDKのクライアント設定
 const makeClientConfig = async (request?: Request) => {
-  console.log(`makeClientConfig called. NODE_ENV=${process.env.NODE_ENV}`);
-  const idToken = request ? await requireAuthentication(request) : undefined;
-  console.log(`ID Token: ${idToken ? 'exists: true' : 'exists: false'}`);
+  const idToken = request ? (await requireAuthentication(request)).idToken : undefined;
   return {
     region: REGION,
     credentials: (process.env.NODE_ENV === "development") 
@@ -133,7 +129,7 @@ const withAWSClient = async <TClient extends AWSClient, TResult>(
 
 export const ec2Client = {
   describeInstances: async (params: DescribeInstancesCommandInput, request: Request) => {
-    return await withAWSClient(
+    const result = await withAWSClient(
       EC2Client,
       async (client) => {
         const command = new DescribeInstancesCommand(params);
@@ -146,6 +142,25 @@ export const ec2Client = {
         request
       }
     );
+
+    // ABACフィルタリングを適用（Reservationsの中のInstancesをフィルタリング）
+    const filteredReservations = await Promise.all(
+      (result.Reservations || []).map(async (reservation) => {
+        const filteredInstances = await filterByGroupId(
+          reservation.Instances || [],
+          extractEC2Tags,
+          request
+        );
+        return { ...reservation, Instances: filteredInstances };
+      })
+    );
+
+    // 空のReservationを除外
+    const nonEmptyReservations = filteredReservations.filter(
+      reservation => reservation.Instances && reservation.Instances.length > 0
+    );
+
+    return { ...result, Reservations: nonEmptyReservations };
   },
 
   startInstance: async (params: { instanceId: string }, request: Request) => {
@@ -221,7 +236,7 @@ export const ec2Client = {
         operationName: 'createTags',
         params,
         request
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   },
@@ -319,14 +334,27 @@ export const schedulerClient = {
           }
         });
         
-        return await client.send(command);
+        const result = await client.send(command);
+
+        // スケジュールに対してGroupIdタグを付与
+        const groupId = await getVerifiedGroupId(request); 
+        const tagResourceCommand = new TagResourceCommand({
+          ResourceArn: result.ScheduleArn,
+          Tags: [{
+            Key: 'GroupId',
+            Value: groupId
+          }]
+        });
+        await client.send(tagResourceCommand);
+
+        return result;
       },
       {
         serviceName: 'Scheduler',
         operationName: 'createSchedule',
         params,
         request,
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   },
@@ -346,7 +374,7 @@ export const schedulerClient = {
         operationName: 'getSchedule',
         params,
         request,
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   },
@@ -379,7 +407,7 @@ export const schedulerClient = {
           State: ScheduleState.ENABLED,
           Target: {
             Arn: targetArn,
-            RoleArn: `arn:aws:iam::${process.env.AWS_ACCOUNT_ID || ''}:role/EventBridgeSchedulerExecutionRole`,
+            RoleArn: process.env.EVENTBRIDGE_SCHEDULER_ROLE_ARN,
             Input: targetInput
           },
           FlexibleTimeWindow: {
@@ -394,7 +422,7 @@ export const schedulerClient = {
         operationName: 'updateSchedule',
         params,
         request,
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   },
@@ -414,7 +442,7 @@ export const schedulerClient = {
         operationName: 'deleteSchedule',
         params,
         request,
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   },
@@ -430,18 +458,18 @@ export const schedulerClient = {
         });
         
         const listSchedules = await client.send(command);
-        console.log(`Schedules: ${JSON.stringify(listSchedules)}`)
+        console.log(`Schedules: ${JSON.stringify(listSchedules.Schedules?.map(s => s.Name).join(', '))}`);
         
-        const getScheduleCommands = listSchedules.Schedules?.map((schedule: ScheduleSummary) => {
+        // フィルタリング後のスケジュールに対してのみ詳細情報を取得
+        const getScheduleCommands = listSchedules.Schedules!.map((schedule: ScheduleSummary) => {
           return client.send(new GetScheduleCommand({
             Name: schedule.Name!,
             GroupName: schedule.GroupName!
           }));
         });
 
-        const response = await Promise.all(getScheduleCommands!);
+        const response = await Promise.all(getScheduleCommands);
         const schedules = response.map(schedule => {
-
           // スケジュール情報を整形
           const action = schedule.Target?.Arn?.includes('startInstances') ? 'start' : 'stop';
           
@@ -503,14 +531,17 @@ export const ecsClient = {
     );
   },
   
-  // サービス詳細の取得
+  // サービス詳細の取得（ABACフィルタリング適用）
   describeServices: async (params: { cluster: string, services: string[] }, request: Request) => {
-    return await withAWSClient(
+    const result = await withAWSClient(
       ECSClient,
       async (client) => {
         const command = new DescribeServicesCommand({
           cluster: params.cluster,
-          services: params.services
+          services: params.services,
+          include: [
+            "TAGS",
+          ],
         });
         return await client.send(command);
       },
@@ -521,6 +552,15 @@ export const ecsClient = {
         request
       }
     );
+
+    // ABACフィルタリングを適用
+    const filteredServices = await filterByGroupId(
+      result.services || [],
+      extractECSTags,
+      request
+    );
+
+    return { ...result, services: filteredServices };
   },
   
   // サービスのタスク数を更新
@@ -551,9 +591,9 @@ export const ecsClient = {
 
 // rdsClientの実装
 export const rdsClient = {
-  // DBクラスター一覧の取得
+  // DBクラスター一覧の取得（ABACフィルタリング適用）
   describeDBClusters: async (request: Request) => {
-    return await withAWSClient(
+    const result = await withAWSClient(
       RDSClient,
       async (client) => {
         const command = new DescribeDBClustersCommand({});
@@ -565,6 +605,15 @@ export const rdsClient = {
         request
       }
     );
+
+    // ABACフィルタリングを適用
+    const filteredClusters = await filterByGroupId(
+      result.DBClusters || [],
+      extractRDSTags,
+      request
+    );
+
+    return { ...result, DBClusters: filteredClusters };
   },
   
   // DBクラスターの一時停止
@@ -582,7 +631,7 @@ export const rdsClient = {
         operationName: 'stopDBCluster',
         params,
         request,
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   },
@@ -602,7 +651,7 @@ export const rdsClient = {
         operationName: 'startDBCluster',
         params,
         request,
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   }
@@ -640,7 +689,7 @@ export const cognitoClient = {
         serviceName: 'Cognito',
         operationName: 'forgotPassword',
         params: { username: params.username }
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   },
@@ -674,7 +723,7 @@ export const cognitoClient = {
         serviceName: 'Cognito',
         operationName: 'confirmForgotPassword',
         params: { username: params.username }
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   },
@@ -692,7 +741,7 @@ export const cognitoClient = {
       {
         serviceName: 'Cognito',
         operationName: 'getUser'
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   },
@@ -723,7 +772,7 @@ export const cognitoClient = {
         serviceName: 'Cognito',
         operationName: 'initiateAuth',
         params: { username: params.username }
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   },
@@ -760,7 +809,7 @@ export const cognitoClient = {
         serviceName: 'Cognito',
         operationName: 'respondToNewPasswordChallenge',
         params: { username: params.username }
-        // エラーハンドラーなし（エラーをそのまま投げる）
+        
       }
     );
   }

@@ -3,14 +3,12 @@ import React from 'react';
 interface ErrorAlertProps {
   isVisible: boolean;
   message: string | null;
-  details?: string | null;
   onClose: () => void;
 }
 
 export const ErrorAlert: React.FC<ErrorAlertProps> = ({ 
   isVisible, 
   message, 
-  details,
   onClose 
 }) => {
   if (!isVisible || !message) return null;
@@ -37,11 +35,6 @@ export const ErrorAlert: React.FC<ErrorAlertProps> = ({
             <h3 className="text-sm font-medium text-red-800">
               {message}
             </h3>
-            {details && (
-              <div className="mt-1 text-sm text-red-700">
-                <p>{details}</p>
-              </div>
-            )}
           </div>
           <div className="ml-auto pl-3">
             <div className="-mx-1.5 -my-1.5">

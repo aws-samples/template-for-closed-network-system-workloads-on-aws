@@ -3,20 +3,20 @@ import type { LoaderFunctionArgs } from "@remix-run/node";
 import { getSession } from "~/utils/session.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // ユーザーが認証されているかチェック
-  console.log('index page loader');
+  // Check the state of authentication
   const session = await getSession(request.headers.get('Cookie'));
   const user = session.get('user');
   
-  // 認証されていればダッシュボードへ、そうでなければログインページへリダイレクト
+  // User is authenticated, redirect to dashboard
   if (user) {
     return redirect("/dashboard");
   }
   
+  // User is not authenticated, redirect to login
   return redirect("/login");
 }
 
-// このコンポーネントは実際には表示されない（リダイレクトされるため）
+// This component is not actually rendered (because of the redirect)
 export default function Index() {
   return null;
 }

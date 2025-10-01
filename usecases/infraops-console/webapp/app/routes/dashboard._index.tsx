@@ -1,10 +1,10 @@
 import { redirect } from '@remix-run/node';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
-import { Form, Link, useLoaderData, useNavigation, useSubmit, useFetcher } from '@remix-run/react';
+import { Link, useLoaderData, useNavigation, useSubmit, useFetcher } from '@remix-run/react';
 import { useState, useEffect } from 'react';
 import { useDebounce } from '~/hooks/useDebounce';
 import { ec2Client, ecsClient, rdsClient } from '~/utils/aws.server';
-import { requireUser } from '~/utils/auth.server';
+import { requireAuthentication } from '~/utils/auth.server';
 import type { AppError } from '~/utils/error.server';
 import type { Schedule } from '~/models/schedule';
 import type { Service } from '~/models/service';
@@ -115,26 +115,13 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // 認証チェック
-  const user = await requireUser(request);
+  const { user } = await requireAuthentication(request); 
 
   let instances: Array<Instance> = [];
   
   try {
-    // フィルターの設定
-    const filters = [];
-    
-    // userロールの場合、GroupIdでフィルタリング
-    if (user.isAdmin === false && user.groupId) {
-      filters.push({
-        Name: 'tag:GroupId',
-        Values: [user.groupId],
-      });
-    }
-    
     // EC2インスタンスの一覧を取得（リクエストオブジェクトを渡して認証チェック）
-    const { Reservations } = await ec2Client.describeInstances({
-      Filters: filters,
-    }, request);
+    const { Reservations } = await ec2Client.describeInstances({}, request);
 
     // インスタンス情報を整形
     instances = Reservations?.flatMap(reservation =>
@@ -800,7 +787,6 @@ export default function Dashboard() {
       <ErrorAlert
         isVisible={isErrorAlertVisible}
         message={errorMessage}
-        details={errorDetails}
         onClose={() => setIsErrorAlertVisible(false)}
       />
     </div>

@@ -151,21 +151,20 @@ export async function requireAdmin(request: Request) {
 }
 
 // ログイン状態チェック
-export async function requireUser(request: Request):Promise<User> {
+export async function isAuthenticated(request: Request):Promise<void> {
   const session = await getSession(request.headers.get('Cookie'));
   const user:User = session.get('user');
   
   if (!user) {
     throw redirect('/login');
   }
-  
-  return user;
 }
 
 // IDトークンの検証は、一時認証情報取得時にAWS側で行うため、ここではトークンの存在チェックのみを行う
-export async function requireAuthentication(request: Request): Promise<string> {
+export async function requireAuthentication(request: Request): Promise<{idToken: string, user: User}> {
   console.log('requireAuthentication called');
   const session = await getSession(request.headers.get('Cookie'));
+  const user:User = session.get('user');
   const idToken = session.get('idToken');
   
   if (!idToken) {
@@ -173,5 +172,5 @@ export async function requireAuthentication(request: Request): Promise<string> {
     throw redirect('/login');
   }
   
-  return idToken;
+  return {idToken, user};
 }

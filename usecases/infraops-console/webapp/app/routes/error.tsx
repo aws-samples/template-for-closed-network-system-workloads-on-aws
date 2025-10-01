@@ -34,8 +34,8 @@ export default function AuthError() {
         <Form method="get" action="/login">
           <Button 
             type="submit" 
-            variant="secondary"
-            fullWidth
+            variant="outline"
+            size="lg"
             disabled={isSubmitting}
           >
             ログインページに戻る

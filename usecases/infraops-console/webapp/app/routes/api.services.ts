@@ -1,10 +1,10 @@
 import { ActionFunctionArgs, json } from '@remix-run/node';
 import { ecsClient } from '~/utils/aws.server';
-import { requireUser } from '~/utils/auth.server';
+import { requireAuthentication } from '~/utils/auth.server';
 
 export async function action({ request }: ActionFunctionArgs) {
   // 認証チェック
-  await requireUser(request);
+  await requireAuthentication(request)
 
   // フォームデータを取得
   const formData = await request.formData();

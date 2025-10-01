@@ -201,17 +201,31 @@ export class InfraopsConsoleStack extends Stack {
 
     // Admins用のIAMロール作成（フルアクセス権限）
     const adminRole = new aws_iam.Role(this, 'AdminRole', {
-      assumedBy: new aws_iam.FederatedPrincipal(
-        'cognito-identity.amazonaws.com',
-        {
-          "StringEquals": {
-            "cognito-identity.amazonaws.com:aud": this.idPool.ref
+      assumedBy: new aws_iam.CompositePrincipal(
+        new aws_iam.FederatedPrincipal(
+          'cognito-identity.amazonaws.com',
+          {
+            "StringEquals": {
+              "cognito-identity.amazonaws.com:aud": this.idPool.ref
+            },
+            "ForAnyValue:StringLike": {
+              "cognito-identity.amazonaws.com:amr": "authenticated"
+            }
           },
-          "ForAnyValue:StringLike": {
-            "cognito-identity.amazonaws.com:amr": "authenticated"
-          }
-        },
-        'sts:AssumeRoleWithWebIdentity'
+          'sts:AssumeRoleWithWebIdentity'
+        ),
+        new aws_iam.FederatedPrincipal(
+          'cognito-identity.amazonaws.com',
+          {
+            "StringEquals": {
+              "cognito-identity.amazonaws.com:aud": this.idPool.ref
+            },
+            "ForAnyValue:StringLike": {
+              "cognito-identity.amazonaws.com:amr": "authenticated"
+            }
+          },
+          'sts:TagSession'
+        ),
       ),
       description: 'Role for Admins group with full access'
     });
@@ -237,13 +251,18 @@ export class InfraopsConsoleStack extends Stack {
             // RDS関連の権限
             "rds:DescribeDBClusters",
             "rds:StopDBCluster",
+            "rds:StopDBInstance",
             "rds:StartDBCluster",
+            "rds:StartDBInstance",
+            "rds:RebootDBCluster",
+            "rds:RebootDBInstance",
             // EventBridge Scheduler関連の権限
             "scheduler:CreateSchedule",
             "scheduler:GetSchedule",
             "scheduler:UpdateSchedule",
             "scheduler:DeleteSchedule",
             "scheduler:ListSchedules",
+            "scheduler:ListTagsForResource",
             // Cognito関連の権限
             "cognito-idp:ForgotPassword",
             "cognito-idp:ConfirmForgotPassword",
@@ -266,17 +285,31 @@ export class InfraopsConsoleStack extends Stack {
 
     // Users用のIAMロール作成（ABAC適用）
     const usersRole = new aws_iam.Role(this, 'UsersRole', {
-      assumedBy: new aws_iam.FederatedPrincipal(
-        'cognito-identity.amazonaws.com',
-        {
-          "StringEquals": {
-            "cognito-identity.amazonaws.com:aud": this.idPool.ref
+      assumedBy: new aws_iam.CompositePrincipal(
+        new aws_iam.FederatedPrincipal(
+          'cognito-identity.amazonaws.com',
+          {
+            "StringEquals": {
+              "cognito-identity.amazonaws.com:aud": this.idPool.ref
+            },
+            "ForAnyValue:StringLike": {
+              "cognito-identity.amazonaws.com:amr": "authenticated"
+            }
           },
-          "ForAnyValue:StringLike": {
-            "cognito-identity.amazonaws.com:amr": "authenticated"
-          }
-        },
-        'sts:AssumeRoleWithWebIdentity'
+          'sts:AssumeRoleWithWebIdentity'
+        ),
+        new aws_iam.FederatedPrincipal(
+          'cognito-identity.amazonaws.com',
+          {
+            "StringEquals": {
+              "cognito-identity.amazonaws.com:aud": this.idPool.ref
+            },
+            "ForAnyValue:StringLike": {
+              "cognito-identity.amazonaws.com:amr": "authenticated"
+            }
+          },
+          'sts:TagSession'
+        ),
       ),
       description: 'Role for Users group with ABAC-based access control'
     });
@@ -288,17 +321,35 @@ export class InfraopsConsoleStack extends Stack {
         new aws_iam.PolicyStatement({
           actions: [
             "ec2:DescribeInstances",
+            "ec2:DescribeInstanceTypes",
+            "ec2:GetInstanceTypesFromInstanceRequirements",
+            "ec2:DescribeInstanceTypeOfferings",
+          ],
+          resources: ["*"],
+        }),
+        new aws_iam.PolicyStatement({
+          actions: [
             "ec2:StartInstances",
             "ec2:StopInstances",
-            "ec2:DescribeInstanceTypes",
-            "ec2:CreateTags",
-            "ec2:GetInstanceTypesFromInstanceRequirements",
-            "ec2:DescribeInstanceTypeOfferings"
           ],
           resources: ["*"],
           conditions: {
             'StringEquals': {
-              'ec2:ResourceTag/GroupId': '${cognito-identity.amazonaws.com:custom:groupId}'
+              'ec2:ResourceTag/GroupId': '${aws:PrincipalTag/GroupId}'
+            }
+          }
+        }),
+        new aws_iam.PolicyStatement({
+          actions: [
+            "ec2:CreateTags",
+          ],
+          resources: ["*"],
+          conditions: {
+            'StringEquals': {
+              'ec2:ResourceTag/GroupId': '${aws:PrincipalTag/GroupId}'
+            },
+            'ForAllValues:StringEquals': {
+              'aws:TagKeys': ['AlternateType']
             }
           }
         }),
@@ -307,13 +358,18 @@ export class InfraopsConsoleStack extends Stack {
           actions: [
             "ecs:ListClusters",
             "ecs:ListServices",
+          ],
+          resources: ["*"],
+        }),
+        new aws_iam.PolicyStatement({
+          actions: [
+            "ecs:UpdateService",
             "ecs:DescribeServices",
-            "ecs:UpdateService"
           ],
           resources: ["*"],
           conditions: {
             'StringEquals': {
-              'ecs:ResourceTag/GroupId': '${cognito-identity.amazonaws.com:custom:groupId}'
+              'ecs:ResourceTag/GroupId': '${aws:PrincipalTag/GroupId}'
             }
           }
         }),
@@ -327,28 +383,42 @@ export class InfraopsConsoleStack extends Stack {
         new aws_iam.PolicyStatement({
           actions: [
             "rds:StopDBCluster",
-            "rds:StartDBCluster"
+            "rds:StopDBInstance",
+            "rds:StartDBCluster",
+            "rds:StartDBInstance",
+            "rds:RebootDBCluster",
+            "rds:RebootDBInstance",
           ],
           resources: ["*"],
           conditions: {
             'StringEquals': {
-              'rds:cluster-tag/GroupId': '${cognito-identity.amazonaws.com:custom:groupId}'
+              'aws:ResourceTag/GroupId': '${aws:PrincipalTag/GroupId}'
             }
           }
         }),
         // EventBridge Scheduler関連の権限（ABACを適用）
         new aws_iam.PolicyStatement({
           actions: [
+            "scheduler:ListSchedules",
+            "scheduler:ListTagsForResource",
             "scheduler:CreateSchedule",
             "scheduler:GetSchedule",
             "scheduler:UpdateSchedule",
             "scheduler:DeleteSchedule",
-            "scheduler:ListSchedules"
+          ],
+          resources: ["*"],
+        }),
+        new aws_iam.PolicyStatement({
+          actions: [
+            "scheduler:CreateTags",
           ],
           resources: ["*"],
           conditions: {
             'StringEquals': {
-              'scheduler:ResourceTag/GroupId': '${cognito-identity.amazonaws.com:custom:groupId}'
+              'aws:ResourceTag/GroupId': '${aws:PrincipalTag/GroupId}'
+            },
+            'ForAllValues:StringEquals': {
+              'aws:TagKeys': ['GroupId']
             }
           }
         }),
@@ -408,6 +478,17 @@ export class InfraopsConsoleStack extends Stack {
       roles: {
         'authenticated': usersRole.roleArn
       }
+    });
+
+    // PrincipalTagマッピングの作成（custom:groupIdをGroupIdにマッピング）
+    new aws_cognito.CfnIdentityPoolPrincipalTag(this, 'IdentityPoolPrincipalTag', {
+      identityPoolId: this.idPool.ref,
+      identityProviderName: this.userPool.userPoolProviderName,
+      principalTags: {
+        'GroupId': 'custom:groupId',
+        'client': 'aud'
+      },
+      useDefaults: false
     });
 
 //     // ローカルのコードをビルドしてECRにプッシュ

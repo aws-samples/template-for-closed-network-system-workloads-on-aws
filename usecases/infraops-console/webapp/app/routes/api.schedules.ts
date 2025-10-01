@@ -1,10 +1,10 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
+import { type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node';
 import { schedulerClient } from '~/utils/aws.server';
-import { requireUser } from '~/utils/auth.server';
+import { requireAuthentication } from '~/utils/auth.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // 認証チェック
-  await requireUser(request);
+  await requireAuthentication(request)
 
   // クエリパラメータからインスタンスIDを取得
   const url = new URL(request.url);
@@ -26,20 +26,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   // 認証チェック
-  const user = await requireUser(request);
+  await requireAuthentication(request)
 
   // フォームデータを取得
   const formData = await request.formData();
   const actionType = formData.get('actionType') as string;
   const instanceId = formData.get('instanceId') as string;
-  const instanceGroupId = formData.get('groupId') as string;
-
-  // 権限チェック
-  // adminはすべてのインスタンスを操作可能、userは自分のgroupIdに一致するインスタンスのみ操作可能
-  if (user.isAdmin != false && user.groupId !== instanceGroupId) {
-    console.error(`User ${user.email} attempted to ${actionType} schedule for instance ${instanceId} without permission`);
-    return { error: '権限がありません' };
-  }
 
   try {
     if (actionType === 'create') {

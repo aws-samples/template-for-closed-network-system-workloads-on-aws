@@ -1,10 +1,10 @@
 import type { LoaderFunctionArgs } from '@remix-run/node';
 import { ec2Client } from '~/utils/aws.server';
-import { requireUser } from '~/utils/auth.server';
+import { requireAuthentication } from '~/utils/auth.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // 認証チェック
-  await requireUser(request);
+  await requireAuthentication(request);
 
   try {
       const filters = [{
