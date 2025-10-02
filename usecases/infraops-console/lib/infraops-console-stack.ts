@@ -590,5 +590,25 @@ export class InfraopsConsoleStack extends Stack {
     //   id: 'AwsSolutions-IAM4',
     //   reason: 'To use ManagedPolicy for service',
     // }])
+
+    // Output commands to create initial admin user
+    new CfnOutput(this, 'CreateAdminUserCommand', {
+      description: 'Command to create initial admin user (replace REPLACE_WITH_ADMIN_EMAIL and REPLACE_WITH_INITIAL_PASSWORD)',
+      value: [
+        'aws cognito-idp admin-create-user \\',
+        `  --user-pool-id ${this.userPool.userPoolId} \\`,
+        '  --username REPLACE_WITH_ADMIN_EMAIL \\',
+        '  --user-attributes Name=email,Value=REPLACE_WITH_ADMIN_EMAIL Name=email_verified,Value=true \\',
+        '  --temporary-password REPLACE_WITH_INITIAL_PASSWORD \\',
+        '  --message-action RESEND \\',
+        `  --region ${this.region} && \\`,
+        'aws cognito-idp admin-add-user-to-group \\',
+        `  --user-pool-id ${this.userPool.userPoolId} \\`,
+        '  --username REPLACE_WITH_ADMIN_EMAIL \\',
+        '  --group-name Admins \\',
+        `  --region ${this.region}`
+      ].join('\n')
+    });
+
   }
 }
