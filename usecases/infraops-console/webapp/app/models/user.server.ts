@@ -1,5 +1,5 @@
 import { cognitoClient } from '~/utils/aws.server';
-import { AttributeType } from '@aws-sdk/client-cognito-identity-provider';
+import { AttributeType, UserType } from '@aws-sdk/client-cognito-identity-provider';
 
 // User type definition
 export type User = {
@@ -15,15 +15,21 @@ export type UserList = {
 };
 
 /**
- * Create user object from Cognito user attributes
- * @param userAttributes Cognito user attributes
+ * Create user object from Cognito UserType
+ * @param cognitoUser Cognito UserType object
  * @param groups User's Cognito groups (optional)
  * @returns User object
  */
-function mapCognitoUserToUser(userAttributes: AttributeType[], groups?: string[]): User {
+function mapCognitoUserToUser(cognitoUser: UserType, groups?: string[]): User {
+  const userAttributes = cognitoUser.Attributes || [];
+  
   let email = '';
   let groupId: string | null = null;
-  let createdAt = new Date().toISOString();
+  
+  // Cognitoの標準的な作成日時を使用（UserCreateDate）
+  let createdAt = cognitoUser.UserCreateDate 
+    ? cognitoUser.UserCreateDate.toISOString() 
+    : new Date().toISOString();
 
   // Extract necessary information from attributes
   userAttributes.forEach(attr => {
@@ -31,8 +37,10 @@ function mapCognitoUserToUser(userAttributes: AttributeType[], groups?: string[]
       email = attr.Value || '';
     } else if (attr.Name === 'custom:groupId') {
       groupId = attr.Value || null;
-    } else if (attr.Name === 'createdAt') {
-      createdAt = attr.Value || new Date().toISOString();
+    } 
+    // カスタム属性のcreatedAtがあれば優先（後方互換性のため）
+    else if (attr.Name === 'custom:createdAt') {
+      createdAt = attr.Value || createdAt;
     }
   });
 
@@ -64,8 +72,8 @@ export async function getUsers(
     });
     
     const users = await Promise.all(
-      (response.Users || []).map(async (user) => {
-        const attributes = user.Attributes || [];
+      (response.Users || []).map(async (cognitoUser) => {
+        const attributes = cognitoUser.Attributes || [];
         const email = attributes.find(attr => attr.Name === 'email')?.Value;
         
         // Get user's groups
@@ -79,7 +87,8 @@ export async function getUsers(
           }
         }
         
-        return mapCognitoUserToUser(attributes, groups);
+        // CognitoのUserType全体を渡す
+        return mapCognitoUserToUser(cognitoUser, groups);
       })
     );
 
@@ -106,7 +115,16 @@ export async function getUserByEmail(email: string): Promise<User | null> {
       return null;
     }
     
-    return mapCognitoUserToUser(userResponse.UserAttributes);
+    // AdminGetUserCommandOutputからUserTypeに変換
+    const cognitoUser: UserType = {
+      Attributes: userResponse.UserAttributes,
+      UserCreateDate: userResponse.UserCreateDate,
+      Username: userResponse.Username,
+      UserStatus: userResponse.UserStatus,
+      Enabled: userResponse.Enabled
+    };
+    
+    return mapCognitoUserToUser(cognitoUser);
   } catch (error) {
     console.error('Error getting user by email from Cognito:', error);
     return null;

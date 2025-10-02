@@ -5,6 +5,7 @@ import { getSession, commitSession } from '~/utils/session.server';
 import { Button, Input, Label, RequirementBadge } from '~/components';
 import { cognitoClient } from '~/utils/aws.server';
 import { getCognitoConfig } from '~/utils/auth.server';
+import { verifyAndDecodeIdToken } from '~/utils/jwt-verify.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // Check session
@@ -66,12 +67,23 @@ export async function action({ request }: ActionFunctionArgs) {
       // Save only ID and Access tokens
       session.set('idToken', response.AuthenticationResult.IdToken);
       session.set('accessToken', response.AuthenticationResult.AccessToken);
-      
-      // Save user information
-      session.set('user', {
-        email: email,
-        // Add other attributes as needed
-      });
+
+      const idToken = response.AuthenticationResult.IdToken;
+      if (idToken) {
+        try {
+          const payload = await verifyAndDecodeIdToken(idToken);
+          const groups = payload['cognito:groups'] as string[] || [];
+          session.set('user', {
+            email: payload.email as string,
+            isAdmin: groups.includes('Admins'),
+            groupId: payload['custom:groupId'] as string || null,
+            groups: groups
+          });
+        } catch (error) {
+          console.error('Failed to decode ID token during login:', error);
+          // Use fallback user info if token decoding fails
+        }
+      }
       
       // Commit session
       const sessionCookie = await commitSession(session, {

@@ -947,8 +947,6 @@ export const cognitoClient = {
           UserPoolId: process.env.USER_POOL_ID!,
           Username: email,
           UserAttributes: userAttributes,
-          TemporaryPassword: tempPassword,
-          MessageAction: 'SUPPRESS' // Suppress email sending (change as needed)
         });
         
         const result = await client.send(command);

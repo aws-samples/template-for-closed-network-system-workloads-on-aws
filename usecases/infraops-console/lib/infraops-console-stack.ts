@@ -599,8 +599,6 @@ export class InfraopsConsoleStack extends Stack {
         `  --user-pool-id ${this.userPool.userPoolId} \\`,
         '  --username REPLACE_WITH_ADMIN_EMAIL \\',
         '  --user-attributes Name=email,Value=REPLACE_WITH_ADMIN_EMAIL Name=email_verified,Value=true \\',
-        '  --temporary-password REPLACE_WITH_INITIAL_PASSWORD \\',
-        '  --message-action RESEND \\',
         `  --region ${this.region} && \\`,
         'aws cognito-idp admin-add-user-to-group \\',
         `  --user-pool-id ${this.userPool.userPoolId} \\`,

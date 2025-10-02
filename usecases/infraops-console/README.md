@@ -182,8 +182,6 @@ aws cognito-idp admin-create-user \
   --user-pool-id us-east-1_xxxxxxxxx \
   --username admin@example.com \
   --user-attributes Name=email,Value=admin@example.com Name=email_verified,Value=true \
-  --temporary-password TempPassword123! \
-  --message-action RESEND \
   --region us-east-1 && \
 aws cognito-idp admin-add-user-to-group \
   --user-pool-id us-east-1_xxxxxxxxx \
@@ -283,7 +281,6 @@ aws cognito-idp admin-create-user \
     Name=email,Value=user@example.com \
     Name=email_verified,Value=true \
     Name=custom:groupId,Value=team-a \
-  --temporary-password TempPassword123! \
   --region us-east-1
 ```
 
@@ -297,7 +294,6 @@ new aws_cognito.CfnIdentityPoolPrincipalTag(this, 'IdentityPoolPrincipalTag', {
   identityProviderName: this.userPool.userPoolProviderName,
   principalTags: {
     'GroupId': 'custom:groupId',  // Cognitoカスタム属性をPrincipalTagにマッピング
-    'client': 'aud'
   },
   useDefaults: false
 });
