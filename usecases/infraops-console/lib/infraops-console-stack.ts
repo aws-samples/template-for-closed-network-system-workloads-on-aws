@@ -263,12 +263,6 @@ export class InfraopsConsoleStack extends Stack {
             "scheduler:DeleteSchedule",
             "scheduler:ListSchedules",
             "scheduler:ListTagsForResource",
-            // Cognito-related permissions
-            "cognito-idp:ForgotPassword",
-            "cognito-idp:ConfirmForgotPassword",
-            "cognito-idp:GetUser",
-            "cognito-idp:InitiateAuth",
-            "cognito-idp:RespondToAuthChallenge",
             // Admin-only Cognito permissions
             "cognito-idp:ListUsers",
             "cognito-idp:AdminGetUser",
@@ -433,11 +427,7 @@ export class InfraopsConsoleStack extends Stack {
         // Cognito-related permissions (no ABAC - available to all users)
         new aws_iam.PolicyStatement({
           actions: [
-            "cognito-idp:ForgotPassword",
-            "cognito-idp:ConfirmForgotPassword",
             "cognito-idp:GetUser",
-            "cognito-idp:InitiateAuth",
-            "cognito-idp:RespondToAuthChallenge"
           ],
           resources: ["*"]
         }),
@@ -551,9 +541,10 @@ export class InfraopsConsoleStack extends Stack {
     service.addToRolePolicy(
       new aws_iam.PolicyStatement({
         actions: [
-          "cognito-idp:InitiateAuth",
           "cognito-idp:RespondToAuthChallenge",
-          "cognito-idp:AdminGetUser"
+          "cognito-idp:ForgotPassword",
+          "cognito-idp:ConfirmForgotPassword",
+          "cognito-idp:AdminInitiateAuth",
         ],
         resources: [this.userPool.userPoolArn]
       })

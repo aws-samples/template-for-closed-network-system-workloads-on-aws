@@ -40,8 +40,6 @@ import {
   ScheduleState,
   ScheduleSummary,
   TagResourceCommand,
-  ListTagsForResourceCommand,
-  Tag
 } from '@aws-sdk/client-scheduler';
 import { 
   CognitoIdentityProviderClient,
