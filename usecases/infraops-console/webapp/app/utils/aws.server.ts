@@ -63,6 +63,9 @@ import {
   AdminCreateUserCommand,
   AdminDeleteUserCommand,
   AdminGetUserCommand,
+  AdminAddUserToGroupCommand,
+  AdminRemoveUserFromGroupCommand,
+  AdminListGroupsForUserCommand,
   ListUsersCommand,
   AttributeType,
   InitiateAuthCommand,
@@ -928,8 +931,7 @@ export const cognitoClient = {
         // Set user attributes
         const userAttributes = [
           { Name: 'email', Value: email },
-          { Name: 'email_verified', Value: 'true' },
-          { Name: 'custom:isAdmin', Value: isAdmin ? 'true' : 'false' }
+          { Name: 'email_verified', Value: 'true' }
         ];
         
         // Add if group ID is specified
@@ -949,7 +951,16 @@ export const cognitoClient = {
           MessageAction: 'SUPPRESS' // Suppress email sending (change as needed)
         });
         
-        return await client.send(command);
+        const result = await client.send(command);
+        
+        // Add user to appropriate group based on isAdmin flag
+        if (isAdmin) {
+          await cognitoClient.addUserToGroup({ email, groupName: 'Admins' });
+        } else {
+          await cognitoClient.addUserToGroup({ email, groupName: 'Users' });
+        }
+        
+        return result;
       },
       {
         serviceName: 'Cognito',
@@ -975,6 +986,74 @@ export const cognitoClient = {
       {
         serviceName: 'Cognito',
         operationName: 'deleteUser',
+        params,
+        request
+      }
+    );
+  },
+
+  // Add user to group
+  addUserToGroup: async (params: { email: string, groupName: string }, request?: Request) => {
+    return await withAWSClient(
+      CognitoIdentityProviderClient,
+      async (client) => {
+        const command = new AdminAddUserToGroupCommand({
+          UserPoolId: process.env.USER_POOL_ID!,
+          Username: params.email,
+          GroupName: params.groupName
+        });
+        
+        return await client.send(command);
+      },
+      {
+        serviceName: 'Cognito',
+        operationName: 'addUserToGroup',
+        params,
+        request
+      }
+    );
+  },
+
+  // Remove user from group
+  removeUserFromGroup: async (params: { email: string, groupName: string }, request?: Request) => {
+    return await withAWSClient(
+      CognitoIdentityProviderClient,
+      async (client) => {
+        const command = new AdminRemoveUserFromGroupCommand({
+          UserPoolId: process.env.USER_POOL_ID!,
+          Username: params.email,
+          GroupName: params.groupName
+        });
+        
+        return await client.send(command);
+      },
+      {
+        serviceName: 'Cognito',
+        operationName: 'removeUserFromGroup',
+        params,
+        request
+      }
+    );
+  },
+
+  // Get user's groups
+  getUserGroups: async (params: { email: string }, request?: Request) => {
+    return await withAWSClient(
+      CognitoIdentityProviderClient,
+      async (client) => {
+        const command = new AdminListGroupsForUserCommand({
+          UserPoolId: process.env.USER_POOL_ID!,
+          Username: params.email
+        });
+        
+        const result = await client.send(command);
+        return {
+          groups: result.Groups?.map(group => group.GroupName).filter(Boolean) as string[] || []
+        };
+      },
+      {
+        serviceName: 'Cognito',
+        operationName: 'getUserGroups',
         params,
         request
       }

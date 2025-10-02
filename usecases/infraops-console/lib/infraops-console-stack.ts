@@ -132,7 +132,6 @@ export class InfraopsConsoleStack extends Stack {
       },
       accountRecovery: aws_cognito.AccountRecovery.EMAIL_ONLY,
       customAttributes: {
-        "isAdmin": new aws_cognito.BooleanAttribute({ mutable: true }),
         "groupId": new aws_cognito.StringAttribute({ mutable: true })
       }
     });
@@ -269,7 +268,14 @@ export class InfraopsConsoleStack extends Stack {
             "cognito-idp:ConfirmForgotPassword",
             "cognito-idp:GetUser",
             "cognito-idp:InitiateAuth",
-            "cognito-idp:RespondToAuthChallenge"
+            "cognito-idp:RespondToAuthChallenge",
+            // Admin-only Cognito permissions
+            "cognito-idp:ListUsers",
+            "cognito-idp:AdminGetUser",
+            "cognito-idp:AdminCreateUser",
+            "cognito-idp:AdminDeleteUser",
+            "cognito-idp:AdminAddUserToGroup",
+            "cognito-idp:AdminRemoveUserFromGroup"
           ],
           resources: ["*"]
         }),

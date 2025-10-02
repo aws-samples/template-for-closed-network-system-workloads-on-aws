@@ -4,6 +4,7 @@ import { commitSession, getSession } from './session.server';
 import { User } from '~/models/user.server';
 import { redirect } from '@remix-run/node';
 import { cognitoClient } from './aws.server';
+import { verifyAndDecodeIdToken } from './jwt-verify.server';
 
 // User type definition
 export type AuthUser = {
@@ -99,14 +100,38 @@ async function initFormStrategy() {
     
         // Save only ID and Access tokens
         console.log(`Storing tokens in session`)
-        session.set('idToken', authResult.AuthenticationResult?.IdToken);
-        session.set('accessToken', authResult.AuthenticationResult?.AccessToken);
+        const idToken = authResult.AuthenticationResult?.IdToken;
+        const accessToken = authResult.AuthenticationResult?.AccessToken;
+        
+        session.set('idToken', idToken);
+        session.set('accessToken', accessToken);
 
-        // Also save user information
-        session.set('user', {
+        // Decode ID token to get user information including groups
+        let userInfo = {
           email: email,
-          // Add other attributes as needed
-        });
+          isAdmin: false,
+          groupId: null as string | null,
+          groups: [] as string[]
+        };
+
+        if (idToken) {
+          try {
+            const payload = await verifyAndDecodeIdToken(idToken);
+            const groups = payload['cognito:groups'] as string[] || [];
+            userInfo = {
+              email: payload.email as string,
+              isAdmin: groups.includes('Admins'),
+              groupId: payload['custom:groupId'] as string || null,
+              groups: groups
+            };
+          } catch (error) {
+            console.error('Failed to decode ID token during login:', error);
+            // Use fallback user info if token decoding fails
+          }
+        }
+
+        // Save complete user information
+        session.set('user', userInfo);
     
         // Commit session and redirect to dashboard
         throw redirect('/dashboard', {

@@ -31,7 +31,7 @@ export const Select: React.FC<SelectProps> = ({
   
   const widthStyle = fullWidth ? 'w-full' : '';
   
-  const baseStyle = 'block rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed';
+  const baseStyle = 'block rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed px-3 h-10';
 
   return (
     <div className={`mb-4 ${widthStyle}`}>

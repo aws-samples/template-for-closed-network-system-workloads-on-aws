@@ -39,11 +39,13 @@ export async function getVerifiedUserInfo(request: Request) {
   const idToken = (await requireAuthentication(request)).idToken;
   const payload = await verifyAndDecodeIdToken(idToken);
   
+  const groups = payload['cognito:groups'] as string[] || [];
+  
   return {
     email: payload.email as string,
     groupId: payload['custom:groupId'] as string,
-    isAdmin: payload['custom:isAdmin'] === 'true',
-    groups: payload['cognito:groups'] as string[] || [],
+    isAdmin: groups.includes('Admins'),
+    groups: groups,
     // Add other attributes as needed
   };
 }

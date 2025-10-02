@@ -17,12 +17,12 @@ export type UserList = {
 /**
  * Create user object from Cognito user attributes
  * @param userAttributes Cognito user attributes
+ * @param groups User's Cognito groups (optional)
  * @returns User object
  */
-function mapCognitoUserToUser(userAttributes: AttributeType[]): User {
+function mapCognitoUserToUser(userAttributes: AttributeType[], groups?: string[]): User {
   let email = '';
   let groupId: string | null = null;
-  let isAdmin = false;
   let createdAt = new Date().toISOString();
 
   // Extract necessary information from attributes
@@ -31,12 +31,13 @@ function mapCognitoUserToUser(userAttributes: AttributeType[]): User {
       email = attr.Value || '';
     } else if (attr.Name === 'custom:groupId') {
       groupId = attr.Value || null;
-    } else if (attr.Name === 'custom:isAdmin') {
-      isAdmin = attr.Value === 'true';
     } else if (attr.Name === 'createdAt') {
       createdAt = attr.Value || new Date().toISOString();
     }
   });
+
+  // Determine admin status from groups
+  const isAdmin = groups ? groups.includes('Admins') : false;
 
   return {
     email,
@@ -62,10 +63,25 @@ export async function getUsers(
       paginationToken: lastEvaluatedKey?.token
     });
     
-    const users = response.Users?.map(user => {
-      const attributes = user.Attributes || [];
-      return mapCognitoUserToUser(attributes);
-    }) || [];
+    const users = await Promise.all(
+      (response.Users || []).map(async (user) => {
+        const attributes = user.Attributes || [];
+        const email = attributes.find(attr => attr.Name === 'email')?.Value;
+        
+        // Get user's groups
+        let groups: string[] = [];
+        if (email) {
+          try {
+            const groupsResponse = await cognitoClient.getUserGroups({ email });
+            groups = groupsResponse.groups || [];
+          } catch (error) {
+            console.error(`Error getting groups for user ${email}:`, error);
+          }
+        }
+        
+        return mapCognitoUserToUser(attributes, groups);
+      })
+    );
 
     return {
       users,
