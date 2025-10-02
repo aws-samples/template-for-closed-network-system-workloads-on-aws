@@ -499,74 +499,76 @@ export class InfraopsConsoleStack extends Stack {
       useDefaults: false
     });
 
-//     // Build local code and push to ECR
-//     const instanceManagerAsset = new assets.DockerImageAsset(this, 'InfraopsConsoleDockerImage', {
-//       directory: path.join(__dirname, '../webapp'),
-//       cacheDisabled: true,
-//     });
-// 
-    // // Create AppRunner service
-    // const service = new apprunner.Service(this, 'InfraopsConsoleService', {
-    //   serviceName: 'infraops-console',
-    //   source: apprunner.Source.fromAsset({
-    //     imageConfiguration: {
-    //       port: 3000,
-    //       environmentVariables: {
-    //         SESSION_SECRET: '1nfra0ps-c0ns0l3-s3cr3t',
-    //         CLIENT_ID: this.userPoolClient.userPoolClientId,
-    //         CLIENT_SECRET: this.userPoolClient.userPoolClientSecret.unsafeUnwrap(),
-    //         USER_POOL_ID: this.userPool.userPoolId,
-    //         DOMAIN: `infraops-console-${Stack.of(this).account}`,
-    //         AWS_REGION: Stack.of(this).region,
-    //         EVENTBRIDGE_SCHEDULER_ROLE_ARN: schedulerExecutionRole.roleArn
-    //       },
-    //     },
-    //     asset: instanceManagerAsset,
-    //     
-    //   }),
-    //   cpu: apprunner.Cpu.ONE_VCPU,
-    //   memory: apprunner.Memory.TWO_GB,
-    //   autoDeploymentsEnabled: true,
-    //   isPubliclyAccessible: false, // For closed network
-    // });
-    // service.addToRolePolicy(
-    //   new aws_iam.PolicyStatement({
-    //     actions: [
-    //       "cloudwatch:Get*",
-    //       "cloudwatch:Describe*",
-    //     ],
-    //     resources: ["*"],
-    //   })
-    // );
+    // Build local code and push to ECR
+    const instanceManagerAsset = new assets.DockerImageAsset(this, 'InfraopsConsoleDockerImage', {
+      directory: path.join(__dirname, '../webapp'),
+      cacheDisabled: false,
+    });
+ 
+    // Create AppRunner service
+    const service = new apprunner.Service(this, 'InfraopsConsoleService', {
+      serviceName: 'infraops-console',
+      source: apprunner.Source.fromAsset({
+        imageConfiguration: {
+          port: 3000,
+          environmentVariables: {
+            SESSION_SECRET: '1nfra0ps-c0ns0l3-s3cr3t',
+            CLIENT_ID: this.userPoolClient.userPoolClientId,
+            CLIENT_SECRET: this.userPoolClient.userPoolClientSecret.unsafeUnwrap(),
+            USER_POOL_ID: this.userPool.userPoolId,
+            IDENTITY_POOL_ID: this.idPool.ref,
+            DOMAIN: `infraops-console-${Stack.of(this).account}`,
+            AWS_REGION: Stack.of(this).region,
+            AWS_ACCOUNT_ID: Stack.of(this).account,
+            EVENTBRIDGE_SCHEDULER_ROLE_ARN: schedulerExecutionRole.roleArn
+          },
+        },
+        asset: instanceManagerAsset,
+        
+      }),
+      cpu: apprunner.Cpu.ONE_VCPU,
+      memory: apprunner.Memory.TWO_GB,
+      autoDeploymentsEnabled: true,
+      isPubliclyAccessible: false, // For closed network
+    });
+    service.addToRolePolicy(
+      new aws_iam.PolicyStatement({
+        actions: [
+          "cloudwatch:Get*",
+          "cloudwatch:Describe*",
+        ],
+        resources: ["*"],
+      })
+    );
     
-    // new apprunner.VpcIngressConnection(this, 'VpcIngressConnection', {
-    //   vpc: sourceVpc,
-    //   service,
-    //   interfaceVpcEndpoint,
-    // });
+    new apprunner.VpcIngressConnection(this, 'VpcIngressConnection', {
+      vpc: sourceVpc,
+      service,
+      interfaceVpcEndpoint,
+    });
 
-    // // Add access permissions to Cognito
-    // service.addToRolePolicy(
-    //   new aws_iam.PolicyStatement({
-    //     actions: [
-    //       "cognito-idp:InitiateAuth",
-    //       "cognito-idp:RespondToAuthChallenge",
-    //       "cognito-idp:AdminGetUser"
-    //     ],
-    //     resources: [this.userPool.userPoolArn]
-    //   })
-    // );
+    // Add access permissions to Cognito
+    service.addToRolePolicy(
+      new aws_iam.PolicyStatement({
+        actions: [
+          "cognito-idp:InitiateAuth",
+          "cognito-idp:RespondToAuthChallenge",
+          "cognito-idp:AdminGetUser"
+        ],
+        resources: [this.userPool.userPoolArn]
+      })
+    );
 
-    // NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), 
-    //   [
-    //     `${service.node.path}/InstanceRole/DefaultPolicy/Resource`,
-    //     `${service.node.path}/AccessRole/DefaultPolicy/Resource`,
-    //   ], 
-    //   [{
-    //     id: 'AwsSolutions-IAM5',
-    //     reason: 'To use ManagedPolicy for AppRunner service',
-    //   }]
-    // );
+    NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), 
+      [
+        `${service.node.path}/InstanceRole/DefaultPolicy/Resource`,
+        `${service.node.path}/AccessRole/DefaultPolicy/Resource`,
+      ], 
+      [{
+        id: 'AwsSolutions-IAM5',
+        reason: 'To use ManagedPolicy for AppRunner service',
+      }]
+    );
 
     NagSuppressions.addResourceSuppressions(this.userPool, [{
       id: 'AwsSolutions-COG3',
@@ -584,12 +586,12 @@ export class InfraopsConsoleStack extends Stack {
       id: 'AwsSolutions-IAM4',
       reason: 'To use ManagedPolicy for AppRunner service',
     }]);
-    // NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), [
-    //   `/${Stack.of(this).stackName}/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource`
-    // ],[{
-    //   id: 'AwsSolutions-IAM4',
-    //   reason: 'To use ManagedPolicy for service',
-    // }])
+    NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), [
+      `/${Stack.of(this).stackName}/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource`
+    ],[{
+      id: 'AwsSolutions-IAM4',
+      reason: 'To use ManagedPolicy for service',
+    }])
 
     // Output commands to create initial admin user
     new CfnOutput(this, 'CreateAdminUserCommand', {

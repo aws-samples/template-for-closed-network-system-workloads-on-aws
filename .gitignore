@@ -14,6 +14,7 @@ cdk-*-outputs.json
 .DS_Store
 .env
 scoutsuite-report*
+parameter.ts
 
 # infra
 !ssl/openssl_sign_inca.cnf

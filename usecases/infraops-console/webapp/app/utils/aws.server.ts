@@ -67,10 +67,6 @@ import {
   AdminRemoveUserFromGroupCommand,
   AdminListGroupsForUserCommand,
   ListUsersCommand,
-  AttributeType,
-  InitiateAuthCommand,
-  InitiateAuthCommandInput,
-  InitiateAuthCommandOutput
 } from '@aws-sdk/client-cognito-identity-provider';
 import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 import crypto from 'crypto';
@@ -84,42 +80,21 @@ import { getVerifiedGroupId } from './jwt-verify.server';
 // Region configuration
 const REGION = process.env.AWS_REGION || 'ap-northeast-1'; // Default is Tokyo region
 
-// Function to get Cognito configuration
-function getCognitoConfig() {
-  const clientId = process.env.CLIENT_ID;
-  const clientSecret = process.env.CLIENT_SECRET;
-  const userPoolId = process.env.USER_POOL_ID;
-  const domain = process.env.DOMAIN;
-  const region = process.env.AWS_REGION;  
-
-  if (!clientId || !clientSecret || !userPoolId || !domain || !region) {
-    throw new Error('Cognito configuration not found');
-  }
-  
-  return {
-    clientId,
-    clientSecret,
-    userPoolId,
-    domain,
-    region
-  };
-}
-
 // AWS SDK client configuration
 const makeClientConfig = async (request?: Request) => {
   const idToken = request ? (await requireAuthentication(request)).idToken : undefined;
   return {
     region: REGION,
-    credentials: (process.env.NODE_ENV === "development") 
+    credentials: (process.env.NODE_ENV === "production") 
     // Production environment
     ? (request ? fromCognitoIdentityPool({
       client: new CognitoIdentityClient({ region: REGION }),
       identityPoolId: process.env.IDENTITY_POOL_ID || '',
       logins: idToken ? {[`cognito-idp.${REGION}.amazonaws.com/${process.env.USER_POOL_ID}`]: idToken} : undefined
       // Use App Runner permissions when request is not available
-    }) : fromIni({ profile: 'closedtemplate' })) 
+    }) : undefined) 
     // Development environment only
-    :fromIni({ profile: 'closedtemplate' }),
+    :fromIni({ profile: 'default' }),
   }
 };
 
