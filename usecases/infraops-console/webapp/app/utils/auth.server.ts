@@ -55,7 +55,7 @@ async function initFormStrategy() {
         let authResult;
         try {
           // Execute ADMIN_USER_PASSWORD_AUTH authentication
-          authResult = await cognitoClient.initiateAuth({
+          authResult = await cognitoClient.adminInitiateAuth({
             username: email,
             password,
             clientId: config.clientId,

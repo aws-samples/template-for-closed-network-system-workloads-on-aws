@@ -777,7 +777,7 @@ export const cognitoClient = {
   },
   
   // Function to perform USER_PASSWORD_AUTH authentication
-  initiateAuth: async (params: {username: string, password: string, clientId: string, clientSecret: string}): Promise<AdminInitiateAuthCommandOutput> => {
+  adminInitiateAuth: async (params: {username: string, password: string, clientId: string, clientSecret: string}): Promise<AdminInitiateAuthCommandOutput> => {
     return await withAWSClient(
       CognitoIdentityProviderClient,
       async (client) => {
@@ -800,7 +800,7 @@ export const cognitoClient = {
       },
       {
         serviceName: 'Cognito',
-        operationName: 'initiateAuth',
+        operationName: 'adminInitiateAuth',
         params: { username: params.username }
         
       }

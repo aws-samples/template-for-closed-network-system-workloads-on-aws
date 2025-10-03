@@ -11,7 +11,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const user: User = await requireAdmin(request);
   
   // Get user list
-  const userList = await getUsers();
+  const userList = await getUsers({},request);
   
   return { currentUser: user, users: userList.users };
 }
@@ -45,7 +45,7 @@ export async function action({ request }: ActionFunctionArgs) {
         email, 
         isAdmin,
         groupId: isAdmin ? null : groupId
-      });
+      }, request);
       return redirect('/dashboard/users');
     } catch (error: any) {
       return { error: error.message };
@@ -67,7 +67,7 @@ export async function action({ request }: ActionFunctionArgs) {
     }
     
     try {
-      await deleteUser(email);
+      await deleteUser(email, request);
       return redirect('/dashboard/users');
     } catch (error: any) {
       return { error: error.message };
