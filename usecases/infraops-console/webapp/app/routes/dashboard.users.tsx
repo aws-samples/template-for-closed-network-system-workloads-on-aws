@@ -46,7 +46,7 @@ export async function action({ request }: ActionFunctionArgs) {
         isAdmin,
         groupId: isAdmin ? null : groupId
       }, request);
-      return redirect('/dashboard/users');
+      return { success: true };
     } catch (error: any) {
       return { error: error.message };
     }
@@ -83,8 +83,16 @@ export default function Users() {
   const navigation = useNavigation();
   const isSubmitting = navigation.state !== 'idle';
   
+  const [email, setEmail] = useState('');
   const [isAdmin, setIsAdmin] = useState('false');
   const [groupId, setGroupId] = useState('');
+  
+  // フォームリセット関数
+  const resetForm = () => {
+    setEmail('');
+    setIsAdmin('false');
+    setGroupId('');
+  };
   
   // Clear groupId when admin is selected
   useEffect(() => {
@@ -92,6 +100,14 @@ export default function Users() {
       setGroupId('');
     }
   }, [isAdmin]);
+  
+  // ユーザー追加成功時にフォームをリセット
+  useEffect(() => {
+    // 送信完了 && エラーなし && actionDataが存在する場合にリセット
+    if (!isSubmitting && !actionData?.error && actionData !== undefined) {
+      resetForm();
+    }
+  }, [isSubmitting, actionData]);
   
   return (
     <div className="users-container">
@@ -117,6 +133,8 @@ export default function Users() {
                 id="email"
                 name="email"
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isSubmitting}
                 placeholder="example@example.com"
@@ -180,6 +198,12 @@ export default function Users() {
         {actionData?.error && (
           <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             {actionData.error}
+          </div>
+        )}
+        
+        {actionData?.success && (
+          <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+            ユーザーが正常に追加されました
           </div>
         )}
       </div>

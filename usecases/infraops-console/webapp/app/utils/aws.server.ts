@@ -926,9 +926,9 @@ export const cognitoClient = {
         
         // Add user to appropriate group based on isAdmin flag
         if (isAdmin) {
-          await cognitoClient.addUserToGroup({ email, groupName: 'Admins' });
+          await cognitoClient.addUserToGroup({ email, groupName: 'Admins' }, request);
         } else {
-          await cognitoClient.addUserToGroup({ email, groupName: 'Users' });
+          await cognitoClient.addUserToGroup({ email, groupName: 'Users' }, request);
         }
         
         return result;

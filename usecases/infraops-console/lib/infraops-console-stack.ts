@@ -269,7 +269,8 @@ export class InfraopsConsoleStack extends Stack {
             "cognito-idp:AdminCreateUser",
             "cognito-idp:AdminDeleteUser",
             "cognito-idp:AdminAddUserToGroup",
-            "cognito-idp:AdminRemoveUserFromGroup"
+            "cognito-idp:AdminRemoveUserFromGroup",
+            "cognito-idp:AdminListGroupsForUser"
           ],
           resources: ["*"]
         }),
