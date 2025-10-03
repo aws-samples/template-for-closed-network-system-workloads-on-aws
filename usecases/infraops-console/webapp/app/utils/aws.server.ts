@@ -44,17 +44,17 @@ import {
 import { 
   CognitoIdentityProviderClient,
   GetUserCommand,
+  GetUserCommandOutput,
   RespondToAuthChallengeCommand,
   RespondToAuthChallengeCommandInput,
+  RespondToAuthChallengeCommandOutput,
   ForgotPasswordCommand,
   ForgotPasswordCommandInput,
+  ForgotPasswordCommandOutput,
   ConfirmForgotPasswordCommand,
   ConfirmForgotPasswordCommandInput,
-  AuthFlowType,
-  GetUserCommandOutput,
-  RespondToAuthChallengeCommandOutput,
-  ForgotPasswordCommandOutput,
   ConfirmForgotPasswordCommandOutput,
+  AuthFlowType,
   AdminInitiateAuthCommand,
   AdminInitiateAuthCommandInput,
   AdminInitiateAuthCommandOutput,
@@ -848,7 +848,7 @@ export const cognitoClient = {
   listUsers: async (params: {
     limit?: number;
     paginationToken?: string;
-  }, request?: Request) => {
+  }, request: Request) => {
     return await withAWSClient(
       CognitoIdentityProviderClient,
       async (client) => {

@@ -62,14 +62,18 @@ function mapCognitoUserToUser(cognitoUser: UserType, groups?: string[]): User {
  * @returns User list
  */
 export async function getUsers(
-  limit?: number,
-  lastEvaluatedKey?: Record<string, any>
+  params: {
+    limit?: number,
+    lastEvaluatedKey?: Record<string, any>,
+  },
+  request: Request,
 ): Promise<UserList> {
   try {
+    const { limit, lastEvaluatedKey } = params;
     const response = await cognitoClient.listUsers({
       limit: limit || 60,
       paginationToken: lastEvaluatedKey?.token
-    });
+    }, request);
     
     const users = await Promise.all(
       (response.Users || []).map(async (cognitoUser) => {
@@ -80,7 +84,7 @@ export async function getUsers(
         let groups: string[] = [];
         if (email) {
           try {
-            const groupsResponse = await cognitoClient.getUserGroups({ email });
+            const groupsResponse = await cognitoClient.getUserGroups({ email }, request);
             groups = groupsResponse.groups || [];
           } catch (error) {
             console.error(`Error getting groups for user ${email}:`, error);
@@ -107,9 +111,9 @@ export async function getUsers(
  * @param email Email address
  * @returns User information, null if not found
  */
-export async function getUserByEmail(email: string): Promise<User | null> {
+export async function getUserByEmail(email: string, request: Request): Promise<User | null> {
   try {
-    const userResponse = await cognitoClient.getUserByEmail({ email });
+    const userResponse = await cognitoClient.getUserByEmail({ email }, request);
     
     if (!userResponse || !userResponse.UserAttributes) {
       return null;
@@ -140,7 +144,7 @@ export async function addUser(userData: {
   email: string;
   isAdmin?: boolean;
   groupId?: string | null;
-}): Promise<User> {
+}, request: Request): Promise<User> {
   try {
     const { email, isAdmin = false, groupId } = userData;
     
@@ -148,7 +152,7 @@ export async function addUser(userData: {
       email,
       isAdmin,
       groupId
-    });
+    }, request);
     
     // Return created user information
     return {
@@ -167,9 +171,9 @@ export async function addUser(userData: {
  * Delete user
  * @param email Email address
  */
-export async function deleteUser(email: string): Promise<void> {
+export async function deleteUser(email: string, request: Request): Promise<void> {
   try {
-    await cognitoClient.deleteUser({ email });
+    await cognitoClient.deleteUser({ email }, request);
   } catch (error) {
     console.error('Error deleting user from Cognito:', error);
     throw new Error('Failed to delete user');
