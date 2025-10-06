@@ -12,12 +12,11 @@ Creates Lambda connecting RDS
 
 - `resourceId <string>` : Some unique name for Lambda function
 - `entry <string>` : path for function code
-- `auroraSecretName <string>` : Secret Name including RDS information
-- `auroraSecretArn <string>` : Secret Arn including RDS information
-- `auroraSecurityGroupId <string>`: Security Group Id including RDS
-- `auroraSecretEncryptionKeyArn <string>` : KMS Key Arn which encrypt secret including RDS information
-- `rdsProxyEndpoint <string>` : Endpoint url of RDS proxy endpoint
-- `rdsProxyArn <string>` : ARN of RDS proxy endpoint
+- `secretName <string>` : Secret Name including RDS information
+- `secretArn <string>` : Secret Arn including RDS information
+- `secretEncryptionKeyArn <string>` : KMS Key Arn which encrypt secret including RDS information
+- `proxyEndpoint <string>` : Endpoint url of RDS proxy endpoint
+- `proxyArn <string>` : ARN of RDS proxy endpoint
 - `sgForLambda <aws_ec2.SecurityGroup>` : Security Group for Lambda
 
 ## Optional parameters (props)

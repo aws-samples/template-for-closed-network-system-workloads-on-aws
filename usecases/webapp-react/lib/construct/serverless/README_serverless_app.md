@@ -2,36 +2,39 @@
 
 ## Purpose
 
-Create Lambda functions , S3 bucket for static contents and ALB to access services.
-
-(Optional) Create Private Link to access to ALB.
+Creates serverless application resources including API Gateway, Lambda functions, S3 bucket, and ALB target groups with improved architecture following Clean Architecture principles.
 
 ## Required resources
 
-- VPC that includes private isolated subnet
+- VPC including subnets and VPC endpoints
+- Database secret and proxy configuration
+- S3 Interface VPC Endpoint
 
 ## Required parameters (props)
 
-- `vpc <ec2.IVpc>`: Define the vpc including isolated subnets
-- `domainName <string>`: Domain for websites
-- `certificateArn <string>`: Certificate Arn for ALB
-- `auroraSecretName <string>` : Secret Name including RDS information
-- `auroraSecretArn <string>` : Secret Arn including RDS information
-- `auroraSecurityGroupId <string>`: Security Group Id including RDS
-- `auroraSecretEncryptionKeyArn <string>` : KMS Key Arn which encrypt secret including RDS information
-- `auroraEdition <string>`: edition of aurora database
-- `rdsProxyEndpoint <string>` : Endpoint url of RDS proxy endpoint
-- `rdsProxyArn <string>` : ARN of RDS proxy endpoint
+- `vpc <aws_ec2.IVpc>` : VPC for deploying resources
+- `domainName <string>` : Domain name for the application
+- `certificateArn <string>` : ARN of SSL certificate
+- `dbSecretName <string>` : Secret Name including RDS information
+- `dbSecretArn <string>` : Secret Arn including RDS information
+- `dbSecurityGroupId <string>` : Security Group ID for database
+- `dbSecretEncryptionKeyArn <string>` : KMS Key Arn which encrypt secret including RDS information
+- `dbProxyEndpoint <string>` : Endpoint url of RDS proxy endpoint
+- `dbProxyArn <string>` : ARN of RDS proxy endpoint
+- `spaS3InterfaceEndpoint <aws_ec2.InterfaceVpcEndpoint>` : S3 Interface VPC Endpoint
 
 ## Optional parameters (props)
 
-- `privateLinkVpc`<ec2.IVpc>: It's required when `enabledPrivateLink` is true.
+None
 
 ## Properties
 
-| Name           |                        Type                        |                                  Description |
-| -------------- | :------------------------------------------------: | -------------------------------------------: |
-| alb            | aws_elasticloadbalancingv2.ApplicationLoadBalancer |                                              |
-| nlb            |   aws_elasticloadbalancingv2.NetworkLoadBalancer   |                                              |
-| webappS3bucket |                   aws_s3.Bucket                    |                s3 bucket for static contents |
-| sgForLambda    |               aws_ec2.SecurityGroup                | Security group for Lambda which connects RDS |
+| Name | Type | Description |
+| ------ | :------------------------------: | --------------: |
+| apiGw | ApiGw | API Gateway construct with enhanced addMethodWithLambdaIntegration |
+| webappS3bucket | aws_s3.Bucket | S3 bucket for web application hosting |
+| sgForLambda | aws_ec2.SecurityGroup | Security Group for Lambda functions |
+| apiGwTargetGroup | aws_elasticloadbalancingv2.ApplicationTargetGroup | Target group for API Gateway |
+| s3TargetGroup | aws_elasticloadbalancingv2.ApplicationTargetGroup | Target group for S3 VPC Endpoint |
+| apiDomain | aws_apigateway.DomainName | API Gateway domain configuration |
+
