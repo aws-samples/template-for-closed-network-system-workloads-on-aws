@@ -23,11 +23,13 @@ export class DbInitLambda extends Construct {
     const initLambda = new DefaultLambda(this, 'dbInitLambda', {
       entry: path.join(__dirname, '../../../functions/init.ts'),
       vpc: props.vpc,
-      dbSecretName: props.dbSecretName,
-      dbSecretArn: props.dbSecretArn,
-      dbSecretEncryptionKeyArn: props.dbSecretEncryptionKeyArn,
-      dbProxyEndpoint: props.dbProxyEndpoint,
-      dbProxyArn: props.dbProxyArn,
+      db: {
+        secretName: props.dbSecretName,
+        secretArn: props.dbSecretArn,
+        secretEncryptionKeyArn: props.dbSecretEncryptionKeyArn,
+        proxyEndpoint: props.dbProxyEndpoint,
+        proxyArn: props.dbProxyArn,
+      },
       sgForLambda: props.sgForLambda,
     });
 

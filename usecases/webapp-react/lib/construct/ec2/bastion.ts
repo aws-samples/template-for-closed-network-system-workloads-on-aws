@@ -107,6 +107,18 @@ export class Bastion extends Construct {
         reason: 'To use SSM for instance, this managed policy is required.',
       },
     ]);
+    if(props.os === 'Linux') {
+      console.log(`/${Stack.of(this).stackId}/${this.node.id}/AccessYumRepoPolicy/Resource`)
+      NagSuppressions.addResourceSuppressionsByPath(Stack.of(this),
+        `/${Stack.of(this).stackName}/${this.node.id}/AccessYumRepoPolicy/Resource`,
+        [
+          {
+            id: 'AwsSolutions-IAM5',
+            reason: 'To access S3 repo for yum, this inline policy is required.',
+          }
+        ]
+      );
+    }
     NagSuppressions.addResourceSuppressions(bastionInstance, [
       {
         id: 'AwsSolutions-EC29',

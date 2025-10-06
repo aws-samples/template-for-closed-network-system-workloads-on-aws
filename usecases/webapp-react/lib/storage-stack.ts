@@ -13,6 +13,7 @@ interface StorageStackProps extends StackProps {
 export class StorageStack extends Stack {
   public readonly dbCluster: aws_rds.DatabaseCluster | aws_rds.ServerlessCluster;
   public readonly dbEncryptionKeyArn: string;
+  public readonly dbProxy: aws_rds.DatabaseProxy;
 
   constructor(scope: Construct, id: string, props: StorageStackProps) {
     super(scope, id, props);
@@ -20,7 +21,7 @@ export class StorageStack extends Stack {
     // Create Aurora
     const aurora = new Aurora(this, 'Aurora', {
       enabledServerless: false,
-      enabledProxy: false, // If you want to use Lambda Proxy.
+      enabledProxy: true,
       auroraEdition: DatabaseClusterEngine.auroraPostgres({
         version: AuroraPostgresEngineVersion.VER_16_4,
       }),
@@ -29,6 +30,7 @@ export class StorageStack extends Stack {
     });
     this.dbCluster = aurora.aurora;
     this.dbEncryptionKeyArn = aurora.databaseCredentials.encryptionKey!.keyArn;
+    this.dbProxy = aurora.proxy;
 
     // SSMパラメータからバスティオンIPを取得してセキュリティグループルールを設定
     if (props.windowsBastion) {

@@ -41,11 +41,13 @@ const sharedNetworkStack = new SharedNetworkStack(app, `${deployEnv}SharedNetwor
 
 const appNetworkStack = new NetworkStack(app, `${deployEnv}AppNetwork`, {
   env,
-  description: 'NetworkStack will provision vpc (uksb-1tupboc54) (tag:app-network).',
+  description: 'NetworkStack will provision vpc and ALB (uksb-1tupboc54) (tag:app-network).',
   vpcCidr: appVpcCidr,
   tgw: sharedNetworkStack.tgw,
   sharedVpcCidr,
-  resolverInboundEndpointIps: sharedNetworkStack.endpointIps
+  resolverInboundEndpointIps: sharedNetworkStack.endpointIps,
+  certificateArn,
+  domainName,
 });
 
 const storageStack = new StorageStack(app, `${deployEnv}Storage`, {
@@ -60,7 +62,7 @@ const storageStack = new StorageStack(app, `${deployEnv}Storage`, {
 const serverlessappStack = new ServerlessappStack(app, `${deployEnv}Serverless`, {
   env: env,
   description:
-    'ServerlessappStack will provision APIGateway, lambda for webapp, load balancers, bastions (uksb-1tupboc54) (tag:serverless).',
+    'ServerlessappStack will provision APIGateway, lambda for webapp (uksb-1tupboc54) (tag:serverless).',
   dbSecretName: storageStack.dbCluster.secret!.secretName,
   dbSecretArn: storageStack.dbCluster.secret!.secretArn,
   dbSecurityGroupId: storageStack.dbCluster.connections.securityGroups[0].securityGroupId,
@@ -68,13 +70,16 @@ const serverlessappStack = new ServerlessappStack(app, `${deployEnv}Serverless`,
   dbEdition: 'postgresql',
   dbProxyEndpoint: storageStack.dbProxy.endpoint,
   dbProxyArn: storageStack.dbProxy.dbProxyArn,
-  accessViaPrivateLink,
-  vpc: networkStack.vpc,
+  vpc: appNetworkStack.vpc,
   windowsBastion,
   linuxBastion,
   domainName,
   certificateArn,
-  s3InterfaceEndpoint: sharedNetworkStack.s3InterfaceEndpoint
+  spaS3InterfaceEndpoint: appNetworkStack.spaS3InterfaceEndpoint,
+  privateApiVpcEndpoint: appNetworkStack.privateApiVpcEndpoint,
+  sgForApiGwVpce: appNetworkStack.sgForApiGwVpce,
+  alb: appNetworkStack.alb,
+  sgForAlb: appNetworkStack.sgForAlb,
 });
 
 const cicdStack = new CicdStack(app, `${deployEnv}CICD`, {
@@ -102,7 +107,7 @@ new DomainStack(app, `${deployEnv}Domain`, {
   domainName,
   recordItems: [{
     name: `app.${parameter.domainName}`,
-    target: cdk.aws_route53.RecordTarget.fromAlias(new cdk.aws_route53_targets.LoadBalancerTarget(webappStack.alb))
+    target: cdk.aws_route53.RecordTarget.fromAlias(new cdk.aws_route53_targets.LoadBalancerTarget(serverlessappStack.alb))
   }],
   resolverInboundEndpointIps: sharedNetworkStack.endpointIps
 });
@@ -110,13 +115,6 @@ new DomainStack(app, `${deployEnv}Domain`, {
 /**
  * CDK NAG Suppressions
  */
-// NagSuppressions.addStackSuppressions(base, [
-//   {
-//     id: 'CdkNagValidationFailure',
-//     reason: 'refer to https://github.com/cdklabs/cdk-nag/issues/817',
-//   },
-// ]);
-
 NagSuppressions.addStackSuppressions(serverlessappStack, [
   {
     id: 'AwsSolutions-IAM5',

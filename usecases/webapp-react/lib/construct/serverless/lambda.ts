@@ -21,11 +21,13 @@ export class DefaultLambda extends Construct {
     props: {
       entry: string;
       vpc: aws_ec2.IVpc;
-      dbSecretName: string;
-      dbSecretArn: string;
-      dbSecretEncryptionKeyArn: string;
-      dbProxyEndpoint: string;
-      dbProxyArn: string;
+      db: {
+        secretName: string;
+        secretArn: string;
+        secretEncryptionKeyArn: string;
+        proxyEndpoint: string;
+        proxyArn: string;
+      }
       sgForLambda: aws_ec2.SecurityGroup;
     }
   ) {
@@ -53,20 +55,20 @@ export class DefaultLambda extends Construct {
       new aws_iam.PolicyStatement({
         effect: aws_iam.Effect.ALLOW,
         actions: ['secretsmanager:GetSecretValue'],
-        resources: [props.dbSecretArn],
+        resources: [props.db.secretArn],
       })
     );
     lambdaFunctionRole.addToPolicy(
       new aws_iam.PolicyStatement({
         effect: aws_iam.Effect.ALLOW,
         actions: ['kms:Decrypt'],
-        resources: [props.dbSecretEncryptionKeyArn],
+        resources: [props.db.secretEncryptionKeyArn],
       })
     );
-    const lastOfArn = Fn.select(6, Fn.split(':', props.dbProxyArn));
-    const key = aws_kms.Key.fromKeyArn(this, 'ImportedKey', props.dbSecretEncryptionKeyArn);
+    const lastOfArn = Fn.select(6, Fn.split(':', props.db.proxyArn));
+    const key = aws_kms.Key.fromKeyArn(this, 'ImportedKey', props.db.secretEncryptionKeyArn);
     const secret = aws_secretsmanager.Secret.fromSecretAttributes(this, 'ImportedSecret', {
-      secretCompleteArn: props.dbSecretArn,
+      secretCompleteArn: props.db.secretArn,
       encryptionKey: key,
     });
     const user = secret.secretValueFromJson('username').unsafeUnwrap().toString();
@@ -91,7 +93,7 @@ export class DefaultLambda extends Construct {
       role: lambdaFunctionRole,
       timeout: Duration.seconds(60),
       environment: {
-        SECRET_NAME: props.dbSecretName,
+        SECRET_NAME: props.db.secretName,
       },
       bundling: {
         forceDockerBundling: false,
