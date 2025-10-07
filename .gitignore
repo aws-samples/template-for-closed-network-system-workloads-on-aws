@@ -16,9 +16,10 @@ cdk-*-outputs.json
 scoutsuite-report*
 parameter.ts
 
-# infra
+# usecases
 !ssl/openssl_sign_inca.cnf
 ssl/*
 certificate_arn.json
+dist
 
 .tool-versions
