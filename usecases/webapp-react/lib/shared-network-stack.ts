@@ -113,13 +113,6 @@ export class SharedNetworkStack extends Stack {
       service: aws_ec2.GatewayVpcEndpointAwsService.S3,
     })
 
-    network.vpc.addInterfaceEndpoint('S3InterfaceEndpoint', {
-      service: aws_ec2.InterfaceVpcEndpointAwsService.S3,
-      subnets: { subnetFilters: [aws_ec2.SubnetFilter.byIds(network.workloadSubnets.map(subnet => subnet.subnetId))] },
-      privateDnsEnabled: true,
-      securityGroups:[vpcEndpointSG]
-    })
-
     // VPC Endpoint - for Instance Manager app
     const appRunnerVpcEndpoint = network.vpc.addInterfaceEndpoint('AppRunnerVpcEndpoint', {
       service: aws_ec2.InterfaceVpcEndpointAwsService.APP_RUNNER_REQUESTS,

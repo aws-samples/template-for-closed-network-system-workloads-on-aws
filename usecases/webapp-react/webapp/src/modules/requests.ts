@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_ENDPOINT = process.env.REACT_APP_ENDPOINT_URL;
+const API_ENDPOINT = import.meta.env.VITE_ENDPOINT_URL;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const get = async (resource: string, params?: { [key: string]: any }) => {

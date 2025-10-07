@@ -4,9 +4,12 @@ import { Construct } from 'constructs';
 // Constructs
 import { Ecr } from './construct/ecr/ecr';
 import { CodePipelineWebappReact } from './construct/codepipeline/codepipeline-webapp-react';
+import path from 'path';
+import { NagSuppressions } from 'cdk-nag';
 
 interface CicdStackProps extends StackProps {
   s3Bucket: aws_s3.Bucket;
+  domainName: string;
 }
 
 export class CicdStack extends Stack {
@@ -15,7 +18,7 @@ export class CicdStack extends Stack {
     super(scope, id, props);
 
     // Create ECR
-    this.batchRepository = new Ecr(this, 'Batch').containerRepository;
+    this.batchRepository = new Ecr(this, 'Batch', path.join(__dirname, '../batch')).containerRepository;
 
     // Create Pipeline
     const codecommitRepository = new aws_codecommit.Repository(this, 'SourceRepository', {
@@ -26,6 +29,7 @@ export class CicdStack extends Stack {
     new CodePipelineWebappReact(this, `CodePipeline`, {
       codeCommitRepository: codecommitRepository,
       s3bucket: props.s3Bucket,
+      domainName: props.domainName,
     });
 
     // Output

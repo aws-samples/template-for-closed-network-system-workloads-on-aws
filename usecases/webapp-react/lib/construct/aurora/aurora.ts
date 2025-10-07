@@ -86,6 +86,7 @@ export class Aurora extends Construct {
         this.proxy = this.aurora.addProxy('RdsProxy', {
           vpc: props.vpc,
           iamAuth: true,
+          role: this.proxyRole,
           secrets: [this.aurora.secret],
           securityGroups: this.aurora.connections.securityGroups,
         });

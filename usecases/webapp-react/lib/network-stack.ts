@@ -39,11 +39,12 @@ export class NetworkStack extends Stack {
       domainNameServers: props.resolverInboundEndpointIps 
     });
 
-    // Gateway Endpoint is required in each VPCs.
-    network.vpc.addGatewayEndpoint('BastionS3GatewayEndpoint', {
+    // Gateway Endpoint is required for ECS to pull container images from ECR.
+    network.vpc.addGatewayEndpoint('S3GatewayEndpoint', {
       service: aws_ec2.GatewayVpcEndpointAwsService.S3,
     });
 
+    // VPC Endpoint - for SPA S3 access
     this.spaS3InterfaceEndpoint = network.vpc.addInterfaceEndpoint('SpaS3InterfaceEndpoint', {
       service: aws_ec2.InterfaceVpcEndpointAwsService.S3,
       privateDnsEnabled: false,
@@ -56,6 +57,7 @@ export class NetworkStack extends Stack {
       description: 'Security group for Application Load Balancer',
     });
     this.spaS3InterfaceEndpoint.connections.allowFrom(this.sgForAlb, aws_ec2.Port.tcp(80));
+    this.sgForAlb.addIngressRule(aws_ec2.Peer.ipv4(props.sharedVpcCidr), aws_ec2.Port.tcp(443), 'Allow HTTPS traffic from sharedVpc');
 
     // Security Group for API Gateway VPC Endpoint
     this.sgForApiGwVpce = new aws_ec2.SecurityGroup(this, 'ApiGatewayVpceSecurityGroup', {

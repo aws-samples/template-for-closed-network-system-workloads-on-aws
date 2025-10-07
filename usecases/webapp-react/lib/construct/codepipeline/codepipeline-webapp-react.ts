@@ -19,6 +19,7 @@ export class CodePipelineWebappReact extends Construct {
     props: {
       codeCommitRepository: aws_codecommit.IRepository;
       s3bucket: aws_s3.Bucket;
+      domainName: string;
     }
   ) {
     super(scope, id);
@@ -61,7 +62,12 @@ export class CodePipelineWebappReact extends Construct {
       },
       environment: {
         privileged: true,
-        buildImage: aws_codebuild.LinuxBuildImage.AMAZON_LINUX_2_4,
+        buildImage: aws_codebuild.LinuxBuildImage.AMAZON_LINUX_2023_5,
+      },
+      environmentVariables: {
+        DOMAIN_NAME: {
+          value: props.domainName,
+        },
       },
     });
 

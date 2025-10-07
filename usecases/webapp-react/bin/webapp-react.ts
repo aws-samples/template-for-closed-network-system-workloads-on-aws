@@ -85,7 +85,8 @@ const serverlessappStack = new ServerlessappStack(app, `${deployEnv}Serverless`,
 const cicdStack = new CicdStack(app, `${deployEnv}CICD`, {
   env,
   description: 'CicdStack will provision CI/CD Pipeline (uksb-1tupboc54) (tag:cicd).',
-  s3Bucket: serverlessappStack.spaHostingBucket
+  s3Bucket: serverlessappStack.spaHostingBucket,
+  domainName,
 })
 
 new BatchStack(app, `${deployEnv}Batch`, {

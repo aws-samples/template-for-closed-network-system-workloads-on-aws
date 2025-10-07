@@ -31,14 +31,13 @@ export default async function Connection() {
   const signer = new Signer({
     region: process.env.AWS_REGION!,
     username: username,
-    hostname: host,
+    hostname: process.env.PROXY_ENDPOINT!,
     port: port,
   });
   const token = await signer.getAuthToken();
   // client settings
   const client = new Client({
-    host: host,
-    port: port,
+    host: process.env.PROXY_ENDPOINT!,
     user: username,
     password: token, //secrets.password,
     ssl: true,

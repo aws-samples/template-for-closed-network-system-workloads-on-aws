@@ -94,6 +94,8 @@ export class DefaultLambda extends Construct {
       timeout: Duration.seconds(60),
       environment: {
         SECRET_NAME: props.db.secretName,
+        NODE_EXTRA_CA_CERTS: '/var/runtime/ca-cert.pem',
+        PROXY_ENDPOINT: props.db.proxyEndpoint,
       },
       bundling: {
         forceDockerBundling: false,
