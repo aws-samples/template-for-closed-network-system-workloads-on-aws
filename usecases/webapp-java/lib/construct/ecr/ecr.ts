@@ -1,4 +1,4 @@
-import { aws_ecr, aws_ecr_assets, CfnOutput, RemovalPolicy } from 'aws-cdk-lib';
+import { aws_ecr, aws_ecr_assets, CfnOutput, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ecrdeploy from 'cdk-ecr-deployment';
 import { NagSuppressions } from 'cdk-nag';
@@ -22,6 +22,7 @@ export class Ecr extends Construct {
         "DockerImageAsset",
         {
           directory: imagePath,
+          platform: aws_ecr_assets.Platform.LINUX_AMD64,
         }
       );
 
@@ -47,7 +48,7 @@ export class Ecr extends Construct {
 
     // CDK Nag Suppressions
     if (imagePath && this.ecrDeployment) {
-      NagSuppressions.addResourceSuppressions(this.ecrDeployment, [
+      NagSuppressions.addResourceSuppressionsByPath(Stack.of(this), `/${Stack.of(this).stackName}/Custom::CDKECRDeploymentbd07c930edb94112a20f03f096f53666512MiB/ServiceRole/Resource`, [
         {
           id: 'AwsSolutions-IAM4',
           reason: 'The construct uses managed policies for ECR deployment functionality',
