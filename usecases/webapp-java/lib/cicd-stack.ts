@@ -4,6 +4,7 @@ import { Construct } from 'constructs';
 // Constructs
 import { Ecr } from './construct/ecr/ecr';
 import { CodePipelineWebappJava } from './construct/codepipeline/codepipeline-webapp-java';
+import path from 'path';
 
 interface CicdStackProps extends StackProps {
   ecsService: aws_ecs.FargateService;
@@ -18,7 +19,7 @@ export class CicdStack extends Stack {
 
     // Create ECR
     const webappContainerRepository = new Ecr(this, 'Webapp').containerRepository;
-    this.batchRepository = new Ecr(this, 'Batch').containerRepository;
+    this.batchRepository = new Ecr(this, 'Batch', path.join(__dirname, '../batch')).containerRepository;
 
     // Create Deploy Pipeline
     new CodePipelineWebappJava(this, `CodePipeline`, {

@@ -31,7 +31,7 @@ export class NetworkStack extends Stack {
     });
 
     // Gateway Endpoint is required in each VPCs.
-    network.vpc.addGatewayEndpoint('BastionS3GatewayEndpoint', {
+    network.vpc.addGatewayEndpoint('S3GatewayEndpoint', {
       service: aws_ec2.GatewayVpcEndpointAwsService.S3,
     });
 

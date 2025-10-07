@@ -240,9 +240,9 @@ export class EcsJob extends Construct {
         },
       ],
       launchTarget: new aws_stepfunctions_tasks.EcsFargateLaunchTarget(),
-      subnets: {
-        subnetType: aws_ec2.SubnetType.PRIVATE_ISOLATED,
-      },
+      subnets: this.cluster.vpc.selectSubnets({
+        subnets: [...this.cluster.vpc.isolatedSubnets.filter(subnet => subnet.node.id.includes("workload"))],
+      }),
       integrationPattern: aws_stepfunctions.IntegrationPattern.RUN_JOB,
       taskDefinition: taskDefinition,
       taskTimeout: aws_stepfunctions.Timeout.duration(Duration.minutes(5)), // FIXME: It's temporary setting.
