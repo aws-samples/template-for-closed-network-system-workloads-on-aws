@@ -58,21 +58,22 @@ Please see here you want to know how to deploy serverless application version.
 
 This is the directory tree and its overview.
 
-| Directory   | Sub directory  | Description                                                                                                                                                                                                                                                                                     |
-| ----------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| batch       |                | Creates a batch container application with Dockerfile                                                                                                                                                                                                                                           |
-|             | src            | python scripts sample app                                                                                                                                                                                                                                                                       |
-| infra       |                | CDK source code for provisioning the following AWS resources <br>- Network (VPC and subnet) <br>- DB (Aurora) <br>- Compute resources for containers (Amazon ECS, Fargate) <br>- CI/CD tools (CodePipeline, CodeCommit, CodeDeploy) <br>- Batch Job Management ( Step Functions, DynamoDB, SNS) |
-|             | bin            | CDK app source code                                                                                                                                                                                                                                                                             |
-|             | lib/constructs | Constructs used to build AWS resources <br> The [Core concept](https://docs.aws.amazon.com/ja_jp/cdk/v2/guide/core_concepts.html) explains about what is the difference between Stack and Construct.                                                                                            |
-| webapp-java |                | Source code of SpringBoot web app with Dockerfile                                                                                                                                                                                                                                               |
+| Directory | Sub directory    | Description                                                                                                                                                                                                                                                                                     |
+| --------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| docs      |                  | Project-wide documentation and image files                                                                                                                                                                                                                                                      |
+|           | images           | Architecture diagrams, screenshots, and other image files                                                                                                                                                                                                                                       |
+| usecases  |                  | Use case-specific project directories                                                                                                                                                                                                                                                           |
+|           | webapp-java      | Spring Boot web application and batch system sample<br>Provides ECS/Fargate container execution environment, Aurora PostgreSQL, CI/CD pipeline, and batch job management<br>See [`usecases/webapp-java/README.md`](./usecases/webapp-java/README.md) for details                          |
+|           | webapp-react     | React web application and serverless environment sample<br>Provides ECS/Fargate or serverless React application execution environment<br>See [`usecases/webapp-react/README.md`](./usecases/webapp-react/README.md) for details                                                            |
+|           | infraops-console | AWS resource management console for closed network environments<br>Remix-based web application for integrated management of EC2, ECS, RDS resources with ABAC (Attribute-Based Access Control)<br>See [`usecases/infraops-console/README.md`](./usecases/infraops-console/README.md) for details |
 
 ## Requirement
 
-- `Node.js` >= `16.13.0`
+- `Node.js` >= `22.0.0`
 - `npm` >= `9.2.0`
-- `aws-cdk` >= `2.65.0`
-- `aws-cdk-lib` >= `2.65.0`
+- `aws-cdk` >= `2.1022.0`
+- `aws-cdk-lib` >= `2.206.0`
+- `TypeScript` >= `5.6.0`
 - `OpenSSL` >= `3.0.8`
 - `Docker`
 

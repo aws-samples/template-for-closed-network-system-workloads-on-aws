@@ -1,7 +1,6 @@
 # infra
 
 [日本語で読む](./README_ja.md)
-[For serverless sample application, click here](./README_serverless.md)
 
 ## Overview
 

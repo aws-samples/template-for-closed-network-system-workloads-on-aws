@@ -4,7 +4,7 @@
 
 ## 概要
 
-このプロジェクトは、AWS上にサンプルアプリケーションやバッチシステムを動かす環境を構築するためのCDKコードを提供します。
+このプロジェクトは、AWS上にReactベースのサンプルアプリケーションやバッチシステムを動かす環境を構築するためのCDKコードを提供します。
 
 ### アーキテクチャ
 
@@ -17,7 +17,7 @@
    - アプリケーションVPC（NetworkStack）：アプリケーション実行環境用
 
 2. **コンピューティング層**
-   - ECSクラスター（WebappStack）：Webアプリケーションの実行環境
+   - ECSクラスター（WebappStack）：ReactアプリケーションとNginxの実行環境
    - Bastionホスト：WindowsまたはLinuxインスタンスによる管理アクセス用
 
 3. **ストレージ層**
@@ -38,7 +38,7 @@
 6. **ドメイン管理**
    - Route 53 Private Hosted Zone：内部DNS管理
 
-このアーキテクチャにより、セキュアで可用性の高いアプリケーション実行環境を構築できます。
+このアーキテクチャにより、セキュアで可用性の高いReactアプリケーション実行環境を構築できます。
 
 ## 準備
 
@@ -66,8 +66,8 @@ const devParameter: Parameter = {
   sharedVpcCidr: '10.0.0.0/16',
   appVpcCidr: '10.1.0.0/16',
   filePathOfSourceArtifact: 'webapp-repository/refs/heads/main/repo.zip',
-  windowsBastion: false,
-  linuxBastion: false,
+  windowsBastion: true,
+  linuxBastion: true,
   domainName: "templateapp.local",
   notifyEmail: "johndoe+notify@example.com"
 }
@@ -83,7 +83,7 @@ const devParameter: Parameter = {
 ### 3. 自己署名付き証明書の作成
 
 HTTPS 通信を実装するために、今回は自己署名付き証明書を用います。
-`usecases/webapp-java`ディレクトリで次のコマンドを実行し、Amazon Certificate Manager に証明書をインポートしてください。
+`usecases/webapp-react`ディレクトリで次のコマンドを実行し、Amazon Certificate Manager に証明書をインポートしてください。
 また、以下のコマンド実行前に、`OpenSSL`のインストールを実施してください。
 
 ```bash
@@ -95,11 +95,11 @@ $ npm run create:certificate
 
 ### 1. CDK
 
-`usecases/webapp-java`ディレクトリで以下のコマンドを実行してください。
+`usecases/webapp-react`ディレクトリで以下のコマンドを実行してください。
 自動的に CDK が実行され、AWS の各リソースが生成されます。
 
 ```bash
-$ npm run deploy
+$ npx cdk deploy --all
 ```
 
 デプロイ後、ターミナル上に以下に示すようなコマンドが出力されますので、コピーして実行してください。
@@ -124,7 +124,7 @@ $ devWebapp.LinuxGetSSHKeyForLinuxInstanceCommand = aws ssm get-parameter --name
 ジョブが失敗した通知を受けるために、届いたメールの内容に従い、サブスクリプションの Confirmation を実施してください。
 
 また、バッチジョブは平日 21 時に実行される設定になっています。このあと実施する、サンプル Web アプリのデプロイによって登録される初期データは、ジョブがすべて成功する設定になっているため、メールは送信されません。
-もし、失敗を確認したい場合は、`webapp/src/main/resources/data.sql`の 5 つある`true`のいずれかを`false`へ変更した上で、Web アプリのデプロイを行ってください。
+もし、失敗を確認したい場合は、デプロイ後のReactアプリケーションで、5 つある`true`のいずれかを`false`へ変更してください。
 
 ### 2. サンプル Web アプリ
 
@@ -167,7 +167,7 @@ $ git push -u origin main
 
 #### CI/CD パイプラインについて
 
-Web アプリ向けの CI/CD は S3バケットをソースとして、CodeBuildでDockerイメージをビルドし、ECRにプッシュ、そしてECSにデプロイする流れになっています。
+Web アプリ向けの CI/CD は S3バケットをソースとして、CodeBuildでReactアプリケーションをビルドし、NginxとともにDockerイメージを作成、ECRにプッシュ、そしてECSにデプロイする流れになっています。
 
 ご自身の Web アプリケーションに差し替えたい場合は、S3バケットにアップロードするソースコードをご自身のものに差し替え、ご自身の環境やアプリケーションに合わせ、Dockerfile を修正してください。
 
@@ -182,7 +182,7 @@ Bastion への RDP 接続ができたら、ブラウザを起動し、`parameter
 
 次のような画面が表示されたら成功です。
 
-![アプリケーション動作画面](./docs/images/screenshot.png)
+![アプリケーション動作画面](./webapp/docs/images/screenshot.png)
 
 ### 4. 作成した環境の削除
 
@@ -192,16 +192,16 @@ ECR など、状況によっては残ってしまうリソースもあるため�
 コマンドが失敗した場合は、エラーメッセージや CloudFormation のコンソールで内容をご確認の上、対応ください。
 
 ```
-$ npm run destroy
+$ npx cdk destroy --all
 ```
 
 ### その他のコマンド
 
-CDK のコマンドである、`diff, list`は、npm scriptsで実装済みのため、これらのコマンドも実行可能です。
+CDK のコマンドである、`diff, list`は、直接実行可能です。
 
 ```
-$ npm run diff
-$ npm run list
+$ npx cdk diff
+$ npx cdk list
 ```
 
 ## AWS Step Functions で実装するジョブ管理基盤
@@ -276,7 +276,7 @@ Security Hub を有効にした場合、デフォルトで有効になる基準�
 #### 修復方法
 
 - CodeBuild では、Docker イメージをビルドする必要がある場合を除き、特権モードは無効化してください。本テンプレートでは、Docker イメージのビルドを行っているため、有効化していますが、実際に利用される場合は、ご自身の環境に合った設定にご変更ください。
-  - テンプレートだけの対応であれば、[CodePipeline のコンストラクト内の特権モードの設定](lib/construct/codepipeline/codepipeline-webapp-java.ts#L65)を`false`に変更してください。
+  - テンプレートだけの対応であれば、[CodePipeline のコンストラクト内の特権モードの設定](lib/construct/codepipeline/codepipeline-webapp-react.ts)を`false`に変更してください。
   - ご参考：[interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
 
 ## 本番利用時の考慮点
@@ -299,3 +299,24 @@ Web アプリのコンテナイメージに対しては、S3バケットへの�
 
 本サンプルでは、自己署名付き証明書を利用して HTTPS を用いた通信を行なっています。
 自己署名付き証明書のため、あくまで検証用としてご利用ください。
+
+### React アプリケーションの開発について
+
+本サンプルのReactアプリケーションは、以下の技術スタックで構築されています：
+
+- **React 18**: UIライブラリ
+- **TypeScript**: 型安全な開発
+- **Vite**: 高速なビルドツール
+- **Material-UI**: UIコンポーネントライブラリ
+- **Axios**: HTTP通信ライブラリ
+- **React Router**: ルーティング
+
+ローカル開発環境では、`webapp`ディレクトリで以下のコマンドを実行することで開発サーバーを起動できます：
+
+```bash
+$ cd webapp
+$ npm install
+$ npm run dev
+```
+
+本番環境では、ViteでビルドされたReactアプリケーションがNginxによって配信されます。
