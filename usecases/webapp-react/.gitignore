@@ -10,3 +10,4 @@ cdk.out
 config
 ssl/*
 !ssl/openssl_sign_inca.cnf
+parameter.ts

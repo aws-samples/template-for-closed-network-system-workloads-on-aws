@@ -13,7 +13,7 @@ const devParameter: Parameter = {
   deployEnv: "dev",
   sharedVpcCidr: '10.0.0.0/16',
   appVpcCidr: '10.1.0.0/16',
-  filePathOfSourceArtifact: 'webapp-repository/refs/heads/main/repo.zip',
+  filePathOfSourceArtifact: 'webapp-repository/assets/webapp.zip',
   windowsBastion: true,
   linuxBastion: true,
   domainName: "templateapp.local",
