@@ -84,7 +84,6 @@ export class Bastion extends Construct {
       requireImdsv2: true,
     });
     this.bastionInstance = bastionInstance;
-    Tags.of(this.bastionInstance).add('GroupId', 'test');
     Tags.of(this.bastionInstance).add('GroupId', 'admin');
 
 
