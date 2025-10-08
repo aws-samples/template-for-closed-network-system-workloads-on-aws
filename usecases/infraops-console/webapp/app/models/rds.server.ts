@@ -16,6 +16,7 @@ export type Database = {
   isSelectable: boolean;
   children?: Database[];
   isExpanded?: boolean;
+  groupId: string | null;
 }
 
 /**
@@ -37,18 +38,24 @@ export async function getDatabases(request: Request): Promise<Database[]> {
     const { DBInstances } = instancesResult;
 
     // Create cluster objects
-    const clusters: Database[] = DBClusters?.map(cluster => ({
-      identifier: cluster.DBClusterIdentifier || '',
-      status: cluster.Status || '',
-      role: 'リージョン別クラスター',
-      engine: cluster.Engine || '',
-      endpoint: cluster.Endpoint,
-      arn: cluster.DBClusterArn || '',
-      type: 'cluster' as const,
-      isSelectable: true,
-      children: [],
-      isExpanded: true
-    })) || [];
+    const clusters: Database[] = DBClusters?.map(cluster => {
+      // Extract GroupId from cluster tags
+      const groupIdTag = cluster.TagList?.find((tag: any) => tag.Key === 'GroupId');
+      
+      return {
+        identifier: cluster.DBClusterIdentifier || '',
+        status: cluster.Status || '',
+        role: 'リージョン別クラスター',
+        engine: cluster.Engine || '',
+        endpoint: cluster.Endpoint,
+        arn: cluster.DBClusterArn || '',
+        type: 'cluster' as const,
+        isSelectable: true,
+        children: [],
+        isExpanded: true,
+        groupId: groupIdTag?.Value || null
+      };
+    }) || [];
 
     // Create instance objects and categorize them
     const instances: Database[] = DBInstances?.map(instance => {
@@ -71,6 +78,9 @@ export async function getDatabases(request: Request): Promise<Database[]> {
         }
       }
 
+      // Extract GroupId from instance tags
+      const groupIdTag = instance.TagList?.find((tag: any) => tag.Key === 'GroupId');
+
       return {
         identifier: instance.DBInstanceIdentifier || '',
         status: instance.DBInstanceStatus || '',
@@ -81,6 +91,7 @@ export async function getDatabases(request: Request): Promise<Database[]> {
         type: 'instance' as const,
         parentClusterId,
         isSelectable: !parentClusterId, // Only standalone instances are selectable
+        groupId: groupIdTag?.Value || null
       };
     }) || [];
 
@@ -105,29 +116,39 @@ export async function getDatabases(request: Request): Promise<Database[]> {
 }
 
 /**
- * Stop RDS DB cluster
- * @param dbClusterIdentifier DB cluster identifier
+ * Stop RDS database (cluster or instance)
+ * @param identifier DB cluster or instance identifier
+ * @param type Database type ('cluster' or 'instance')
  * @param request Request object for authentication
  */
-export async function stopDatabase(dbClusterIdentifier: string, request: Request): Promise<void> {
+export async function stopDatabase(identifier: string, type: 'cluster' | 'instance', request: Request): Promise<void> {
   try {
-    await rdsClient.stopDBCluster({ dbClusterIdentifier }, request);
+    if (type === 'cluster') {
+      await rdsClient.stopDBCluster({ dbClusterIdentifier: identifier }, request);
+    } else {
+      await rdsClient.stopDBInstance({ dbInstanceIdentifier: identifier }, request);
+    }
   } catch (error) {
-    console.error('Error stopping DB cluster:', error);
-    throw new Error('Failed to stop database');
+    console.error(`Error stopping DB ${type}:`, error);
+    throw new Error(`Failed to stop database ${type}`);
   }
 }
 
 /**
- * Start RDS DB cluster
- * @param dbClusterIdentifier DB cluster identifier
+ * Start RDS database (cluster or instance)
+ * @param identifier DB cluster or instance identifier
+ * @param type Database type ('cluster' or 'instance')
  * @param request Request object for authentication
  */
-export async function startDatabase(dbClusterIdentifier: string, request: Request): Promise<void> {
+export async function startDatabase(identifier: string, type: 'cluster' | 'instance', request: Request): Promise<void> {
   try {
-    await rdsClient.startDBCluster({ dbClusterIdentifier }, request);
+    if (type === 'cluster') {
+      await rdsClient.startDBCluster({ dbClusterIdentifier: identifier }, request);
+    } else {
+      await rdsClient.startDBInstance({ dbInstanceIdentifier: identifier }, request);
+    }
   } catch (error) {
-    console.error('Error starting DB cluster:', error);
-    throw new Error('Failed to start database');
+    console.error(`Error starting DB ${type}:`, error);
+    throw new Error(`Failed to start database ${type}`);
   }
 }

@@ -12,6 +12,7 @@ export type Service = {
   clusterName: string;
   clusterArn: string;
   serviceArn: string;
+  groupId: string | null;
 }
 
 /**
@@ -39,16 +40,22 @@ export async function getServices(request: Request): Promise<Service[]> {
           services: serviceArns
         }, request);
         
-        // Format service information
-        const formattedServices = serviceDetails?.map(service => ({
-          name: service.serviceName || '',
-          status: service.status || '',
-          runningCount: service.runningCount || 0,
-          desiredCount: service.desiredCount || 0,
-          clusterName,
-          clusterArn,
-          serviceArn: service.serviceArn || ''
-        })) || [];
+        // Format service information with GroupId from tags
+        const formattedServices = serviceDetails?.map(service => {
+          // Extract GroupId from service tags
+          const groupIdTag = service.tags?.find((tag: any) => tag.key === 'GroupId');
+          
+          return {
+            name: service.serviceName || '',
+            status: service.status || '',
+            runningCount: service.runningCount || 0,
+            desiredCount: service.desiredCount || 0,
+            clusterName,
+            clusterArn,
+            serviceArn: service.serviceArn || '',
+            groupId: groupIdTag?.value || null
+          };
+        }) || [];
         
         services = [...services, ...formattedServices];
       }

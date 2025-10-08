@@ -17,12 +17,14 @@ interface ServiceListProps {
   services: Service[];
   isSubmitting?: boolean;
   onRefresh?: () => void;
+  user?: { isAdmin: boolean };
 }
 
 export const ServiceList: React.FC<ServiceListProps> = ({ 
   services, 
   isSubmitting = false,
-  onRefresh
+  onRefresh,
+  user
 }) => {
   // Manage the service ID being edited
   const [editingServiceArn, setEditingServiceArn] = useState<string | null>(null);
@@ -80,6 +82,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
             <TableHeaderCell>サービス名</TableHeaderCell>
             <TableHeaderCell>クラスター</TableHeaderCell>
             <TableHeaderCell>ステータス</TableHeaderCell>
+            {user?.isAdmin && <TableHeaderCell>グループID</TableHeaderCell>}
             <TableHeaderCell>実行中タスク / 希望タスク数</TableHeaderCell>
           </TableRow>
         </TableHead>
@@ -91,6 +94,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
               <TableCell>
                 <StatusBadge status={service.status.toLowerCase()} />
               </TableCell>
+              {user?.isAdmin && <TableCell>{service.groupId || '未設定'}</TableCell>}
               <TableCell>
                 <div className="flex items-center space-x-2">
                   <span>{service.runningCount} / </span>
@@ -151,7 +155,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
           ))}
           {services.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4}>ECSサービスが見つかりません</TableCell>
+              <TableCell colSpan={user?.isAdmin ? 5 : 4}>ECSサービスが見つかりません</TableCell>
             </TableRow>
           )}
         </TableBody>

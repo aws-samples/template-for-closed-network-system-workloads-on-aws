@@ -52,17 +52,13 @@ export async function action({ request }: ActionFunctionArgs) {
     } else if (action === 'stop') {
       await stopEC2Instance(instanceId, request);
     } else if (action === 'stopDBCluster') {
-      await stopDatabase(dbClusterIdentifier, request);
+      await stopDatabase(dbClusterIdentifier, 'cluster', request);
     } else if (action === 'startDBCluster') {
-      await startDatabase(dbClusterIdentifier, request);
+      await startDatabase(dbClusterIdentifier, 'cluster', request);
     } else if (action === 'stopDBInstance') {
-      // TODO: Implement DB instance stop functionality
-      console.info('stopDBInstance called for:', dbInstanceIdentifier);
-      // await stopDBInstance(dbInstanceIdentifier, request);
+      await stopDatabase(dbInstanceIdentifier, 'instance', request);
     } else if (action === 'startDBInstance') {
-      // TODO: Implement DB instance start functionality
-      console.info('startDBInstance called for:', dbInstanceIdentifier);
-      // await startDBInstance(dbInstanceIdentifier, request);
+      await startDatabase(dbInstanceIdentifier, 'instance', request);
     } else if (action === 'updateAlternativeType') {
       const alternativeType = formData.get('alternativeType') as string;
       
@@ -700,6 +696,7 @@ export default function Dashboard() {
         services={services} 
         isSubmitting={isSubmitting}
         onRefresh={handleRefresh}
+        user={user}
       />
 
       {/* List of RDS Clusters/Instances */}
@@ -708,6 +705,7 @@ export default function Dashboard() {
         isSubmitting={isSubmitting}
         onRefresh={handleRefresh}
         actionFetcher={actionFetcher}
+        user={user}
       />
 
       {/* Error */}

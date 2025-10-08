@@ -94,7 +94,7 @@ const makeClientConfig = async (request?: Request) => {
       // Use App Runner permissions when request is not available
     }) : undefined) 
     // Development environment only
-    :fromIni({ profile: 'default' }),
+    :fromIni({ profile: process.env.AWS_PROFILE ? process.env.AWS_PROFILE : 'default' }),
   }
 };
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { FetcherWithComponents } from '@remix-run/react';
-import type { Database } from '~/models/rds.server';
-import type { AppError } from '~/utils/error.server';
+import type { Database } from '../models/rds.server';
+import type { AppError } from '../utils/error.server';
 import { 
   Table, 
   TableBody, 
@@ -12,7 +12,7 @@ import {
   StatusBadge,
   RefreshButton,
   Button
-} from '~/components';
+} from '../components';
 
 interface DatabaseListProps {
   databases: Database[];
@@ -22,6 +22,7 @@ interface DatabaseListProps {
     success?: boolean;
     error?: AppError;
   }>;
+  user?: { isAdmin: boolean };
 }
 
 const getClusterAction = (status: string): { action: string | null, label: string | null } => {
@@ -40,7 +41,8 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
   databases, 
   isSubmitting = false,
   onRefresh,
-  actionFetcher
+  actionFetcher,
+  user
 }) => {
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
 
@@ -97,6 +99,7 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
             <StatusBadge status={database.status.toLowerCase()} />
           </TableCell>
           <TableCell className={isChild ? 'text-sm' : ''}>{database.role}</TableCell>
+          {user?.isAdmin && <TableCell className={isChild ? 'text-sm' : ''}>{database.groupId || '未設定'}</TableCell>}
           <TableCell>
             {database.isSelectable ? (
               <div className="flex space-x-2">
@@ -166,6 +169,7 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
             <TableHeaderCell>エンジン</TableHeaderCell>
             <TableHeaderCell>ステータス</TableHeaderCell>
             <TableHeaderCell>ロール</TableHeaderCell>
+            {user?.isAdmin && <TableHeaderCell>グループID</TableHeaderCell>}
             <TableHeaderCell>アクション</TableHeaderCell>
           </TableRow>
         </TableHead>
@@ -173,7 +177,7 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
           {databases.map(database => renderDatabaseRow(database))}
           {databases.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5}>データベースが見つかりません</TableCell>
+              <TableCell colSpan={user?.isAdmin ? 6 : 5}>データベースが見つかりません</TableCell>
             </TableRow>
           )}
         </TableBody>
