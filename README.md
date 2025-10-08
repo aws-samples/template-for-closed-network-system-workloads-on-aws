@@ -21,12 +21,12 @@ Please see here you want to know how to deploy serverless application version.
 
   - In addition to this, a sample application using Spring Boot
   - A sample Dockerfile to turn that sample application into a container image
-  - For sample applications, see [`Webapp-java/readme.md`](./webapp-java/README.md)
+  - For sample applications, see [`Webapp-java/readme.md`](./usecases/webapp-java/README.md)
 
 - Serverless application environment for running React application hosted on Amazon S3 and REST API on API Gateway and AWS Lambda.(\*)
 
   - A sample application using React
-  - For sample react application, see [`Webapp-react/readme.md`](./webapp-react/README.md).
+  - For sample react application, see [`Webapp-react/readme.md`](./usecases/webapp-react/README.md).
   - Sample REST APIs code is in `functions/`
 
 - CI/CD environment for continuous application development
@@ -37,7 +37,6 @@ Please see here you want to know how to deploy serverless application version.
 - In addition to this, a Python sample job script
 
   - A sample Dockerfile for turning the sample job script into a container image
-  - For a sample job script, see [`batch/README.md`](./batch/README.md)
 
 - Maintenance environment for checking application operation and managing RDB
   - A secure access where you can test applications and manage databases combining SystemsManager and EC2
@@ -85,18 +84,9 @@ It is assumed that the on-premise NW (on the right side of the image bellow) exi
 
 ![Connection scheme overview diagram](./docs/images/prerequirsite_en.png)
 
-### Using Private Link
+### When using Private Link
 
-The template, optionally allows you to provision the architecture by using Private Links. It is recommended for an extra layer of security when designing applications that are deployed in Private networks.
-
-This is the architecture diagram that is slightly modified by using private links for the services:
-
-![Private Link Version](./docs/images/template_architecture_privatelink_en.png)
-
-## How to Deploy
-
-Please see the following document: [infra/README.md](./infra/README.md)
-If you want to deploy serverless application version, please see the following document: [infra/README_serverless.md](./infra/README_serverless.md)
+Also, in the configuration described above, I think there are cases where the use of Private Link is considered in order to avoid CIDR overlap with existing NW. When using Private Link, please consider [AWS Transit Gateway that can also be used with “shared” AWS DirectConnect](https://aws.amazon.com/jp/blogs/news/aws-transit-gateway-with-shared-directconnect/).
 
 ## Security
 

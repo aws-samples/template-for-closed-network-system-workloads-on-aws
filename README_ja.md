@@ -31,7 +31,6 @@ REPLATFORM では、サーバの運用負荷の軽減などがメリットにな
 - 簡易なジョブフローが実行できる、AWS Step Functions、Amazon ECS/Fargate を組み合わせたジョブ実行基盤
   - これに加え、上記環境下で動作する、Python のサンプルジョブスクリプト
   - サンプルジョブスクリプトをコンテナイメージにするためのサンプル Dockerfile
-    - サンプルジョブスクリプトについては、[`batch/README.md`](../batch/README_ja.md)をご参照ください
 - アプリケーションの動作確認や RDB を管理するためのメンテナンス環境
   - SystemsManager と EC2 を組み合わせたアプリケーションのテストや DB の管理を実施できる環境
   - リモートデスクトップ接続（Windows Server Instance）と コンソール接続（Amazon Linux Instance）を提供
