@@ -1,4 +1,4 @@
-# infra
+# React(SPA) in closed network
 
 [日本語で読む](./README_ja.md)
 
@@ -281,6 +281,39 @@ These require separate handling.
   - Reference: [interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
 
 ## Production Considerations
+
+### Network Access Configuration
+
+#### Application Load Balancer Access Control
+
+By default, the Application Load Balancer (ALB) is configured to accept HTTPS traffic only from the Shared VPC CIDR block. To allow access from your organization's on-premises networks or other CIDR blocks, you need to add additional ingress rules to the ALB security group.
+
+##### Adding Custom CIDR Blocks
+
+To allow access from your organization's IP ranges, modify the `NetworkStack` in `lib/network-stack.ts`:
+
+```typescript
+// Example: Allow access from your organization's CIDR blocks
+this.sgForAlb.addIngressRule(
+  aws_ec2.Peer.ipv4('192.168.0.0/16'), 
+  aws_ec2.Port.tcp(443), 
+  'Allow HTTPS traffic from organization network'
+);
+
+// Add multiple CIDR blocks as needed
+this.sgForAlb.addIngressRule(
+  aws_ec2.Peer.ipv4('172.16.0.0/12'), 
+  aws_ec2.Port.tcp(443), 
+  'Allow HTTPS traffic from branch office'
+);
+```
+
+##### Security Considerations
+
+- Only add CIDR blocks that you trust and control
+- Use the most restrictive CIDR ranges possible (avoid 0.0.0.0/0)
+- Document each CIDR block with a clear description
+- Regularly review and audit the allowed IP ranges
 
 ### EC2 Patching
 

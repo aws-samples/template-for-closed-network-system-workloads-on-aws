@@ -1,159 +1,209 @@
 # infraops-console
 
-## 概要とアーキテクチャ
+[日本語で読む](./README_ja.md)
 
-infraops-consoleは、クローズドネットワーク環境でAWSリソースを安全に管理するためのWebコンソールアプリケーションです。EC2インスタンス、ECSサービス、RDSデータベースの操作を統合的に行うことができ、グループベースのアクセス制御（ABAC）により、組織内の複数チームが安全にリソースを共有できます。
+## Overview and Architecture
 
-### システムアーキテクチャ
+infraops-console is a web console application for securely managing AWS resources in closed network environments. It provides integrated operations for EC2 instances, ECS services, and RDS databases, enabling multiple teams within an organization to safely share resources through group-based access control (ABAC).
+
+### System Architecture
 
 ![infraops-console](../../docs/images/infraops-console.drawio.png)
 
-### 主要コンポーネント
+### Key Components
 
-- **Remix Web Application**: React/TypeScriptベースのフロントエンド
-- **Amazon Cognito**: ユーザー認証とグループ管理
-- **Identity Pool + ABAC**: 属性ベースアクセス制御
-- **AWS SDK**: EC2、ECS、RDSリソースの操作
-- **EventBridge Scheduler**: 自動起動/停止スケジューリング
-- **Lambda Function**: ICE（Insufficient Capacity Error）自動復旧
-- **SQS FIFO Queue**: イベント処理の信頼性確保
+- **Remix Web Application**: React/TypeScript-based frontend
+- **Amazon Cognito**: User authentication and group management
+- **Identity Pool + ABAC**: Attribute-based access control
+- **AWS SDK**: EC2, ECS, RDS resource operations
+- **EventBridge Scheduler**: Automated start/stop scheduling
+- **Lambda Function**: ICE (Insufficient Capacity Error) automatic recovery
+- **SQS FIFO Queue**: Event processing reliability
 
-## 前提条件
+## Prerequisites
 
-### 必要なAWSリソース
+### Required AWS Resources
 
-1. **VPC環境**
-   - プライベートサブネット
+1. **VPC Environment**
+   - Private subnets
 
-2. **VPCエンドポイント**
-   - App Runner用VPCエンドポイント
+2. **VPC Endpoints**
+   - VPC Endpoint for App Runner
 
-3. **管理対象リソース**
-   - EC2インスタンス（`GroupId`タグ付き）
-   - ECSクラスター・サービス（`GroupId`タグ付き）
-   - RDSクラスター・インスタンス（`GroupId`タグ付き）
+3. **Managed Resources**
+   - EC2 instances (tagged with `GroupId`)
+   - ECS clusters and services (tagged with `GroupId`)
+   - RDS clusters and instances (tagged with `GroupId`)
 
-### 設定ファイル
+### Configuration File
 
-`parameter.ts`で以下の値を設定してください：
+Configure the following values in `parameter.ts`:
 
 ```typescript
 export default {
-  deployEnv: 'dev',                              // デプロイ環境
-  sourceVpcId: 'vpc-xxxxxxxxx',                  // 対象VPCのID
-  appRunnerVpcEndpointId: 'vpce-xxxxxxxxx'       // App Runner VPCエンドポイントID
+  deployEnv: 'dev',                              // Deployment environment
+  sourceVpcId: 'vpc-xxxxxxxxx',                  // Target VPC ID
+  appRunnerVpcEndpointId: 'vpce-xxxxxxxxx'       // App Runner VPC Endpoint ID
 };
 ```
 
-### 必要な権限
+### Required Permissions
 
-デプロイを実行するIAMユーザー/ロールには以下の権限が必要です：
-- CDK関連の権限（CloudFormation、IAM等）
-    - Cognito User Pool/Identity Pool作成権限
-    - Lambda、SQS、EventBridge作成権限
-    - EC2、ECS、RDS操作権限
+The IAM user/role executing the deployment requires the following permissions:
+- CDK-related permissions (CloudFormation, IAM, etc.)
+- Cognito User Pool/Identity Pool creation permissions
+- Lambda, SQS, EventBridge creation permissions
+- EC2, ECS, RDS operation permissions
 
-## セキュリティ考慮事項
+## Security Considerations
 
-### クローズドネットワーク環境
+### Closed Network Environment
 
-- **インターネット非公開**: App Runnerサービスは`isPubliclyAccessible: false`で設定
-- **VPCエンドポイント経由**: すべての通信はVPCエンドポイント経由で実行
-- **プライベート通信**: AWSサービス間の通信はAWSバックボーン内で完結
+- **No Internet Access**: App Runner service configured with `isPubliclyAccessible: false`
+- **VPC Endpoint Communication**: All communications routed through VPC endpoints
+- **Private Communication**: AWS service communications remain within AWS backbone
 
-### 認証・認可
+### Authentication & Authorization
 
-- **多要素認証**: Cognitoでの強力なパスワードポリシー
-- **セッション管理**: 短時間のトークン有効期限（60分）
-- **グループベース制御**: 管理者と一般ユーザーの明確な権限分離
+- **Multi-Factor Authentication**: Strong password policies in Cognito
+- **Session Management**: Short token validity period (60 minutes)
+- **Group-Based Control**: Clear permission separation between administrators and regular users
 
-### データ保護
+### Data Protection
 
-- **最小権限の原則**: IAMポリシーでの細かな権限制御
+- **Principle of Least Privilege**: Fine-grained permission control through IAM policies
 
-## 機能一覧
+## Production Considerations
 
-### EC2インスタンス管理
+### Network Access Configuration
 
-- **基本操作**
-  - インスタンス一覧表示
-  - 起動/停止操作
-  - 状態監視
+#### App Runner VPC Ingress Connection Access Control
 
-- **高度な機能**
-  - 代替インスタンスタイプ設定
-  - ICE（容量不足エラー）自動復旧
-  - スケジュール起動/停止
+By default, the App Runner service is configured to accept connections only from the specified VPC through the VPC Ingress Connection. To allow access from your organization's on-premises networks or other VPC CIDR blocks, you need to configure additional network access.
 
-### ECSサービス管理
+##### Adding Custom Network Access
 
-- **サービス操作**
-  - サービス一覧表示
-  - Desired Count変更
-  - サービス状態監視
+To allow access from your organization's IP ranges, you have several options:
 
-### RDSデータベース管理
+**Option 1: VPC Peering or Transit Gateway**
+Configure VPC peering or Transit Gateway connections to allow access from other VPCs or on-premises networks to the source VPC.
 
-- **データベース操作**
-  - クラスター/インスタンス一覧表示
-  - 起動/停止操作
+**Option 2: VPN Connection**
+Set up AWS Site-to-Site VPN or AWS Client VPN to provide secure access from on-premises networks.
 
-### スケジューリング機能
+**Option 3: Direct Connect**
+Use AWS Direct Connect for dedicated network connections from on-premises to AWS.
 
-- **自動化**
-  - Cronベースのスケジュール設定
-  - 起動/停止の自動実行
-  - スケジュール管理（作成/削除/更新）
+The VPC Ingress Connection is configured in `lib/infraops-console-stack.ts`:
 
-### ユーザー管理（管理者機能）
+```typescript
+new apprunner.VpcIngressConnection(this, 'VpcIngressConnection', {
+  vpc: sourceVpc,
+  service,
+  interfaceVpcEndpoint,
+});
+```
 
-- **ユーザー操作**
-  - ユーザー作成/削除
-  - グループ割り当て
-  - 権限管理
+##### Security Considerations
 
-### ICE自動復旧機能
+- The App Runner service is configured with `isPubliclyAccessible: false` for enhanced security
+- All access must go through the configured VPC and VPC endpoint
+- Ensure proper network segmentation and security group configurations
+- Regularly review and audit network access paths
+- Consider implementing additional network monitoring and logging
 
-- **自動復旧**
-  - CloudTrailイベント監視
-  - 代替インスタンスタイプでの自動復旧
-  - SQSキューによる信頼性確保
+##### Network Architecture Planning
+
+When planning network access for production environments:
+
+1. **Identify Access Requirements**: Determine which networks need access to the console
+2. **Choose Appropriate Connectivity**: Select the most suitable connectivity option (VPN, Direct Connect, etc.)
+3. **Implement Network Security**: Configure security groups, NACLs, and routing appropriately
+4. **Monitor and Audit**: Set up CloudTrail and VPC Flow Logs for network activity monitoring
+
+## Feature List
+
+### EC2 Instance Management
+
+- **Basic Operations**
+  - Instance list display
+  - Start/stop operations
+  - Status monitoring
+
+- **Advanced Features**
+  - Alternative instance type configuration
+  - ICE (Insufficient Capacity Error) automatic recovery
+  - Scheduled start/stop
+
+### ECS Service Management
+
+- **Service Operations**
+  - Service list display
+  - Desired count modification
+  - Service status monitoring
+
+### RDS Database Management
+
+- **Database Operations**
+  - Cluster/instance list display
+  - Start/stop operations
+
+### Scheduling Features
+
+- **Automation**
+  - Cron-based schedule configuration
+  - Automated start/stop execution
+  - Schedule management (create/delete/update)
+
+### User Management (Administrator Features)
+
+- **User Operations**
+  - User creation/deletion
+  - Group assignment
+  - Permission management
+
+### ICE Automatic Recovery Feature
+
+- **Automatic Recovery**
+  - CloudTrail event monitoring
+  - Automatic recovery with alternative instance types
+  - Reliability through SQS queues
 
 ## How to Use
 
-### デプロイ方法
+### Deployment Method
 
-1. **依存関係のインストール**
+1. **Install Dependencies**
    ```bash
    cd usecases/infraops-console
    npm ci
    ```
 
-2. **パラメータ設定**
+2. **Parameter Configuration**
    ```bash
-   # parameter.tsを編集
+   # Edit parameter.ts
    vim parameter.ts
    ```
 
-3. **CDKデプロイ**
+3. **CDK Deployment**
    ```bash
-   # 初回デプロイ時
+   # Initial deployment
    npx cdk bootstrap
 
-   # スタックデプロイ
+   # Deploy stack
    npx cdk deploy
    ```
 
-4. **デプロイ完了確認**
-   - CloudFormationコンソールでスタック作成完了を確認
-   - Cognitoコンソールでユーザープール作成を確認
+4. **Verify Deployment Completion**
+   - Confirm stack creation completion in CloudFormation console
+   - Verify user pool creation in Cognito console
 
-### 最初のユーザの作り方
+### Creating the First User
 
-デプロイ完了後、CloudFormationの出力に表示されるコマンドを実行して初期管理者ユーザーを作成します：
+After deployment completion, execute the command displayed in CloudFormation outputs to create the initial administrator user:
 
 ```bash
-# 出力例（実際の値に置き換えてください）
+# Example output (replace with actual values)
 aws cognito-idp admin-create-user \
   --user-pool-id us-east-1_xxxxxxxxx \
   --username admin@example.com \
@@ -166,67 +216,67 @@ aws cognito-idp admin-add-user-to-group \
   --region us-east-1
 ```
 
-**注意**: `admin@example.com`と`TempPassword123!`を実際の値に置き換えてください。
+**Note**: Replace `admin@example.com` and `TempPassword123!` with actual values.
 
-### 利用方法
+### Usage Instructions
 
-#### リソースの操作
+#### Resource Operations
 
-1. **ログイン**
-   - VPCエンドポイントのURLにアクセス
-   - Cognitoの認証画面でログイン
-   - 初回ログイン時はパスワード変更が必要
+1. **Login**
+   - Access the VPC endpoint URL
+   - Login through Cognito authentication screen
+   - Password change required on first login
 
-2. **EC2インスタンス操作**
-   - ダッシュボードでインスタンス一覧を確認
-   - 起動/停止ボタンで操作実行
-   - 代替タイプ設定で容量不足対策
+2. **EC2 Instance Operations**
+   - View instance list on dashboard
+   - Execute operations with start/stop buttons
+   - Configure alternative types for capacity shortage mitigation
 
-3. **スケジュール設定**
-   - インスタンスを選択してスケジュール管理画面を表示
-   - Cron形式でスケジュール設定
-   - 起動/停止アクションを選択
+3. **Schedule Configuration**
+   - Select instance and display schedule management screen
+   - Configure schedules in Cron format
+   - Select start/stop actions
 
-4. **ECS/RDSリソース**
-   - 各セクションでリソース一覧を確認
-   - 必要に応じて操作を実行
+4. **ECS/RDS Resources**
+   - View resource lists in respective sections
+   - Execute operations as needed
 
-#### （管理者向け）一般ユーザや追加の管理者ユーザの作り方
+#### (For Administrators) Creating Regular Users and Additional Administrator Users
 
-1. **ユーザー管理画面へアクセス**
-   - 管理者でログイン
-   - ヘッダーの「ユーザー管理」リンクをクリック
+1. **Access User Management Screen**
+   - Login as administrator
+   - Click "User Management" link in header
 
-2. **新規ユーザー作成**
+2. **Create New User**
    ```
-   - 「新規ユーザー追加」ボタンをクリック
-   - メールアドレスを入力
-   - 一時パスワードを設定
-   - ロールを選択（Admin/User）
-   - グループIDを設定（一般ユーザーの場合は必須）
-   - 「作成」ボタンをクリック
+   - Click "Add New User" button
+   - Enter email address
+   - Set temporary password
+   - Select role (Admin/User)
+   - Set Group ID (required for regular users)
+   - Click "Create" button
    ```
 
-3. **ユーザー種別の違い**
-   - **管理者（Admin）**: すべてのリソースにアクセス可能、ユーザー管理機能利用可能
-   - **一般ユーザー（User）**: 自分のグループIDに一致するリソースのみアクセス可能
+3. **User Type Differences**
+   - **Administrator (Admin)**: Access to all resources, user management functionality available
+   - **Regular User (User)**: Access only to resources matching their Group ID
 
-4. **グループID設定**
-   - 一般ユーザーには必ずグループIDを設定
-   - 管理対象リソースの`GroupId`タグと一致させる
-   - 例：`team-a`, `project-x`, `dev-environment`
+4. **Group ID Configuration**
+   - Always set Group ID for regular users
+   - Must match the `GroupId` tag of managed resources
+   - Examples: `team-a`, `project-x`, `dev-environment`
 
-## ユーザの権限管理の方法（特にABACの実現方法）
+## User Permission Management (Especially ABAC Implementation)
 
-### ABAC（Attribute-Based Access Control）の概要
+### ABAC (Attribute-Based Access Control) Overview
 
-infraops-consoleでは、以下の属性を使用してアクセス制御を実現しています：
+infraops-console implements access control using the following attributes:
 
-- **ユーザー属性**: Cognitoカスタム属性`custom:groupId`
-- **リソース属性**: AWSリソースの`GroupId`タグ
-- **プリンシパル属性**: Identity PoolのPrincipalTag`GroupId`
+- **User Attributes**: Cognito custom attribute `custom:groupId`
+- **Resource Attributes**: AWS resource `GroupId` tags
+- **Principal Attributes**: Identity Pool PrincipalTag `GroupId`
 
-### 実装アーキテクチャ
+### Implementation Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -243,11 +293,11 @@ infraops-consoleでは、以下の属性を使用してアクセス制御を実�
                                              └─────────────────┘
 ```
 
-### 設定手順
+### Configuration Steps
 
-#### 1. Cognitoユーザー属性設定
+#### 1. Cognito User Attribute Configuration
 
-ユーザー作成時に`custom:groupId`属性を設定：
+Set `custom:groupId` attribute when creating users:
 
 ```bash
 aws cognito-idp admin-create-user \
@@ -260,24 +310,24 @@ aws cognito-idp admin-create-user \
   --region us-east-1
 ```
 
-#### 2. Identity Pool PrincipalTag設定
+#### 2. Identity Pool PrincipalTag Configuration
 
-CDKスタックで自動設定される内容：
+Automatically configured in CDK stack:
 
 ```typescript
 new aws_cognito.CfnIdentityPoolPrincipalTag(this, 'IdentityPoolPrincipalTag', {
   identityPoolId: this.idPool.ref,
   identityProviderName: this.userPool.userPoolProviderName,
   principalTags: {
-    'GroupId': 'custom:groupId',  // Cognitoカスタム属性をPrincipalTagにマッピング
+    'GroupId': 'custom:groupId',  // Map Cognito custom attribute to PrincipalTag
   },
   useDefaults: false
 });
 ```
 
-#### 3. IAMポリシー条件設定
+#### 3. IAM Policy Condition Configuration
 
-一般ユーザー用IAMロールのポリシー例：
+Example policy for regular user IAM role:
 
 ```json
 {
@@ -300,74 +350,74 @@ new aws_cognito.CfnIdentityPoolPrincipalTag(this, 'IdentityPoolPrincipalTag', {
 }
 ```
 
-#### 4. リソースタグ設定
+#### 4. Resource Tag Configuration
 
-管理対象のAWSリソースに`GroupId`タグを設定：
+Set `GroupId` tags on managed AWS resources:
 
 ```bash
-# EC2インスタンスの例
+# EC2 instance example
 aws ec2 create-tags \
   --resources i-1234567890abcdef0 \
   --tags Key=GroupId,Value=team-a \
   --region us-east-1
 
-# ECSサービスの例
+# ECS service example
 aws ecs tag-resource \
   --resource-arn arn:aws:ecs:us-east-1:123456789012:service/cluster-name/service-name \
   --tags key=GroupId,value=team-a \
   --region us-east-1
 
-# RDSクラスターの例
+# RDS cluster example
 aws rds add-tags-to-resource \
   --resource-name arn:aws:rds:us-east-1:123456789012:cluster:cluster-name \
   --tags Key=GroupId,Value=team-a \
   --region us-east-1
 ```
 
-### アクセス制御の動作
+### Access Control Flow
 
-1. **ユーザーログイン**: Cognitoで認証、`custom:groupId`属性取得
-2. **トークン交換**: Identity PoolでPrincipalTag`GroupId`設定
-3. **API呼び出し**: IAMロールでリソースアクセス
-4. **条件評価**: `${aws:PrincipalTag/GroupId}`と`ResourceTag/GroupId`を比較
-5. **アクセス許可**: 一致する場合のみアクセス許可
+1. **User Login**: Authenticate with Cognito, retrieve `custom:groupId` attribute
+2. **Token Exchange**: Set PrincipalTag `GroupId` in Identity Pool
+3. **API Call**: Access resources through IAM role
+4. **Condition Evaluation**: Compare `${aws:PrincipalTag/GroupId}` with `ResourceTag/GroupId`
+5. **Access Grant**: Allow access only when values match
 
-### 管理者権限
+### Administrator Privileges
 
-管理者は以下の特権を持ちます：
+Administrators have the following privileges:
 
-- **全リソースアクセス**: 条件なしでリソース操作可能
-- **ユーザー管理**: Cognitoユーザーの作成/削除
-- **グループ管理**: ユーザーのグループ割り当て
+- **Full Resource Access**: Resource operations without conditions
+- **User Management**: Cognito user creation/deletion
+- **Group Management**: User group assignment
 
-### グループ管理のベストプラクティス
+### Group Management Best Practices
 
-1. **命名規則**: 一貫したグループID命名（例：`team-{name}`, `project-{name}`）
-2. **最小権限**: 必要最小限のリソースアクセス
-3. **定期監査**: グループ割り当ての定期的な見直し
-4. **タグ管理**: リソースタグの一貫した管理
-5. **ドキュメント化**: グループとリソースの対応関係を文書化
+1. **Naming Convention**: Consistent Group ID naming (e.g., `team-{name}`, `project-{name}`)
+2. **Least Privilege**: Minimum necessary resource access
+3. **Regular Audits**: Periodic review of group assignments
+4. **Tag Management**: Consistent resource tag management
+5. **Documentation**: Document group-to-resource relationships
 
-### トラブルシューティング
+### Troubleshooting
 
-#### アクセス拒否エラー
+#### Access Denied Errors
 
-1. **ユーザーのグループID確認**
+1. **Check User's Group ID**
    ```bash
    aws cognito-idp admin-get-user \
      --user-pool-id us-east-1_xxxxxxxxx \
      --username user@example.com
    ```
 
-2. **リソースタグ確認**
+2. **Check Resource Tags**
    ```bash
    aws ec2 describe-instances \
      --instance-ids i-1234567890abcdef0 \
      --query 'Reservations[].Instances[].Tags'
    ```
 
-3. **IAMポリシー確認**
-   - CloudTrailでアクセス拒否ログを確認
-   - IAMポリシーシミュレーターで条件評価をテスト
+3. **Check IAM Policy**
+   - Review access denied logs in CloudTrail
+   - Test condition evaluation with IAM Policy Simulator
 
-この権限管理システムにより、組織内の複数チームが安全にAWSリソースを共有し、各チームは自分たちのリソースのみにアクセスできる環境を実現しています。
+This permission management system enables multiple teams within an organization to safely share AWS resources, with each team accessing only their designated resources.

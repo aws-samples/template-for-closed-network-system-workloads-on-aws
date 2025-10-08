@@ -1,4 +1,4 @@
-# infra
+# Java application in closed network
 
 [View this page in English](./README.md)
 
@@ -38,8 +38,6 @@
 6. **ドメイン管理**
    - Route 53 Private Hosted Zone：内部DNS管理
 
-このアーキテクチャにより、セキュアで可用性の高いアプリケーション実行環境を構築できます。
-
 ## 準備
 
 ### 1. AWS CLI の設定
@@ -52,7 +50,7 @@ $ aws configure --profile {プロファイル名}
 
 と実行し、表示されるプロンプトに応じて、必要な情報を入力してください。
 
-IAM ユーザ作成時に表示される、アクセスキーとシークレットキー、デフォルトのリージョンが確認されます。
+アクセスキーとシークレットキー、デフォルトのリージョンが確認されます。
 詳しくは[aws configure を使用したクイック設定 - プロファイル](https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-profiles)をご参照ください。
 
 ### 2. parameter.ts の設定
@@ -65,7 +63,7 @@ const devParameter: Parameter = {
   deployEnv: "dev",
   sharedVpcCidr: '10.0.0.0/16',
   appVpcCidr: '10.1.0.0/16',
-  filePathOfSourceArtifact: 'webapp-repository/refs/heads/main/repo.zip',
+  filePathOfSourceArtifact: 'webapp-repository/assets/webapp.zip',
   windowsBastion: false,
   linuxBastion: false,
   domainName: "templateapp.local",
@@ -135,34 +133,34 @@ CDK のデプロイが完了したことで、S3バケットにサンプル Web 
 > CloudFormation のコンソールを参照する場合は、`CICDスタック`の`出力`タブを参照ください。
 > ![Repository Url](./docs/images/repository_url_ja.png)
 
-以下の手順で、`webapp` ディレクトリのソースコードをアップロードすることで、サンプル Web アプリがパイプラインからデプロイされます。
+以下の手順で、`webapp` ディレクトリのソースコードをS3バケットにアップロードすることで、サンプル Web アプリがパイプラインからデプロイされます。
 
-まず、git-remote-s3をインストールします。これにより、S3バケットをGitリモートリポジトリとして使用できるようになります。
-
-```bash
-$ pip install git-remote-s3
-```
-
-次に、webappディレクトリをGitリポジトリとして初期化し、S3バケットをリモートとして設定します。
-特定のAWSプロファイルを使用する場合は、`{profile}@`を指定できます。
+#### 手順1: webappディレクトリをzipファイルに圧縮
 
 ```bash
 $ cd ./webapp
-$ git init
-$ git add .
-$ git commit -m "Initial commit"
-# デフォルトプロファイルを使用する場合
-$ git remote add origin s3+zip://{バケット名}/webapp-repository
-# 特定のプロファイルを使用する場合
-$ git remote add origin s3+zip://{profile}@{バケット名}/webapp-repository
+$ zip -r webapp.zip .
 ```
 
-最後に、mainブランチにプッシュします。これにより、コードがS3バケットの指定されたパスにzipファイルとしてアップロードされ、パイプラインが開始されます。
+#### 手順2: S3バケットにzipファイルをアップロード
+
+**AWS CLIを使用する場合:**
 
 ```bash
-$ git push -u origin main
+# S3バケット名を確認（CloudFormationの出力から取得）
+$ aws s3 cp webapp.zip s3://{バケット名}/webapp-repository/assets/webapp.zip --profile {プロファイル名}
 ```
 
+**マネジメントコンソールを使用する場合:**
+
+1. AWS マネジメントコンソールでS3サービスを開く
+2. 対象のバケットを選択
+3. `webapp-repository/assets/` パスに移動（フォルダが存在しない場合は作成）
+4. `webapp.zip` という名前でファイルをアップロード
+
+#### 手順3: パイプラインの確認
+
+zipファイルがアップロードされると、自動的にCodePipelineが開始されます。
 パイプラインの状況を確認したい場合は、マネジメントコンソールより AWS CodePipeline へアクセスしてください。
 
 #### CI/CD パイプラインについて
@@ -280,6 +278,39 @@ Security Hub を有効にした場合、デフォルトで有効になる基準�
   - ご参考：[interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
 
 ## 本番利用時の考慮点
+
+### ネットワークアクセス設定
+
+#### Application Load Balancer のアクセス制御
+
+デフォルトでは、Application Load Balancer（ALB）は共有VPCのCIDRブロックからのHTTPS通信のみを受け入れるように設定されています。お客様の拠点ネットワークや他のCIDRブロックからのアクセスを許可するには、ALBのセキュリティグループに追加のインバウンドルールを追加する必要があります。
+
+##### カスタムCIDRブロックの追加
+
+お客様の組織のIPレンジからのアクセスを許可するには、`lib/webapp-stack.ts`の`WebappStack`を修正してください：
+
+```typescript
+// 例：お客様の組織のCIDRブロックからのアクセスを許可
+ecsBase.albSg.addIngressRule(
+  aws_ec2.Peer.ipv4('192.168.0.0/16'), 
+  aws_ec2.Port.HTTPS, 
+  'Allow HTTPS traffic from organization network'
+);
+
+// 必要に応じて複数のCIDRブロックを追加
+ecsBase.albSg.addIngressRule(
+  aws_ec2.Peer.ipv4('172.16.0.0/12'), 
+  aws_ec2.Port.HTTPS, 
+  'Allow HTTPS traffic from branch office'
+);
+```
+
+##### セキュリティ上の考慮事項
+
+- 信頼でき、管理下にあるCIDRブロックのみを追加してください
+- 可能な限り制限的なCIDRレンジを使用してください（0.0.0.0/0は避ける）
+- 各CIDRブロックには明確な説明を記載してください
+- 許可されたIPレンジを定期的に確認・監査してください
 
 ### EC2 へのパッチ適用について
 

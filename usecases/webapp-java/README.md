@@ -1,4 +1,4 @@
-# infra
+# Java application in closed network
 
 [日本語で読む](./README_ja.md)
 
@@ -65,7 +65,7 @@ const devParameter: Parameter = {
   deployEnv: "dev",
   sharedVpcCidr: '10.0.0.0/16',
   appVpcCidr: '10.1.0.0/16',
-  filePathOfSourceArtifact: 'webapp-repository/refs/heads/main/repo.zip',
+  filePathOfSourceArtifact: 'webapp-repository/assets/webapp.zip',
   windowsBastion: false,
   linuxBastion: false,
   domainName: "templateapp.local",
@@ -135,34 +135,34 @@ After deploying CDK, an S3 bucket for the sample web application repository is c
 > If you're checking the CloudFormation console, refer to the `Output` tab of the `CICD stack`.
 > ![Repository Url](./docs/images/repository_url_ja.png)
 
-Follow these steps to upload the source code from the `webapp` directory to deploy the sample web application through the pipeline.
+Follow these steps to upload the source code from the `webapp` directory to the S3 bucket to deploy the sample web application through the pipeline.
 
-First, install git-remote-s3, which allows you to use an S3 bucket as a Git remote repository:
-
-```bash
-$ pip install git-remote-s3
-```
-
-Next, initialize the webapp directory as a Git repository and set the S3 bucket as a remote:
-If you want to use a specific AWS profile, you can specify `{profile}@`.
+#### Step 1: Create a zip file from the webapp directory
 
 ```bash
 $ cd ./webapp
-$ git init
-$ git add .
-$ git commit -m "Initial commit"
-# Using default profile
-$ git remote add origin s3+zip://{bucket-name}/webapp-repository
-# Using specific profile
-$ git remote add origin s3+zip://{profile}@{bucket-name}/webapp-repository
+$ zip -r webapp.zip .
 ```
 
-Finally, push to the main branch. This will upload the code as a zip file to the specified path in the S3 bucket and start the pipeline:
+#### Step 2: Upload the zip file to the S3 bucket
+
+**Using AWS CLI:**
 
 ```bash
-$ git push -u origin main
+# Check the S3 bucket name (obtained from CloudFormation output)
+$ aws s3 cp webapp.zip s3://{bucket-name}/webapp-repository/assets/webapp.zip --profile {profile-name}
 ```
 
+**Using the Management Console:**
+
+1. Open the S3 service in the AWS Management Console
+2. Select the target bucket
+3. Navigate to the `webapp-repository/assets/` path (create folders if they don't exist)
+4. Upload the file with the name `webapp.zip`
+
+#### Step 3: Check the pipeline
+
+Once the zip file is uploaded, CodePipeline will automatically start.
 If you want to check the pipeline status, access AWS CodePipeline via the management console.
 
 #### CI/CD Pipeline
@@ -281,6 +281,39 @@ These require separate handling.
   - Reference: [interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
 
 ## Production Considerations
+
+### Network Access Configuration
+
+#### Application Load Balancer Access Control
+
+By default, the Application Load Balancer (ALB) is configured to accept HTTPS traffic only from the Shared VPC CIDR block. To allow access from your organization's on-premises networks or other CIDR blocks, you need to add additional ingress rules to the ALB security group.
+
+##### Adding Custom CIDR Blocks
+
+To allow access from your organization's IP ranges, modify the `WebappStack` in `lib/webapp-stack.ts`:
+
+```typescript
+// Example: Allow access from your organization's CIDR blocks
+ecsBase.albSg.addIngressRule(
+  aws_ec2.Peer.ipv4('192.168.0.0/16'), 
+  aws_ec2.Port.HTTPS, 
+  'Allow HTTPS traffic from organization network'
+);
+
+// Add multiple CIDR blocks as needed
+ecsBase.albSg.addIngressRule(
+  aws_ec2.Peer.ipv4('172.16.0.0/12'), 
+  aws_ec2.Port.HTTPS, 
+  'Allow HTTPS traffic from branch office'
+);
+```
+
+##### Security Considerations
+
+- Only add CIDR blocks that you trust and control
+- Use the most restrictive CIDR ranges possible (avoid 0.0.0.0/0)
+- Document each CIDR block with a clear description
+- Regularly review and audit the allowed IP ranges
 
 ### EC2 Patching
 

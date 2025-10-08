@@ -58,6 +58,7 @@ export class NetworkStack extends Stack {
     });
     this.spaS3InterfaceEndpoint.connections.allowFrom(this.sgForAlb, aws_ec2.Port.tcp(80));
     this.sgForAlb.addIngressRule(aws_ec2.Peer.ipv4(props.sharedVpcCidr), aws_ec2.Port.tcp(443), 'Allow HTTPS traffic from sharedVpc');
+    // Please add more ingress rules if you want to access ALB from other CIDR blocks.
 
     // Security Group for API Gateway VPC Endpoint
     this.sgForApiGwVpce = new aws_ec2.SecurityGroup(this, 'ApiGatewayVpceSecurityGroup', {

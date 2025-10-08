@@ -1,4 +1,4 @@
-# infra
+# React(SPA) in closed network
 
 [View this page in English](./README.md)
 
@@ -280,6 +280,39 @@ Security Hub を有効にした場合、デフォルトで有効になる基準�
   - ご参考：[interface BuildEnvironment - privileged](https://docs.aws.amazon.com/cdk/api/v1/docs/@aws-cdk_aws-codebuild.BuildEnvironment.html#privileged)
 
 ## 本番利用時の考慮点
+
+### ネットワークアクセス設定
+
+#### Application Load Balancer のアクセス制御
+
+デフォルトでは、Application Load Balancer（ALB）は共有VPCのCIDRブロックからのHTTPS通信のみを受け入れるように設定されています。お客様の拠点ネットワークや他のCIDRブロックからのアクセスを許可するには、ALBのセキュリティグループに追加のインバウンドルールを追加する必要があります。
+
+##### カスタムCIDRブロックの追加
+
+お客様の組織のIPレンジからのアクセスを許可するには、`lib/network-stack.ts`の`NetworkStack`を修正してください：
+
+```typescript
+// 例：お客様の組織のCIDRブロックからのアクセスを許可
+this.sgForAlb.addIngressRule(
+  aws_ec2.Peer.ipv4('192.168.0.0/16'), 
+  aws_ec2.Port.tcp(443), 
+  'Allow HTTPS traffic from organization network'
+);
+
+// 必要に応じて複数のCIDRブロックを追加
+this.sgForAlb.addIngressRule(
+  aws_ec2.Peer.ipv4('172.16.0.0/12'), 
+  aws_ec2.Port.tcp(443), 
+  'Allow HTTPS traffic from branch office'
+);
+```
+
+##### セキュリティ上の考慮事項
+
+- 信頼でき、管理下にあるCIDRブロックのみを追加してください
+- 可能な限り制限的なCIDRレンジを使用してください（0.0.0.0/0は避ける）
+- 各CIDRブロックには明確な説明を記載してください
+- 許可されたIPレンジを定期的に確認・監査してください
 
 ### EC2 へのパッチ適用について
 
