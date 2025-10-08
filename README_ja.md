@@ -21,17 +21,16 @@ REPLATFORM では、サーバの運用負荷の軽減などがメリットにな
 - Java アプリケーション(Spring boot)を Amazon ECS/Fargate 上で稼働させるためのコンテナ実行環境(\*)
   - これに加え、上記環境下で動作する Spring boot を利用したサンプルアプリケーション
   - そのサンプルアプリケーションをコンテナイメージにするためのサンプル Dockerfile
-    - サンプルアプリケーションについては、[`webapp-java/README.md`](../webapp-java/README_ja.md)をご参照ください
+    - サンプルアプリケーションについては、[`webapp-java/README.md`](./usecases/webapp-java/README_ja.md)をご参照ください
 - 閉域網で SPA ＋ REST API を動かすための、Amazon S3、Amazon API Gateway、AWS Lambda を利用したサーバーレスな実行環境(\*)
   - React のサンプルアプリケーション
-    - 詳しくは、[`Webapp-react/readme_ja.md`](./webapp-react/README_ja.md)を参照ください
+    - 詳しくは、[`Webapp-react/readme_ja.md`](./usecase/webapp-react/README_ja.md)を参照ください
   - React サンプルアプリケーションから呼び出される REST API のサンプルコード
 - アプリケーションを継続開発するための CI/CD 環境
   - AWS CodePipeline や AWS CodeCommit, AWS CodeBuild を利用した、上記サンプルアプリケーションをビルド、デプロイするためのパイプライン
 - 簡易なジョブフローが実行できる、AWS Step Functions、Amazon ECS/Fargate を組み合わせたジョブ実行基盤
   - これに加え、上記環境下で動作する、Python のサンプルジョブスクリプト
   - サンプルジョブスクリプトをコンテナイメージにするためのサンプル Dockerfile
-    - サンプルジョブスクリプトについては、[`batch/README.md`](../batch/README_ja.md)をご参照ください
 - アプリケーションの動作確認や RDB を管理するためのメンテナンス環境
   - SystemsManager と EC2 を組み合わせたアプリケーションのテストや DB の管理を実施できる環境
   - リモートデスクトップ接続（Windows Server Instance）と コンソール接続（Amazon Linux Instance）を提供
@@ -53,19 +52,20 @@ REPLATFORM では、サーバの運用負荷の軽減などがメリットにな
 
 | ディレクトリ | サブディレクトリ | 概要                                                                                                                                                                                                                                                                                                                         |
 | ------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| batch        |                  | batch コンテナを作成するためのソースファイルと Dockerfile                                                                                                                                                                                                                                                                    |
-|              | src              | python のスクリプト                                                                                                                                                                                                                                                                                                          |
-| infra        |                  | AWS リソースをプロビジョニングするための CDK のソースコード<br> - ネットワーク（VPC やサブネット）<br>- DB（Aurora）<br> - コンテナ向けコンピューティングリソース（Amazon ECS、Fargate）<br>- CI/CD ツール（CodePipeline、CodeCommit、CodeDeploy）<br> - バッチジョブ管理（Step Functions、DynamoDB、SNS）<br>が生成される。 |
-|              | bin              | CDK を実行するためのソースコード。 CDK で定義されるところの app に該当                                                                                                                                                                                                                                                       |
-|              | lib/constructs   | AWS リソースを生成するための Stack, Construct が定義されたソースコード<br>Stack と Construct の違いは[ドキュメント](https://docs.aws.amazon.com/ja_jp/cdk/v2/guide/core_concepts.html)をご参照ください                                                                                                                       |
-| webapp-java  |                  | Spring boot 製のウェブアプリのサンプルソースと Dockerfile                                                                                                                                                                                                                                                                    |
+| docs         |                  | プロジェクト全体のドキュメントと画像ファイル                                                                                                                                                                                                                                                                                 |
+|              | images           | アーキテクチャ図、スクリーンショット等の画像ファイル                                                                                                                                                                                                                                                                         |
+| usecases     |                  | 各ユースケース別のプロジェクトディレクトリ                                                                                                                                                                                                                                                                                   |
+|              | webapp-java      | Spring Boot製のWebアプリケーションとバッチシステムのサンプル<br>ECS/Fargateを使用したコンテナ実行環境、Aurora PostgreSQL、CI/CDパイプライン、バッチジョブ管理を提供<br>詳細は[`usecases/webapp-java/README_ja.md`](./usecases/webapp-java/README_ja.md)を参照                                                              |
+|              | webapp-react     | React製のWebアプリケーションとサーバーレス環境のサンプル<br>ECS/FargateまたはサーバーレスでのReactアプリケーション実行環境を提供<br>詳細は[`usecases/webapp-react/README_ja.md`](./usecases/webapp-react/README_ja.md)を参照                                                                                                |
+|              | infraops-console | クローズドネットワーク環境でのAWSリソース管理コンソール<br>Remix製のWebアプリケーションでEC2、ECS、RDSリソースを統合管理、ABAC（属性ベースアクセス制御）を実装<br>詳細は[`usecases/infraops-console/README.md`](./usecases/infraops-console/README.md)を参照                                                              |
 
 ## 前提条件
 
-- `Node.js` >= `16.13.0`
+- `Node.js` >= `22.0.0`
 - `npm` >= `9.2.0`
-- `aws-cdk` >= `2.65.0`
-- `aws-cdk-lib` >= `2.65.0`
+- `aws-cdk` >= `2.1022.0`
+- `aws-cdk-lib` >= `2.206.0`
+- `TypeScript` >= `5.6.0`
 - `OpenSSL` >= `3.0.8`
 - `Docker`
 
@@ -77,23 +77,9 @@ REPLATFORM では、サーバの運用負荷の軽減などがメリットにな
 
 ![接続方式概要図](./docs/images/prerequirsite_ja.png)
 
-### テンプレートのアーキテクチャ図
-
-本テンプレートでは、AWS Direct Connect（DX） や AWS Site-to-Site VPN（VPN） で接続されるアプリケーション NW 内の AWS リソースが構築されます。
-
-![アーキテクチャ図](./docs/images/template_architecture_ja.png)
-
 ### Private Link を利用する場合
 
-また、前述の構成において、既存 NW との CIDR 重複を回避するために、Private Link の利用を検討するケースもあるかと思います。その場合には、以下の図に示すように、オプションとして Private Link を経由した接続の構築が可能になっています。
-Private Link を利用する場合には、[“共有型”AWS DirectConnect でも使える AWS Transit Gateway](https://aws.amazon.com/jp/blogs/news/aws-transit-gateway-with-shared-directconnect/)を参照いただき、最適な NW 設計をご検討ください。
-
-![Private Link Version](./docs/images/template_architecture_privatelink_ja.png)
-
-## テンプレートのデプロイ方法
-
-[infra/README.md](./infra/README_ja.md)を参照ください。
-サーバーレスアプリケーション版を利用したい方は、[infra/README_serverless_ja.md](./infra/README_serverless_ja.md)を参照ください。
+また、前述の構成において、既存 NW との CIDR 重複を回避するために、Private Link の利用を検討するケースもあるかと思います。Private Link を利用する場合には、[“共有型”AWS DirectConnect でも使える AWS Transit Gateway](https://aws.amazon.com/jp/blogs/news/aws-transit-gateway-with-shared-directconnect/)を参照いただき、最適な NW 設計をご検討ください。
 
 ## Security
 

@@ -1,2 +1,25 @@
-*/.DS_Store
+*.js
+!.eslintrc.js
+!jest.config.js
+!stages.js
+!gulpfile.js
+*.d.ts
+node_modules
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+cdk.context.json
+cdk-*-outputs.json
 .DS_Store
+.env
+scoutsuite-report*
+parameter.ts
+
+# usecases
+!ssl/openssl_sign_inca.cnf
+ssl/*
+certificate_arn.json
+dist
+
+.tool-versions

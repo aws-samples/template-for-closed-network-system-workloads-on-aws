@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Backend",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "npm run dev",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug Frontend",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:5173/",
+            "webRoot": "${workspaceFolder}/app",
+            "sourceMaps": true
+        },
+        {
+            "name": "Debug Backend and Frontend",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "npm run dev",
+            "cwd": "${workspaceFolder}",
+            "serverReadyAction": {
+                "action": "startDebugging",
+                "pattern": "Local: +https?://.+",
+                "name": "Debug Frontend"
+            }
+        },
+    ]
+}

@@ -21,12 +21,12 @@ Please see here you want to know how to deploy serverless application version.
 
   - In addition to this, a sample application using Spring Boot
   - A sample Dockerfile to turn that sample application into a container image
-  - For sample applications, see [`Webapp-java/readme.md`](./webapp-java/README.md)
+  - For sample applications, see [`Webapp-java/readme.md`](./usecases/webapp-java/README.md)
 
 - Serverless application environment for running React application hosted on Amazon S3 and REST API on API Gateway and AWS Lambda.(\*)
 
   - A sample application using React
-  - For sample react application, see [`Webapp-react/readme.md`](./webapp-react/README.md).
+  - For sample react application, see [`Webapp-react/readme.md`](./usecases/webapp-react/README.md).
   - Sample REST APIs code is in `functions/`
 
 - CI/CD environment for continuous application development
@@ -37,7 +37,6 @@ Please see here you want to know how to deploy serverless application version.
 - In addition to this, a Python sample job script
 
   - A sample Dockerfile for turning the sample job script into a container image
-  - For a sample job script, see [`batch/README.md`](./batch/README.md)
 
 - Maintenance environment for checking application operation and managing RDB
   - A secure access where you can test applications and manage databases combining SystemsManager and EC2
@@ -58,21 +57,22 @@ Please see here you want to know how to deploy serverless application version.
 
 This is the directory tree and its overview.
 
-| Directory   | Sub directory  | Description                                                                                                                                                                                                                                                                                     |
-| ----------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| batch       |                | Creates a batch container application with Dockerfile                                                                                                                                                                                                                                           |
-|             | src            | python scripts sample app                                                                                                                                                                                                                                                                       |
-| infra       |                | CDK source code for provisioning the following AWS resources <br>- Network (VPC and subnet) <br>- DB (Aurora) <br>- Compute resources for containers (Amazon ECS, Fargate) <br>- CI/CD tools (CodePipeline, CodeCommit, CodeDeploy) <br>- Batch Job Management ( Step Functions, DynamoDB, SNS) |
-|             | bin            | CDK app source code                                                                                                                                                                                                                                                                             |
-|             | lib/constructs | Constructs used to build AWS resources <br> The [Core concept](https://docs.aws.amazon.com/ja_jp/cdk/v2/guide/core_concepts.html) explains about what is the difference between Stack and Construct.                                                                                            |
-| webapp-java |                | Source code of SpringBoot web app with Dockerfile                                                                                                                                                                                                                                               |
+| Directory | Sub directory    | Description                                                                                                                                                                                                                                                                                     |
+| --------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| docs      |                  | Project-wide documentation and image files                                                                                                                                                                                                                                                      |
+|           | images           | Architecture diagrams, screenshots, and other image files                                                                                                                                                                                                                                       |
+| usecases  |                  | Use case-specific project directories                                                                                                                                                                                                                                                           |
+|           | webapp-java      | Spring Boot web application and batch system sample<br>Provides ECS/Fargate container execution environment, Aurora PostgreSQL, CI/CD pipeline, and batch job management<br>See [`usecases/webapp-java/README.md`](./usecases/webapp-java/README.md) for details                          |
+|           | webapp-react     | React web application and serverless environment sample<br>Provides ECS/Fargate or serverless React application execution environment<br>See [`usecases/webapp-react/README.md`](./usecases/webapp-react/README.md) for details                                                            |
+|           | infraops-console | AWS resource management console for closed network environments<br>Remix-based web application for integrated management of EC2, ECS, RDS resources with ABAC (Attribute-Based Access Control)<br>See [`usecases/infraops-console/README.md`](./usecases/infraops-console/README.md) for details |
 
 ## Requirement
 
-- `Node.js` >= `16.13.0`
+- `Node.js` >= `22.0.0`
 - `npm` >= `9.2.0`
-- `aws-cdk` >= `2.65.0`
-- `aws-cdk-lib` >= `2.65.0`
+- `aws-cdk` >= `2.1022.0`
+- `aws-cdk-lib` >= `2.206.0`
+- `TypeScript` >= `5.6.0`
 - `OpenSSL` >= `3.0.8`
 - `Docker`
 
@@ -84,26 +84,9 @@ It is assumed that the on-premise NW (on the right side of the image bellow) exi
 
 ![Connection scheme overview diagram](./docs/images/prerequirsite_en.png)
 
-### Architecture diagram
+### When using Private Link
 
-This template will deploy AWS resources in the application NW connected by AWS Direct Connect (DX) or AWS Site-to-Site VPN (VPN).
-
-![Architecture Diagram](./docs/images/template_architecture_en.png)
-
-Is important to mention that in addition to configuring NW routes on DX and VPNs, please have a look at using private links for better network desing in this blog post: [an AWS Transit Gateway that can also be used with a “shared” AWS DirectConnect](https://aws.amazon.com/jp/blogs/news/aws-transit-gateway-with-shared-directconnect/).
-
-### Using Private Link
-
-The template, optionally allows you to provision the architecture by using Private Links. It is recommended for an extra layer of security when designing applications that are deployed in Private networks.
-
-This is the architecture diagram that is slightly modified by using private links for the services:
-
-![Private Link Version](./docs/images/template_architecture_privatelink_en.png)
-
-## How to Deploy
-
-Please see the following document: [infra/README.md](./infra/README.md)
-If you want to deploy serverless application version, please see the following document: [infra/README_serverless.md](./infra/README_serverless.md)
+Also, in the configuration described above, I think there are cases where the use of Private Link is considered in order to avoid CIDR overlap with existing NW. When using Private Link, please consider [AWS Transit Gateway that can also be used with “shared” AWS DirectConnect](https://aws.amazon.com/jp/blogs/news/aws-transit-gateway-with-shared-directconnect/).
 
 ## Security
 

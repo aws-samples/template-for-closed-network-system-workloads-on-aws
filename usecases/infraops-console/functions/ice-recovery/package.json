@@ -1,0 +1,18 @@
+{
+  "name": "ice-recovery",
+  "version": "1.0.0",
+  "description": "Lambda function for EC2 instance recovery during ICE events",
+  "main": "index.ts",
+  "dependencies": {
+    "@aws-lambda-powertools/logger": "^1.13.0",
+    "@aws-sdk/client-ec2": "^3.427.0",
+    "aws-lambda": "^1.0.7"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119",
+    "@types/node": "^20.10.4"
+  }
+}
