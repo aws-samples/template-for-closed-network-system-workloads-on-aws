@@ -1,11 +1,11 @@
 import { Form, useActionData, useNavigation } from '@remix-run/react';
 import { redirect } from '@remix-run/node';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
-import { getSession, commitSession } from '~/utils/session.server';
-import { Button, Input, Label, RequirementBadge } from '~/components';
-import { cognitoClient } from '~/utils/aws.server';
-import { getCognitoConfig } from '~/utils/auth.server';
-import { verifyAndDecodeIdToken } from '~/utils/jwt-verify.server';
+import { getSession, commitSession } from '../utils/session.server';
+import { Button, Input, Label, RequirementBadge } from '../components';
+import { cognitoClient } from '../utils/aws.server';
+import { getCognitoConfig } from '../utils/auth.server';
+import { verifyAndDecodeIdToken } from '../utils/jwt-verify.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // Check session

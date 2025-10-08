@@ -1,4 +1,4 @@
-import { cognitoClient } from '~/utils/aws.server';
+import { cognitoClient } from '../utils/aws.server';
 import { AttributeType, UserType } from '@aws-sdk/client-cognito-identity-provider';
 
 // User type definition

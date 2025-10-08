@@ -1,8 +1,8 @@
 import { Form, useNavigation } from '@remix-run/react';
 import { redirect } from '@remix-run/node';
 import type { LoaderFunctionArgs } from '@remix-run/node';
-import { getSession } from '~/utils/session.server';
-import { Button } from '~/components';
+import { getSession } from '../utils/session.server';
+import { Button } from '../components';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // 既にログインしている場合はダッシュボードにリダイレクト

@@ -1,9 +1,9 @@
 import { Form, useActionData, useNavigation } from '@remix-run/react';
 import { redirect } from '@remix-run/node';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
-import { authenticator } from '~/utils/auth.server';
-import { getSession } from '~/utils/session.server';
-import { Button, Input, Label, RequirementBadge, UniversalLink } from '~/components';
+import { authenticator } from '../utils/auth.server';
+import { getSession } from '../utils/session.server';
+import { Button, Input, Label, RequirementBadge, UniversalLink } from '../components';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const session = await getSession(request.headers.get('Cookie'));

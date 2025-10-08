@@ -17,8 +17,8 @@
  */
 
 import { ActionFunctionArgs } from '@remix-run/node';
-import { handleServiceAction } from '~/models/ecs.server';
-import { requireAuthentication } from '~/utils/auth.server';
+import { handleServiceAction } from '../models/ecs.server';
+import { requireAuthentication } from '../utils/auth.server';
 
 export async function action({ request }: ActionFunctionArgs) {
   // Authentication check

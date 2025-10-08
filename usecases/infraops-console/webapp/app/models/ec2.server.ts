@@ -1,4 +1,4 @@
-import { ec2Client } from '~/utils/aws.server';
+import { ec2Client } from '../utils/aws.server';
 import type { Instance, Reservation } from '@aws-sdk/client-ec2';
 
 /**

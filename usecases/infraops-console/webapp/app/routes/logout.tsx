@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from '@remix-run/node';
 import { redirect } from '@remix-run/node';
-import { sessionStorage } from '~/utils/session.server';
+import { sessionStorage } from '../utils/session.server';
 
 export async function action({ request }: ActionFunctionArgs) {
   // Get the session

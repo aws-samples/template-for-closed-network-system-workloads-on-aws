@@ -2,9 +2,9 @@ import { redirect } from '@remix-run/node';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
 import { Form, useActionData, useLoaderData, useNavigation } from '@remix-run/react';
 import { useState, useEffect } from 'react';
-import { requireAdmin } from '~/utils/auth.server';
-import { User, getUsers, addUser, deleteUser } from '~/models/user.server';
-import { Button, Input, Label, Select, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '~/components';
+import { requireAdmin } from '../utils/auth.server';
+import { User, getUsers, addUser, deleteUser } from '../models/user.server';
+import { Button, Input, Label, Select, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '../components';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // Check admin privileges

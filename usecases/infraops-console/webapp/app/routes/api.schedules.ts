@@ -19,8 +19,8 @@
  */
 
 import { type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node';
-import { getSchedulesByInstanceId, handleScheduleAction } from '~/models/scheduler.server';
-import { requireAuthentication } from '~/utils/auth.server';
+import { getSchedulesByInstanceId, handleScheduleAction } from '../models/scheduler.server';
+import { requireAuthentication } from '../utils/auth.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // Authentication check

@@ -17,8 +17,8 @@
  */
 
 import type { LoaderFunctionArgs } from '@remix-run/node';
-import { getInstanceTypes } from '~/models/ec2.server';
-import { requireAuthentication } from '~/utils/auth.server';
+import { getInstanceTypes } from '../models/ec2.server';
+import { requireAuthentication } from '../utils/auth.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // Authentication check

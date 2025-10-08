@@ -1,6 +1,6 @@
 import { redirect } from "@remix-run/node";
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import { getSession } from "~/utils/session.server";
+import { getSession } from "../utils/session.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // Check the state of authentication

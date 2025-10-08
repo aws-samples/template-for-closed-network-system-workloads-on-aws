@@ -2,13 +2,13 @@ import { redirect } from '@remix-run/node';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
 import { Link, useLoaderData, useNavigation, useSubmit, useFetcher } from '@remix-run/react';
 import { useState, useEffect } from 'react';
-import { useDebounce } from '~/hooks/useDebounce';
-import { requireAuthentication } from '~/utils/auth.server';
-import type { AppError } from '~/utils/error.server';
-import { getEC2Instances, startEC2Instance, stopEC2Instance, updateEC2InstanceAlternativeType, type EC2Instance } from '~/models/ec2.server';
-import { getServices, type Service } from '~/models/ecs.server';
-import { getDatabases, startDatabase, stopDatabase, type Database } from '~/models/rds.server';
-import type { Schedule } from '~/models/scheduler.server';
+import { useDebounce } from '../hooks/useDebounce';
+import { requireAuthentication } from '../utils/auth.server';
+import type { AppError } from '../utils/error.server';
+import { getEC2Instances, startEC2Instance, stopEC2Instance, updateEC2InstanceAlternativeType, type EC2Instance } from '../models/ec2.server';
+import { getServices, type Service } from '../models/ecs.server';
+import { getDatabases, startDatabase, stopDatabase, type Database } from '../models/rds.server';
+import type { Schedule } from '../models/scheduler.server';
 import { 
   Button, 
   StatusBadge, 
@@ -23,7 +23,7 @@ import {
   ServiceList,
   DatabaseList,
   RefreshButton
-} from '~/components';
+} from '../components';
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react';
 
 type Instance = {

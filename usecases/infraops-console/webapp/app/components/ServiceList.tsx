@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useFetcher } from '@remix-run/react';
-import type { Service } from '~/models/ecs.server';
+import type { Service } from '../models/ecs.server';
 import { 
   Table, 
   TableBody, 
@@ -11,7 +11,7 @@ import {
   StatusBadge,
   RefreshButton,
   Input
-} from '~/components';
+} from '../components';
 
 interface ServiceListProps {
   services: Service[];

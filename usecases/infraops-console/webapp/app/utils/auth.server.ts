@@ -1,7 +1,7 @@
 import { Authenticator } from 'remix-auth';
 import { FormStrategy } from 'remix-auth-form';
 import { commitSession, getSession } from './session.server';
-import { User } from '~/models/user.server';
+import { User } from '../models/user.server';
 import { redirect } from '@remix-run/node';
 import { cognitoClient } from './aws.server';
 import { verifyAndDecodeIdToken } from './jwt-verify.server';

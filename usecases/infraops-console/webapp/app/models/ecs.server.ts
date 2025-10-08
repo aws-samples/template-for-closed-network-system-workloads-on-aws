@@ -1,4 +1,4 @@
-import { ecsClient } from '~/utils/aws.server';
+import { ecsClient } from '../utils/aws.server';
 
 /**
  * ECS service type definition

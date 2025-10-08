@@ -9,7 +9,7 @@ import {
   isRouteErrorResponse,
 } from "@remix-run/react";
 
-import globalStylesUrl from "~/styles/global.css?url";
+import globalStylesUrl from "./styles/global.css?url";
 import { authenticator } from "./utils/auth.server";
 
 export const links: LinksFunction = () => [

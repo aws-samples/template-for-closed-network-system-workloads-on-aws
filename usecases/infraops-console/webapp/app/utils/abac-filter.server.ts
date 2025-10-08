@@ -2,7 +2,6 @@ import { Service } from '@aws-sdk/client-ecs';
 import { getVerifiedUserInfo } from './jwt-verify.server';
 import { Instance } from '@aws-sdk/client-ec2';
 import { DBCluster } from '@aws-sdk/client-rds';
-import { ScheduleSummary, Tag } from '@aws-sdk/client-scheduler';
 
 interface UnifiedTag {
   key: string;

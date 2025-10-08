@@ -28,6 +28,8 @@ import {
   DescribeDBInstancesCommand,
   StopDBClusterCommand,
   StartDBClusterCommand,
+  StopDBInstanceCommand,
+  StartDBInstanceCommand,
 } from '@aws-sdk/client-rds';
 import {
   SchedulerClient,
@@ -70,9 +72,9 @@ import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 import crypto from 'crypto';
 import { fromIni } from "@aws-sdk/credential-providers";
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-provider-cognito-identity"
-import { requireAuthentication } from '~/utils/auth.server';
-import { createAppError } from '~/utils/error.server';
-import { filterByGroupId, extractEC2Tags, extractRDSTags, extractECSTags } from '~/utils/abac-filter.server';
+import { requireAuthentication } from './auth.server';
+import { createAppError } from './error.server';
+import { filterByGroupId, extractEC2Tags, extractRDSTags, extractECSTags } from './abac-filter.server';
 import { getVerifiedGroupId } from './jwt-verify.server';
 
 // Region configuration
@@ -92,7 +94,7 @@ const makeClientConfig = async (request?: Request) => {
       // Use App Runner permissions when request is not available
     }) : undefined) 
     // Development environment only
-    :fromIni({ profile: 'default' }),
+    :fromIni({ profile: 'closedtemplate' }),
   }
 };
 
@@ -679,6 +681,46 @@ export const rdsClient = {
       {
         serviceName: 'RDS',
         operationName: 'startDBCluster',
+        params,
+        request,
+        
+      }
+    );
+  },
+
+  // Stop DB instance temporarily
+  stopDBInstance: async (params: { dbInstanceIdentifier: string }, request: Request) => {
+    return await withAWSClient(
+      RDSClient,
+      async (client) => {
+        const command = new StopDBInstanceCommand({
+          DBInstanceIdentifier: params.dbInstanceIdentifier
+        });
+        return await client.send(command);
+      },
+      {
+        serviceName: 'RDS',
+        operationName: 'stopDBInstance',
+        params,
+        request,
+        
+      }
+    );
+  },
+  
+  // Start DB instance
+  startDBInstance: async (params: { dbInstanceIdentifier: string }, request: Request) => {
+    return await withAWSClient(
+      RDSClient,
+      async (client) => {
+        const command = new StartDBInstanceCommand({
+          DBInstanceIdentifier: params.dbInstanceIdentifier
+        });
+        return await client.send(command);
+      },
+      {
+        serviceName: 'RDS',
+        operationName: 'startDBInstance',
         params,
         request,
         

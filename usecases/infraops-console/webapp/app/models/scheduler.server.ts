@@ -1,4 +1,4 @@
-import { schedulerClient } from '~/utils/aws.server';
+import { schedulerClient } from '../utils/aws.server';
 
 /**
  * Schedule type definition

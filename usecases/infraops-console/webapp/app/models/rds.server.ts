@@ -1,4 +1,4 @@
-import { rdsClient } from '~/utils/aws.server';
+import { rdsClient } from '../utils/aws.server';
 
 /**
  * RDS Database type definition
