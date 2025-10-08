@@ -78,12 +78,6 @@ REPLATFORM では、サーバの運用負荷の軽減などがメリットにな
 
 ![接続方式概要図](./docs/images/prerequirsite_ja.png)
 
-### テンプレートのアーキテクチャ図
-
-本テンプレートでは、AWS Direct Connect（DX） や AWS Site-to-Site VPN（VPN） で接続されるアプリケーション NW 内の AWS リソースが構築されます。
-
-![アーキテクチャ図](./docs/images/template_architecture_ja.png)
-
 ### Private Link を利用する場合
 
 また、前述の構成において、既存 NW との CIDR 重複を回避するために、Private Link の利用を検討するケースもあるかと思います。Private Link を利用する場合には、[“共有型”AWS DirectConnect でも使える AWS Transit Gateway](https://aws.amazon.com/jp/blogs/news/aws-transit-gateway-with-shared-directconnect/)を参照いただき、最適な NW 設計をご検討ください。

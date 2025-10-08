@@ -8,7 +8,7 @@ This project provides CDK code to build an environment for running React-based s
 
 ### Architecture
 
-![Architecture Diagram](./docs/images/architecture.drawio.png)
+![Architecture Diagram](../../docs/images/webapp-react.drawio.png)
 
 This architecture consists of the following main components:
 

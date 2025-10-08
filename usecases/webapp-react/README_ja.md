@@ -8,7 +8,7 @@
 
 ### アーキテクチャ
 
-![アーキテクチャ図](./docs/images/architecture.drawio.png)
+![アーキテクチャ図](../../docs/images/webapp-react.drawio.png)
 
 このアーキテクチャは以下の主要コンポーネントで構成されています：
 

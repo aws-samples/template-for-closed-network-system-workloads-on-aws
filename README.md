@@ -85,14 +85,6 @@ It is assumed that the on-premise NW (on the right side of the image bellow) exi
 
 ![Connection scheme overview diagram](./docs/images/prerequirsite_en.png)
 
-### Architecture diagram
-
-This template will deploy AWS resources in the application NW connected by AWS Direct Connect (DX) or AWS Site-to-Site VPN (VPN).
-
-![Architecture Diagram](./docs/images/template_architecture_en.png)
-
-Is important to mention that in addition to configuring NW routes on DX and VPNs, please have a look at using private links for better network desing in this blog post: [an AWS Transit Gateway that can also be used with a “shared” AWS DirectConnect](https://aws.amazon.com/jp/blogs/news/aws-transit-gateway-with-shared-directconnect/).
-
 ### Using Private Link
 
 The template, optionally allows you to provision the architecture by using Private Links. It is recommended for an extra layer of security when designing applications that are deployed in Private networks.
