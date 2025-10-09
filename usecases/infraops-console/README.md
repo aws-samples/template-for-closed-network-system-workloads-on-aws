@@ -64,8 +64,8 @@ The IAM user/role executing the deployment requires the following permissions:
 
 > [!IMPORTANT]
 > The App Runner service is deployed in public subnets managed by App Runner.  
-> However, by setting `isPubliclyAccessible: false`, direct access from the internet is  
-> prevented. It only accepts access from the specified VPC through the VPC Ingress Connection.  
+> However, by setting `isPubliclyAccessible: false`, direct access from the internet is prevented.  
+> It only accepts access from the specified VPC through the VPC Ingress Connection.  
 > For completely closed network operation, since Amazon Cognito does not support VPC Endpoints,  
 > it cannot be accessed within a VPC. Therefore, please implement authentication functions 
 > independently on the application side.  

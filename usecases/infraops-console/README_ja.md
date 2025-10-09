@@ -68,7 +68,8 @@ export default {
 > ただし、`isPubliclyAccessible: false`に設定することで、インターネットからの直接アクセスを防ぎます。  
 > また、VPC Ingress Connectionを通じて指定されたVPCからのアクセスのみを受け入れます。  
 > 完全に閉域なネットワークでこのアプリケーションを動作させる場合、 Amazon Cognito は VPC Endpoint に未対応のため、  
-> VPC内に閉じたネットワークアクセスができません。そのため、認証機能はアプリケーション側で独自実装するなどして、ご対応下さい。  
+> VPC内に閉じたネットワークアクセスができません。  
+> そのため、認証機能はアプリケーション側で独自実装するなどして、ご対応下さい。  
 > または、 Amazon API Gateway 経由で Cognito へアクセスし、VPC Endpoint 経由で API Gateway にアクセスさせることでも実現可能です。  
 
 
