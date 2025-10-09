@@ -69,7 +69,6 @@ The IAM user/role executing the deployment requires the following permissions:
 > For completely closed network operation, since Amazon Cognito does not support VPC Endpoints,  
 > it cannot be accessed within a VPC. Therefore, please implement authentication functions 
 > independently on the application side.  
-> Alternatively, you can access Cognito via Amazon API Gateway and access the API Gateway through the VPC Endpoint.  
 
 ### Authentication & Authorization
 
