@@ -4,7 +4,7 @@
 
 ## Overview and Architecture
 
-infraops-console is a web console application for securely managing AWS resources in closed network environments. It provides integrated operations for EC2 instances, ECS services, and RDS databases, enabling multiple teams within an organization to safely share resources through group-based access control (ABAC).
+infraops-console is a web console application for managing AWS resources in closed network environments. It provides integrated operations for EC2 instances, ECS services, and RDS databases, enabling multiple teams within an organization to safely share resources through group-based access control (ABAC).
 
 ### System Architecture
 
@@ -61,11 +61,19 @@ The IAM user/role executing the deployment requires the following permissions:
 
 - **No Internet Access**: App Runner service configured with `isPubliclyAccessible: false`
 - **VPC Endpoint Communication**: All communications routed through VPC endpoints
-- **Private Communication**: AWS service communications remain within AWS backbone
+
+> [!IMPORTANT]
+> The App Runner service is deployed in public subnets managed by App Runner.  
+> However, by setting `isPubliclyAccessible: false`, direct access from the internet is prevented.  
+> It only accepts access from the specified VPC through the VPC Ingress Connection.  
+> For completely closed network operation, since Amazon Cognito does not support VPC Endpoints,  
+> it cannot be accessed within a VPC. Therefore, please implement authentication functions 
+> independently on the application side.  
+> Alternatively, you can access Cognito via Amazon API Gateway and access the API Gateway through the VPC Endpoint.  
 
 ### Authentication & Authorization
 
-- **Multi-Factor Authentication**: Strong password policies in Cognito
+- **Password Authentication**: Password policies in Cognito
 - **Session Management**: Short token validity period (60 minutes)
 - **Group-Based Control**: Clear permission separation between administrators and regular users
 

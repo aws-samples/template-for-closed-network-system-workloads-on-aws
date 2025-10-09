@@ -1,11 +1,10 @@
-import { CfnOutput, StackProps, Stack, aws_dynamodb, aws_ec2, aws_iam, aws_cognito, aws_lambda, aws_sqs, aws_lambda_event_sources, aws_events, aws_events_targets, aws_cognito_identitypool, Duration, CfnJson } from 'aws-cdk-lib';
+import { CfnOutput, StackProps, Stack, aws_ec2, aws_iam, aws_cognito, aws_lambda, aws_sqs, aws_lambda_event_sources, aws_events, aws_events_targets, aws_cognito_identitypool, Duration, CfnJson } from 'aws-cdk-lib';
 import * as apprunner from '@aws-cdk/aws-apprunner-alpha';
 import * as assets from 'aws-cdk-lib/aws-ecr-assets';
 import * as path from 'path';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { UserPoolAuthenticationProvider } from 'aws-cdk-lib/aws-cognito-identitypool';
 
 interface InfraopsConsoleStackProps extends StackProps {
   sourceVpcId: string;
@@ -13,7 +12,6 @@ interface InfraopsConsoleStackProps extends StackProps {
 }
 
 export class InfraopsConsoleStack extends Stack {
-  public readonly userTable: aws_dynamodb.Table;
   public readonly userPool: aws_cognito.UserPool;
   public readonly userPoolClient: aws_cognito.UserPoolClient;
   public readonly idPool: aws_cognito.CfnIdentityPool;
@@ -515,7 +513,6 @@ export class InfraopsConsoleStack extends Stack {
           },
         },
         asset: instanceManagerAsset,
-        
       }),
       cpu: apprunner.Cpu.ONE_VCPU,
       memory: apprunner.Memory.TWO_GB,
