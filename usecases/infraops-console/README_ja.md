@@ -70,7 +70,6 @@ export default {
 > 完全に閉域なネットワークでこのアプリケーションを動作させる場合、 Amazon Cognito は VPC Endpoint に未対応のため、  
 > VPC内に閉じたネットワークアクセスができません。  
 > そのため、認証機能はアプリケーション側で独自実装するなどして、ご対応下さい。  
-> または、 Amazon API Gateway 経由で Cognito へアクセスし、VPC Endpoint 経由で API Gateway にアクセスさせることでも実現可能です。  
 
 
 ### 認証・認可
