@@ -63,13 +63,13 @@ export default {
 - **プライベート通信**: AWSサービス間の通信はAWSバックボーン内で完結
 
 > [!IMPORTANT]
-> App Runner のサービスは、App Runner が管理するパブリックサブネット上に展開されます。
-> 参照: https://docs.aws.amazon.com/ja_jp/apprunner/latest/dg/security-vpce.html
-> ただし、`isPubliclyAccessible: false`に設定することで、インターネットからの直接アクセスを防ぎます。
-> また、VPC Ingress Connectionを通じて指定されたVPCからのアクセスのみを受け入れます。
-> 完全に閉域なネットワークでこのアプリケーションを動作させる場合、 Amazon Cognito は VPC Endpoint に未対応のため、
-> VPC内に閉じたネットワークアクセスができません。そのため、認証機能はアプリケーション側で独自実装するなどして、ご対応下さい。
-> または、 Amazon API Gateway 経由で Cognito へアクセスし、VPC Endpoint 経由で API Gateway にアクセスさせることでも実現可能です。
+> App Runner のサービスは、App Runner が管理するパブリックサブネット上に展開されます。  
+> 参照: https://docs.aws.amazon.com/ja_jp/apprunner/latest/dg/security-vpce.html  
+> ただし、`isPubliclyAccessible: false`に設定することで、インターネットからの直接アクセスを防ぎます。  
+> また、VPC Ingress Connectionを通じて指定されたVPCからのアクセスのみを受け入れます。  
+> 完全に閉域なネットワークでこのアプリケーションを動作させる場合、 Amazon Cognito は VPC Endpoint に未対応のため、  
+> VPC内に閉じたネットワークアクセスができません。そのため、認証機能はアプリケーション側で独自実装するなどして、ご対応下さい。  
+> または、 Amazon API Gateway 経由で Cognito へアクセスし、VPC Endpoint 経由で API Gateway にアクセスさせることでも実現可能です。  
 
 
 ### 認証・認可
