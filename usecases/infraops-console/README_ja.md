@@ -62,7 +62,7 @@ export default {
 - **インターネット非公開**: App Runnerサービスは`isPubliclyAccessible: false`で設定
 - **プライベート通信**: AWSサービス間の通信はAWSバックボーン内で完結
 
-> !!!NOTICE!!!
+> [!IMPORTANT]
 > App Runner のサービスは、App Runner が管理するパブリックサブネット上に展開されます。
 > 参照: https://docs.aws.amazon.com/ja_jp/apprunner/latest/dg/security-vpce.html
 > ただし、`isPubliclyAccessible: false`に設定することで、インターネットからの直接アクセスを防ぎます。

@@ -62,7 +62,7 @@ The IAM user/role executing the deployment requires the following permissions:
 - **No Internet Access**: App Runner service configured with `isPubliclyAccessible: false`
 - **VPC Endpoint Communication**: All communications routed through VPC endpoints
 
-> !!!NOTICE!!!
+> [!IMPORTANT]
 > The App Runner service is deployed in public subnets managed by App Runner.
 > However, by setting `isPubliclyAccessible: false`, direct access from the internet is
 > prevented. It only accepts access from the specified VPC through the VPC Ingress Connection.
